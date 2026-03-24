@@ -23,12 +23,15 @@
 
 ## Phase 3: Author Dashboard & Article Management
 
-- [ ] 3.1 Author API layer (RTK Query + MSW with seeded ARTICLES data)
-- [ ] 3.2 Build Dashboard (stats, readers, reactions chart, draft-killer, recent feedback)
-- [ ] 3.3 Build ArticleManager (article list with search/sort)
-- [ ] 3.4 Build ArticleEditor (split-pane section editor)
-- [ ] 3.5 Build ArticleSettings (sharing, link generation, reaction toggles)
-- [ ] 3.6 Storybook stories for author components
+- [x] 3.1 Author API layer (RTK Query endpoints for articles, readers, reactions)
+- [x] 3.2 Build Dashboard (stats, readers, reactions chart, draft-killer, recent feedback)
+- [x] 3.6 Storybook stories for author components (Dashboard, ArticleReader, InviteDialog)
+- [x] 3.x Build ArticleReader (author review view with section sidebar + reaction filters)
+- [x] 3.x Build InviteDialog (reader invitation modal)
+- [x] 3.x Wire App.tsx with MSW data (dashboard -> article reader flow)
+- [ ] 3.3 Build ArticleManager (article list with search/sort) -- deferred to Phase 4
+- [ ] 3.4 Build ArticleEditor (split-pane section editor) -- deferred to Phase 4
+- [ ] 3.5 Build ArticleSettings (sharing, link generation, reaction toggles) -- deferred to Phase 4
 
 ## Phase 4: Integration & Polish
 
@@ -36,3 +39,6 @@
 - [ ] 4.2 Connect reader + author flows end-to-end
 - [ ] 4.3 Error & empty states
 - [ ] 4.4 Keyboard shortcuts
+- [ ] 3.3 ArticleManager (deferred from Phase 3)
+- [ ] 3.4 ArticleEditor (deferred from Phase 3)
+- [ ] 3.5 ArticleSettings (deferred from Phase 3)

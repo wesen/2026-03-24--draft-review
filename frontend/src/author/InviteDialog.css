@@ -1,0 +1,66 @@
+.dr-invite-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.dr-invite-dialog {
+  width: 420px;
+  border: var(--dr-border-width) solid var(--dr-border-color);
+  background: var(--dr-surface);
+  border-radius: 4px;
+  box-shadow: var(--dr-shadow-dialog);
+  overflow: hidden;
+}
+
+.dr-invite-dialog__body {
+  padding: var(--dr-space-lg);
+  font-family: var(--dr-font-body);
+  font-size: var(--dr-font-size-md);
+}
+
+.dr-invite-dialog__intro {
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.dr-invite-dialog__label {
+  display: block;
+  font-family: var(--dr-font-title);
+  font-size: var(--dr-font-size-sm);
+  margin-bottom: 4px;
+  margin-top: 12px;
+}
+
+.dr-invite-dialog__label:first-of-type {
+  margin-top: 0;
+}
+
+.dr-invite-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.dr-invite-dialog__sent {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.dr-invite-dialog__sent-title {
+  font-family: var(--dr-font-title);
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.dr-invite-dialog__sent-hint {
+  font-size: var(--dr-font-size-base);
+  color: var(--dr-subtle);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}

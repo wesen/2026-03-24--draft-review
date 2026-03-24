@@ -108,3 +108,32 @@ WhenToUse: "When reviewing implementation history or resuming work on the Draft 
 **Build:** `tsc --noEmit` clean.
 
 **Next:** Phase 3 -- Author dashboard and article management.
+
+## 2026-03-24 19:45 - Phase 3 complete: Author Dashboard & App Wiring
+
+**What:** Built the author-facing components and wired the full App.tsx with MSW data.
+
+**RTK Query API (3.1):** Created `articleApi.ts` with 6 endpoints: getArticles, getArticle, getReaders, getReactions, inviteReader, addReaction. All use the MSW handlers from Phase 1.
+
+**Dashboard (3.2):** Full dashboard refactored from review-system.jsx's `Dashboard` component (lines 292-481):
+- Article selector tabs
+- Stat cards grid (readers, reactions, sections, avg progress)
+- Two-column layout: readers panel with progress bars + reactions-by-section bar chart with hatched fill patterns per reaction type
+- Draft-killer alert (auto-detects section with most confused+slow flags)
+- Recent feedback list
+
+**ArticleReader:** Split-pane author review view refactored from review-system.jsx's `ArticleReader` (lines 485-625):
+- Section sidebar with reaction counts per type + warning icons
+- Article text panel with paragraph display
+- Bottom reactions panel with type filter tabs (All/Useful/Confused/Slow/Favorite)
+
+**InviteDialog:** Reader invitation modal refactored from review-system.jsx's `InviteDialog` (lines 628-703). Two states: form -> sent confirmation.
+
+**App.tsx wiring:** Connected everything with RTK Query hooks. Dashboard fetches articles/readers/reactions from MSW and passes to child components. View switching: dashboard -> article reader. InviteDialog opens as overlay.
+
+**What was tricky:**
+- TypeScript narrowing issue with `bookKiller` variable. Using `let` + `forEach` caused TS to narrow it to `never` inside the JSX conditional. Fixed by refactoring to `reduce()` which returns a properly typed result object.
+
+**Build:** `npm run build` passes, `tsc` clean. Production bundle: ~290KB JS, ~20KB CSS.
+
+**Next:** Phase 4 -- routing, end-to-end flow, polish.
