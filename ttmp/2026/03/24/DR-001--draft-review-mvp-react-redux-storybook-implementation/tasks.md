@@ -16,10 +16,10 @@
 - [x] 2.1 Define TypeScript types (Article, Section, Reaction, Reader) -- done in Phase 1
 - [x] 2.2 RTK Query endpoints + MSW handlers for reader flow -- done in Phase 1
 - [x] 2.6 Reader Redux slice (currentSection, readSections, started) -- done in Phase 1
-- [ ] 2.3 Build reader components: WelcomeSplash, Paragraph, SectionView, ReaderToolbar
-- [ ] 2.4 Build DoneDialog (review completion)
-- [ ] 2.5 Build ReaderPage (composed page with keyboard nav)
-- [ ] 2.7 Storybook stories for reader components
+- [x] 2.3 Build reader components: WelcomeSplash, Paragraph, SectionView, ReaderToolbar
+- [x] 2.4 Build DoneDialog (review completion)
+- [x] 2.5 Build ReaderPage (composed page with keyboard nav)
+- [x] 2.7 Storybook stories for reader components
 
 ## Phase 3: Author Dashboard & Article Management
 

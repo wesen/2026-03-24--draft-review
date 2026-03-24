@@ -1,0 +1,31 @@
+.dr-reader-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.dr-reader-page__content {
+  flex: 1;
+  overflow: auto;
+}
+
+.dr-reader-page__nav {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 0 32px;
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: var(--dr-border-width) solid var(--dr-on-surface);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dr-reader-page__hint {
+  max-width: 600px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 12px 32px 60px;
+  font-size: var(--dr-font-size-sm);
+  color: var(--dr-muted);
+}

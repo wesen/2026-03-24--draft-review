@@ -1,0 +1,122 @@
+.dr-welcome {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--dr-space-2xl);
+}
+
+.dr-welcome__inner {
+  max-width: 460px;
+  text-align: center;
+  font-family: var(--dr-font-body);
+  font-size: var(--dr-font-size-md);
+}
+
+.dr-welcome__icon {
+  width: 72px;
+  height: 72px;
+  border: var(--dr-border-width) solid var(--dr-border-color);
+  border-radius: 6px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+}
+
+.dr-welcome__title {
+  font-family: var(--dr-font-title);
+  font-size: var(--dr-font-size-xl);
+  margin-bottom: 4px;
+  letter-spacing: -0.3px;
+}
+
+.dr-welcome__author {
+  font-size: var(--dr-font-size-base);
+  color: var(--dr-subtle);
+  margin-bottom: 4px;
+}
+
+.dr-welcome__version {
+  display: inline-block;
+  padding: 2px 10px;
+  border: 1px solid var(--dr-on-surface);
+  border-radius: 2px;
+  font-size: var(--dr-font-size-xs);
+  font-family: var(--dr-font-title);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 20px;
+}
+
+.dr-welcome__note {
+  border: var(--dr-border-width) solid var(--dr-border-color);
+  border-radius: 3px;
+  padding: var(--dr-space-lg);
+  background: var(--dr-surface);
+  text-align: left;
+  line-height: 1.7;
+  margin-bottom: 20px;
+}
+
+.dr-welcome__note-header {
+  font-family: var(--dr-font-title);
+  font-size: var(--dr-font-size-base);
+  margin-bottom: 8px;
+}
+
+.dr-welcome__howto {
+  border: var(--dr-border-width) solid var(--dr-border-color);
+  border-radius: 3px;
+  padding: var(--dr-space-lg);
+  text-align: left;
+  margin-bottom: 24px;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--dr-surface) 0px,
+    var(--dr-surface) 8px,
+    #f7f7f7 8px,
+    #f7f7f7 16px
+  );
+}
+
+.dr-welcome__howto-header {
+  font-family: var(--dr-font-title);
+  font-size: var(--dr-font-size-base);
+  margin-bottom: 8px;
+}
+
+.dr-welcome__howto-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--dr-font-size-base);
+  line-height: 1.5;
+}
+
+.dr-welcome__howto-row {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.dr-welcome__howto-icon {
+  font-size: 15px;
+  text-align: center;
+  width: 20px;
+  flex-shrink: 0;
+}
+
+.dr-welcome__howto-hint {
+  margin-top: 10px;
+  font-size: var(--dr-font-size-base);
+  color: var(--dr-subtle);
+  line-height: 1.5;
+}
+
+.dr-welcome__meta {
+  font-size: var(--dr-font-size-sm);
+  color: var(--dr-muted);
+  margin-top: 10px;
+}

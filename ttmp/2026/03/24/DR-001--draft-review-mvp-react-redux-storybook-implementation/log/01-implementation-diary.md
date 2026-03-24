@@ -84,3 +84,27 @@ WhenToUse: "When reviewing implementation history or resuming work on the Draft 
 **Build:** `npm run build` passes, `tsc --noEmit` clean.
 
 **Next:** Phase 2 -- Reader experience components (WelcomeSplash, Paragraph, SectionView, ReaderPage).
+
+## 2026-03-24 19:15 - Phase 2 complete: Reader Experience
+
+**What:** Built the complete reader-facing flow as modular components.
+
+**Components built:**
+- `WelcomeSplash` -- pre-reading landing page with article info, author note, reaction guide. Refactored from reader-view.jsx lines 473-579. Changed from inline styles to CSS classes.
+- `Paragraph` -- reactable paragraph with hover-to-add (+) button and inline ReactionPicker. Refactored from reader-view.jsx lines 190-342. **Key design change:** extracted the reaction picker into its own component (ReactionPicker from Phase 1), making Paragraph a composition of primitives rather than a monolith.
+- `SectionView` -- section header (badge + title + stripe divider) + paragraph list + section reaction summary. New composition component that didn't exist as a standalone in the prototype.
+- `ReaderToolbar` -- SectionNav + ProgressBar + percentage display. Thin composition component.
+- `DoneDialog` -- review completion modal with reaction stats grid. Refactored from reader-view.jsx lines 401-470.
+- `ReaderPage` -- the full composed reader page: WelcomeSplash -> ReaderToolbar + SectionView + navigation + DoneDialog. This replaces the monolithic `ReaderView` from the prototype. Includes keyboard navigation (arrow keys), section read tracking, and local reactions state.
+
+**Architecture decision:** ReaderPage manages its own local state (started, currentSection, readSections, reactions) rather than wiring directly to Redux. It exposes `onReactionAdd` and `onReactionRemove` callbacks so the parent can dispatch to the store/API. This makes it independently testable and usable in Storybook without a Redux provider.
+
+**Stories written:** WelcomeSplash (default + short article), DoneDialog (default + no reactions), ReaderPage (full article + short article). The ReaderPage story imports mock data from `mocks/db.ts`.
+
+**What worked well:**
+- Decomposing the monolithic ReaderView into 6 focused components was clean -- each component has a single responsibility
+- ReactionPicker (extracted in Phase 1) plugs right into Paragraph without duplication
+
+**Build:** `tsc --noEmit` clean.
+
+**Next:** Phase 3 -- Author dashboard and article management.

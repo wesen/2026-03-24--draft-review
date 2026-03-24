@@ -1,0 +1,74 @@
+.dr-done-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.dr-done-dialog {
+  width: 380px;
+  border: var(--dr-border-width) solid var(--dr-border-color);
+  background: var(--dr-surface);
+  border-radius: 4px;
+  box-shadow: var(--dr-shadow-dialog);
+  overflow: hidden;
+}
+
+.dr-done-dialog__body {
+  padding: var(--dr-space-xl);
+  text-align: center;
+  font-family: var(--dr-font-body);
+  font-size: var(--dr-font-size-md);
+}
+
+.dr-done-dialog__emoji {
+  font-size: 40px;
+  margin-bottom: 8px;
+}
+
+.dr-done-dialog__heading {
+  font-family: var(--dr-font-title);
+  font-size: var(--dr-font-size-lg);
+  margin-bottom: 12px;
+}
+
+.dr-done-dialog__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.dr-done-dialog__stat {
+  border: var(--dr-border-thin) solid var(--dr-border-color);
+  padding: 8px 6px;
+  border-radius: 2px;
+}
+
+.dr-done-dialog__stat-icon {
+  font-size: 18px;
+}
+
+.dr-done-dialog__stat-count {
+  font-family: var(--dr-font-title);
+  font-size: 16px;
+  margin: 2px 0;
+}
+
+.dr-done-dialog__stat-label {
+  font-size: var(--dr-font-size-xs);
+  color: var(--dr-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.dr-done-dialog__message {
+  font-size: var(--dr-font-size-base);
+  color: var(--dr-subtle);
+  line-height: 1.6;
+  margin: 0 0 16px;
+}
