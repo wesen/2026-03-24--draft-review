@@ -1,0 +1,14 @@
+.dr-progress {
+  border: var(--dr-border-thin) solid var(--dr-border-color);
+  background: var(--dr-surface);
+  position: relative;
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.dr-progress__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--dr-hatch-pattern);
+  transition: width 0.3s;
+}

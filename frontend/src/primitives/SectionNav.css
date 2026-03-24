@@ -1,0 +1,24 @@
+.dr-section-nav {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.dr-section-nav__dot {
+  width: 10px;
+  height: 10px;
+  border: var(--dr-border-thin) solid var(--dr-border-color);
+  border-radius: 50%;
+  background: var(--dr-surface);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.dr-section-nav__dot--current {
+  width: 18px;
+  border-radius: 3px;
+}
+
+.dr-section-nav__dot--read {
+  background: var(--dr-on-surface);
+}

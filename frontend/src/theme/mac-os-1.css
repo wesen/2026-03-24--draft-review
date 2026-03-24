@@ -1,0 +1,76 @@
+/* Mac OS 1 Theme — Default theme for Draft Review */
+
+:root {
+  /* Colors */
+  --dr-bg: #e8e8e8;
+  --dr-surface: #ffffff;
+  --dr-on-surface: #000000;
+  --dr-muted: #a0a0a0;
+  --dr-subtle: #555555;
+  --dr-border: #c0c0c0;
+
+  /* Typography */
+  --dr-font-title: "Chicago_12", "ChicagoFLF", "Geneva", monospace;
+  --dr-font-body: "Geneva", "Monaco", monospace;
+  --dr-font-size-xs: 9px;
+  --dr-font-size-sm: 10px;
+  --dr-font-size-base: 11px;
+  --dr-font-size-md: 12px;
+  --dr-font-size-lg: 14px;
+  --dr-font-size-xl: 18px;
+
+  /* Borders */
+  --dr-border-width: 2px;
+  --dr-border-thin: 1.5px;
+  --dr-border-color: var(--dr-on-surface);
+  --dr-border-radius-window: 3px;
+  --dr-border-radius-button: 8px;
+
+  /* Patterns */
+  --dr-stripe-pattern: repeating-linear-gradient(
+    0deg,
+    #fff 0px,
+    #fff 1px,
+    #000 1px,
+    #000 2px
+  );
+  --dr-hatch-pattern: repeating-linear-gradient(
+    45deg,
+    var(--dr-on-surface) 0px,
+    var(--dr-on-surface) 2px,
+    var(--dr-surface) 2px,
+    var(--dr-surface) 4px
+  );
+  --dr-desktop-pattern: repeating-conic-gradient(
+    var(--dr-border) 0% 25%,
+    transparent 0% 50%
+  )
+  0 0 / 4px 4px;
+
+  /* Shadows */
+  --dr-shadow-window: 3px 3px 0 rgba(0, 0, 0, 0.3);
+  --dr-shadow-dialog: 4px 4px 0 rgba(0, 0, 0, 0.3);
+  --dr-shadow-button-hover: 1px 1px 0 rgba(0, 0, 0, 0.15);
+
+  /* Spacing */
+  --dr-space-xs: 4px;
+  --dr-space-sm: 6px;
+  --dr-space-md: 10px;
+  --dr-space-lg: 16px;
+  --dr-space-xl: 24px;
+  --dr-space-2xl: 32px;
+
+  /* Component sizes */
+  --dr-titlebar-height: 22px;
+  --dr-menubar-height: 22px;
+  --dr-close-box-size: 14px;
+}
+
+/* Desktop background */
+.dr-desktop {
+  position: fixed;
+  inset: 0;
+  background: var(--dr-bg) var(--dr-desktop-pattern);
+  font-family: var(--dr-font-body);
+  font-size: var(--dr-font-size-md);
+}

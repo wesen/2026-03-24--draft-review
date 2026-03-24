@@ -1,0 +1,19 @@
+.dr-stat-card {
+  border: var(--dr-border-width) solid var(--dr-border-color);
+  padding: 10px 12px;
+  background: var(--dr-surface);
+  border-radius: 2px;
+}
+
+.dr-stat-card__value {
+  font-family: var(--dr-font-title);
+  font-size: 20px;
+  margin-bottom: 2px;
+}
+
+.dr-stat-card__label {
+  font-size: var(--dr-font-size-sm);
+  color: var(--dr-subtle);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}

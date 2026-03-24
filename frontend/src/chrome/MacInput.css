@@ -1,0 +1,34 @@
+.dr-field {
+  margin-bottom: 12px;
+}
+
+.dr-field__label {
+  display: block;
+  font-family: var(--dr-font-title);
+  font-size: var(--dr-font-size-sm);
+  margin-bottom: 4px;
+}
+
+.dr-input,
+.dr-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: var(--dr-border-width) solid var(--dr-border-color);
+  border-radius: 1px;
+  font-family: var(--dr-font-body);
+  font-size: var(--dr-font-size-md);
+  background: var(--dr-surface);
+  outline: none;
+}
+
+.dr-input:focus,
+.dr-textarea:focus {
+  border-color: var(--dr-on-surface);
+}
+
+.dr-textarea {
+  font-size: var(--dr-font-size-base);
+  line-height: 1.5;
+  resize: vertical;
+}

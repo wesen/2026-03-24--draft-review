@@ -1,0 +1,38 @@
+.dr-reaction-badge {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 5px 10px;
+  border: var(--dr-border-thin) solid var(--dr-border-color);
+  border-radius: 2px;
+  background: var(--dr-surface);
+  margin-top: 6px;
+  margin-right: 6px;
+  max-width: 340px;
+  font-size: var(--dr-font-size-base);
+  font-family: var(--dr-font-body);
+  line-height: 1.45;
+}
+
+.dr-reaction-badge__icon {
+  font-size: 13px;
+  flex-shrink: 0;
+  margin-top: -1px;
+}
+
+.dr-reaction-badge__text {
+  flex: 1;
+}
+
+.dr-reaction-badge__remove {
+  cursor: pointer;
+  font-family: var(--dr-font-title);
+  font-size: var(--dr-font-size-xs);
+  margin-top: 1px;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.dr-reaction-badge__remove:hover {
+  opacity: 1;
+}

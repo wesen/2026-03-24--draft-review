@@ -1,0 +1,24 @@
+.dr-window {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  border: var(--dr-border-width) solid var(--dr-border-color);
+  background: var(--dr-surface);
+  box-shadow: var(--dr-shadow-window);
+  border-radius: var(--dr-border-radius-window);
+  overflow: hidden;
+}
+
+.dr-window--maximized {
+  position: absolute;
+  left: 0;
+  top: var(--dr-menubar-height);
+  right: 0;
+  bottom: 0;
+}
+
+.dr-window__content {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
