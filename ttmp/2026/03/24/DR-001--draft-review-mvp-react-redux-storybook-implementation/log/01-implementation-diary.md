@@ -137,3 +137,52 @@ WhenToUse: "When reviewing implementation history or resuming work on the Draft 
 **Build:** `npm run build` passes, `tsc` clean. Production bundle: ~290KB JS, ~20KB CSS.
 
 **Next:** Phase 4 -- routing, end-to-end flow, polish.
+
+## 2026-03-24 20:00 - Phase 4: Routing & end-to-end integration
+
+**What:** Added react-router and split the app into author and reader entry points.
+
+**Architecture:**
+- `App.tsx` is now a pure router: `/r/:token` -> ReaderApp, `/*` -> AuthorApp
+- `AuthorApp` (extracted from previous App.tsx) -- the dashboard/article-reader flow
+- `ReaderApp` -- new component that resolves a reader token via `readerApi`, shows loading/error states, then renders ReaderPage
+
+**RTK Query (readerApi):** New `getReaderLink` endpoint that hits `/api/r/:token`. The MSW handler resolves the token to a reader + article pair from the mock DB.
+
+**Reader link flow (end-to-end):**
+1. Author creates article (mock data for now)
+2. Author invites reader -> gets a token (e.g. `tok-sarah-1`)
+3. Reader opens `/r/tok-sarah-1`
+4. ReaderApp fetches article data via token
+5. ReaderPage renders: WelcomeSplash -> read sections -> react -> DoneDialog
+
+**Error states:** ReaderApp shows a Mac OS 1 styled error window for invalid/expired tokens.
+
+**Build:** `npm run build` passes. Final bundle: 332KB JS (105KB gzipped), 20KB CSS (3.6KB gzipped).
+
+**How to validate:**
+```bash
+cd frontend
+npm run dev
+# Author dashboard: http://localhost:5173/
+# Reader view: http://localhost:5173/r/tok-sarah-1
+# Storybook: npm run storybook
+```
+
+**Summary of what was built across all 4 phases:**
+
+| Layer | Files | Components |
+|-------|-------|------------|
+| Theme | 2 | CSS custom properties, tokens.ts |
+| Chrome | 12 | TitleBar, MacWindow, MacButton, MacInput, MacTextArea, MenuBar |
+| Primitives | 10 | ProgressBar, ReactionBadge, SectionNav, ReactionPicker, StatCard |
+| Reader | 14 | WelcomeSplash, Paragraph, SectionView, ReaderToolbar, DoneDialog, ReaderPage |
+| Author | 8 | Dashboard, ArticleReader, InviteDialog |
+| Store | 4 | store, uiSlice, readerSlice, hooks |
+| API | 3 | baseApi, articleApi, readerApi |
+| Mocks | 3 | db (seeded data), handlers (6 endpoints), browser |
+| App | 3 | App (router), AuthorApp, ReaderApp |
+| Types | 4 | article, reaction, reader, index |
+| Stories | 13 | All chrome, primitives, reader, and author components |
+
+**Total: ~76 source files, 3500+ lines of component code, decomposed from 2 monolithic JSX prototypes (1669 lines).**

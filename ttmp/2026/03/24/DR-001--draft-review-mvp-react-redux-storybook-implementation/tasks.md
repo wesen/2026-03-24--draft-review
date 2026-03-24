@@ -35,10 +35,11 @@
 
 ## Phase 4: Integration & Polish
 
-- [ ] 4.1 Set up routing (react-router)
-- [ ] 4.2 Connect reader + author flows end-to-end
-- [ ] 4.3 Error & empty states
-- [ ] 4.4 Keyboard shortcuts
+- [x] 4.1 Set up routing (react-router) — `/r/:token` for readers, `/*` for author
+- [x] 4.2 Connect reader + author flows end-to-end — AuthorApp + ReaderApp
+- [x] 4.2b Reader token resolution via readerApi + error/loading states
+- [ ] 4.3 Error & empty states (further polish)
+- [ ] 4.4 Keyboard shortcuts (further polish)
 - [ ] 3.3 ArticleManager (deferred from Phase 3)
 - [ ] 3.4 ArticleEditor (deferred from Phase 3)
 - [ ] 3.5 ArticleSettings (deferred from Phase 3)
