@@ -24,6 +24,14 @@ export function Paragraph({
   const [comment, setComment] = useState("");
   const myReactions = reactions.filter((r) => r.paragraphId === paragraphId);
 
+  // Don't show reaction chips on non-prose paragraphs:
+  // headings, standalone code blocks, or very short fragments
+  const trimmed = text.trim();
+  const isHeadingOnly = /^#{1,6}\s+\S/.test(trimmed) && !trimmed.includes("\n");
+  const isCodeBlockOnly = trimmed.startsWith("```") || (trimmed.startsWith("    ") && !trimmed.includes("\n\n"));
+  const isShortFragment = trimmed.length < 40 && !trimmed.includes(". ");
+  const showChips = !isHeadingOnly && !isCodeBlockOnly && !isShortFragment;
+
   const submit = (type: ReactionType) => {
     const reactionText =
       comment.trim() ||
@@ -46,30 +54,32 @@ export function Paragraph({
 
   return (
     <div
-      className={`dr-para ${myReactions.length > 0 ? "dr-para--commented" : ""}`}
+      className={`dr-para ${myReactions.length > 0 ? "dr-para--commented" : ""} ${!showChips ? "dr-para--no-react" : ""}`}
     >
       <Prose className="dr-para__text">{text}</Prose>
 
-      {/* Always-visible reaction chips */}
-      <div className="dr-para__actions">
-        {REACTION_TYPES.map((r) => (
-          <span
-            key={r.type}
-            className={`dr-para__chip ${
-              activeType === r.type ? "dr-para__chip--active" : ""
-            }`}
-            onClick={() => handleChipClick(r.type)}
-          >
-            {r.icon} {r.label}
-          </span>
-        ))}
-        {myReactions.length > 0 && (
-          <span className="dr-para__badge">{myReactions.length}</span>
-        )}
-      </div>
+      {/* Reaction chips — hidden for headings, code blocks, short fragments */}
+      {showChips && (
+        <div className="dr-para__actions">
+          {REACTION_TYPES.map((r) => (
+            <span
+              key={r.type}
+              className={`dr-para__chip ${
+                activeType === r.type ? "dr-para__chip--active" : ""
+              }`}
+              onClick={() => handleChipClick(r.type)}
+            >
+              {r.icon} {r.label}
+            </span>
+          ))}
+          {myReactions.length > 0 && (
+            <span className="dr-para__badge">{myReactions.length}</span>
+          )}
+        </div>
+      )}
 
       {/* Comment input (shown when a chip is selected) */}
-      {activeType && (
+      {showChips && activeType && (
         <div className="dr-para__comment-box">
           <textarea
             className="dr-para__comment-input"

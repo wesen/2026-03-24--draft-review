@@ -18,6 +18,18 @@
   background: rgba(0, 0, 0, 0.06) !important;
 }
 
+/* Non-reactable paragraphs (headings, code blocks, short fragments) */
+.dr-para--no-react {
+  border-left-color: transparent !important;
+  margin-left: 0;
+  padding-left: 0;
+}
+
+.dr-para--no-react:hover {
+  border-left-color: transparent;
+  background: transparent;
+}
+
 .dr-para__text {
   user-select: text;
 }
