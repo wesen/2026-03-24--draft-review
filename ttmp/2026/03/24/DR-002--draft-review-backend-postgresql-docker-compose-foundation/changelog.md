@@ -187,3 +187,20 @@ Wired the missing dev proxies so the real app can be tested end to end: the Go b
 - /home/manuel/code/wesen/2026-03-24--draft-review/frontend/vite.config.ts — Adds Vite dev-server host binding plus `/api` proxy
 - /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/app/AuthorApp.tsx — Sends login/logout to the backend origin explicitly
 - /home/manuel/code/wesen/2026-03-24--draft-review/README.md — Documents the canonical real-app dev loop on `http://127.0.0.1:8080/`
+
+
+## 2026-03-24
+
+Upgraded the CLI root from plain Cobra help to the embedded Glazed help system, added top-level help pages for the real local workflows, and pulled in the missing help-related Go module dependencies while keeping the root logging initialization in place.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/cmd/draft-review/main.go — Root logger and Glazed help-system wiring
+- /home/manuel/code/wesen/2026-03-24--draft-review/cmd/draft-review/doc/doc.go — Embedded documentation loader for the CLI help system
+- /home/manuel/code/wesen/2026-03-24--draft-review/cmd/draft-review/doc/01-overview.md — Top-level CLI overview help page
+- /home/manuel/code/wesen/2026-03-24--draft-review/cmd/draft-review/doc/02-local-development.md — Local full-stack development tutorial
+- /home/manuel/code/wesen/2026-03-24--draft-review/cmd/draft-review/doc/03-auth-modes.md — Auth mode reference page
+- /home/manuel/code/wesen/2026-03-24--draft-review/cmd/draft-review/doc/04-database-workflow.md — Migration and seed workflow guide
+- /home/manuel/code/wesen/2026-03-24--draft-review/go.mod — Records the help-system dependency closure
+- /home/manuel/code/wesen/2026-03-24--draft-review/go.sum — Added Glazed help transitive dependencies
+- /home/manuel/code/wesen/2026-03-24--draft-review/README.md — Runbook section for the new help surface

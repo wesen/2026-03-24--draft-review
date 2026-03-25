@@ -16,6 +16,7 @@
 
 - [x] Create `go.mod` and baseline Go workspace metadata
 - [x] Create `cmd/draft-review/main.go` root command with Glazed logging setup
+- [x] Wire embedded Glazed help-system integration at the CLI root
 - [x] Create `cmd/draft-review/cmds/serve.go`
 - [x] Create `cmd/draft-review/cmds/migrate_up.go`
 - [x] Create `cmd/draft-review/cmds/migrate_status.go`
@@ -23,6 +24,7 @@
 - [x] Add backend README/run instructions
 - [x] Document docker-compose startup, migration, seed, and local `go run` flows
 - [x] Document current API surface and temporary implementation limits
+- [x] Add Glazed help entries for overview, local development, auth, and database workflow
 
 ### Phase 1: Configuration And Database Foundation
 

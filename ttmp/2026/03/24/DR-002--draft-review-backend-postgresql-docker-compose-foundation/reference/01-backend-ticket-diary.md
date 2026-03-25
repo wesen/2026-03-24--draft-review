@@ -22,7 +22,7 @@ RelatedFiles:
       Note: Task checklist updated during this diary entry
 ExternalSources: []
 Summary: Chronological diary for the DR-002 backend planning ticket, including repository investigation, document creation, validation, and delivery.
-LastUpdated: 2026-03-24T22:45:00-04:00
+LastUpdated: 2026-03-24T22:28:06-04:00
 WhatFor: Recording how the backend planning ticket was assembled and validated.
 WhenToUse: Use this diary when reviewing the documentation work, reconstructing decisions, or continuing backend implementation later.
 ---
@@ -1425,6 +1425,114 @@ curl -sS http://127.0.0.1:8080/api/me
 curl -sS http://127.0.0.1:8080/api/articles
 curl -sS -X POST http://127.0.0.1:8080/api/articles -H 'Content-Type: application/json' -d '{"title":"Owned By Dev Author","author":"Development Author","intro":"Ownership smoke test."}'
 docker compose down
+```
+
+## Step 13: Upgrade The CLI Root To Real Glazed Help Pages
+
+The backend CLI had already adopted Glazed-style flags and root logging, but the command surface was still using plain Cobra help. That meant the user-facing command documentation lagged behind the actual local workflow, and the root command was missing the help-topic discovery experience that the Glazed skills expect. I fixed that by wiring the embedded help system into the root, keeping the existing persistent logger path, and then adding the first set of actual help pages for this application.
+
+This step also flushed out a concrete dependency gap: the repository had never imported `github.com/go-go-golems/glazed/pkg/help`, so the first real `go run ./cmd/draft-review help ...` invocation failed until the new help-related transitive modules were recorded in `go.sum`. That was useful to catch now, because otherwise the help integration would have looked correct in code review but still failed in a fresh environment.
+
+### Prompt Context
+
+**User prompt (verbatim):**
+```text
+wire up the persistent logger and setup the help entries for the glazed command properly (see skill)
+```
+
+**Assistant interpretation:** use the Glazed command and help-authoring patterns, make sure the root-level logger setup is the canonical persistent path, and replace the plain Cobra help surface with an embedded Glazed help system plus real topic pages.
+
+**Inferred user intent:** leave the CLI in the same operational shape as other Glazed-based tools in this ecosystem so a developer can discover the app workflow directly from `draft-review help`.
+
+**Commit (code):** pending during diary capture for this step
+
+### What I did
+- Read the `glazed-help-page-authoring` and `glazed-command-authoring` skill instructions again before editing.
+- Verified that the root command already had:
+- `logging.AddLoggingSectionToRootCommand(rootCmd, "draft-review")`
+- `PersistentPreRunE: logging.InitLoggerFromCobra(...)`
+- Added `cmd/draft-review/doc/doc.go` with an embedded filesystem and `AddDocToHelpSystem(...)`.
+- Added four Glazed help pages:
+- `cmd/draft-review/doc/01-overview.md`
+- `cmd/draft-review/doc/02-local-development.md`
+- `cmd/draft-review/doc/03-auth-modes.md`
+- `cmd/draft-review/doc/04-database-workflow.md`
+- Updated `cmd/draft-review/main.go` to:
+- create `help.NewHelpSystem()`,
+- load the embedded docs,
+- call `help_cmd.SetupCobraRootCommand(helpSystem, rootCmd)`,
+- add slightly fuller `Long` descriptions on the root and group commands.
+- Ran `gofmt` on the Go files touched in the CLI root/doc package.
+- Ran `go mod tidy` after the first help invocation exposed missing `go.sum` entries for Glazed help dependencies such as `glamour`, `bubbletea`, `frontmatter`, and `go-sqlite3`.
+- Validated the resulting CLI with:
+- `go run ./cmd/draft-review help`
+- `go run ./cmd/draft-review help --topics`
+- `go run ./cmd/draft-review help local-development`
+- `go test ./cmd/... ./pkg/...`
+
+### Why
+- The root command was in an incomplete state: logging was already rooted correctly, but documentation discovery still behaved like a plain Cobra app.
+- Draft Review now has enough local workflow complexity that a real help index is materially useful, especially for a new engineer who needs to understand `serve`, `migrate`, `seed`, the frontend dev proxy, and the Keycloak modes.
+- The transitive dependency gap needed to be resolved in versioned module metadata, not left implicit in a developer cache.
+
+### What worked
+- The existing persistent logger setup was already correct, so no invasive logging refactor was necessary.
+- `help_cmd.SetupCobraRootCommand(...)` attached cleanly once the embedded docs package existed.
+- The root `help` page now lists the new top-level topics and renders them correctly.
+- `go test ./cmd/... ./pkg/...` still passed after the root help upgrade.
+
+### What didn't work
+- My first validation command was `go run ./cmd/draft-review help topics`, following the wording in the skill guidance. In this Glazed version that is not a subcommand; it is a flag-based view, so the correct invocation is:
+```text
+go run ./cmd/draft-review help --topics
+```
+- The first help invocation also failed because the repository was missing the help system's transitive `go.sum` entries. `go mod tidy` resolved that cleanly.
+
+### What I learned
+- The logging half of the user request was already satisfied by the root command; the missing part was that the help surface had not caught up with the Glazed conventions.
+- This Glazed release exposes topic listing via `help --topics` and the default root help page, not a dedicated `help topics` subcommand.
+
+### What was tricky to build
+- The tricky part was not the embedded filesystem or the frontmatter itself. It was validating the actual behavior of the imported Glazed help package rather than assuming the skill wording matched this exact released version.
+
+### What warrants a second pair of eyes
+- The wording and discoverability of the first four help pages. They are functional and accurate, but as the command surface grows it may be worth adding more command-specific examples.
+- Whether we want to expose a custom `help topics` alias in the app for consistency with the wording used in internal skills, even though the upstream package already works via `help` and `help --topics`.
+
+### What should be done in the future
+- Add command-specific examples as more operational workflows stabilize, especially for Keycloak/OIDC and frontend-integrated end-to-end testing.
+- If Draft Review grows more command groups, move the explicit Cobra group construction out of `main.go` into per-group `root.go` files for cleaner composition.
+
+### Code review instructions
+- Start with `cmd/draft-review/main.go` and verify the root initialization order:
+- logging section first,
+- help system load second,
+- command registration after that.
+- Then read the docs in `cmd/draft-review/doc/` and check that the slugs are unique, top-level sections are intentional, and the pages map to real commands and flags in the repo.
+- Validate with:
+```text
+go run ./cmd/draft-review help
+go run ./cmd/draft-review help --topics
+go run ./cmd/draft-review help local-development
+go test ./cmd/... ./pkg/...
+```
+
+### Technical details
+- Commands run:
+```text
+gofmt -w cmd/draft-review/main.go cmd/draft-review/doc/doc.go
+go run ./cmd/draft-review help topics
+go mod tidy
+go run ./cmd/draft-review help
+go run ./cmd/draft-review help --topics
+go run ./cmd/draft-review help local-development
+go test ./cmd/... ./pkg/...
+```
+- Observed error before the dependency fix:
+```text
+missing go.sum entry for module providing package github.com/adrg/frontmatter
+missing go.sum entry for module providing package github.com/charmbracelet/glamour
+missing go.sum entry for module providing package github.com/mattn/go-sqlite3
 ```
 
 ## Context

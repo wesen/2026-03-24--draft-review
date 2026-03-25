@@ -111,6 +111,17 @@ Run tests:
 go test ./cmd/... ./pkg/...
 ```
 
+Browse the embedded Glazed help pages:
+
+```bash
+go run ./cmd/draft-review help
+go run ./cmd/draft-review help --topics
+go run ./cmd/draft-review help local-development
+go run ./cmd/draft-review help auth-modes
+```
+
+The root command now carries the shared logging flags and the embedded help system. That means the same logger configuration applies across `serve`, `migrate`, `seed`, and the help command itself.
+
 ## Current HTTP API
 
 The current backend exposes these routes:
