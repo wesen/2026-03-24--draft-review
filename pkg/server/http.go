@@ -9,9 +9,12 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-go-golems/draft-review/pkg/analytics"
 	"github.com/go-go-golems/draft-review/pkg/articles"
 	draftauth "github.com/go-go-golems/draft-review/pkg/auth"
 	draftdb "github.com/go-go-golems/draft-review/pkg/db"
+	"github.com/go-go-golems/draft-review/pkg/reviewlinks"
+	"github.com/go-go-golems/draft-review/pkg/reviews"
 )
 
 type Options struct {
@@ -22,6 +25,9 @@ type Options struct {
 	AuthService         *draftauth.Service
 	Database            *draftdb.DB
 	ArticleService      *articles.Service
+	ReviewLinkService   *reviewlinks.Service
+	ReviewService       *reviews.Service
+	AnalyticsService    *analytics.Service
 	FrontendDevProxyURL string
 }
 
@@ -34,6 +40,9 @@ type HandlerOptions struct {
 	WebAuth             draftauth.WebHandler
 	Database            *draftdb.DB
 	ArticleService      *articles.Service
+	ReviewLinkService   *reviewlinks.Service
+	ReviewService       *reviews.Service
+	AnalyticsService    *analytics.Service
 	FrontendDevProxyURL string
 }
 
@@ -55,13 +64,16 @@ type apiEnvelope struct {
 }
 
 type appHandler struct {
-	version        string
-	startedAt      time.Time
-	authSettings   *draftauth.Settings
-	authService    *draftauth.Service
-	sessionManager *draftauth.SessionManager
-	database       *draftdb.DB
-	articleService *articles.Service
+	version           string
+	startedAt         time.Time
+	authSettings      *draftauth.Settings
+	authService       *draftauth.Service
+	sessionManager    *draftauth.SessionManager
+	database          *draftdb.DB
+	articleService    *articles.Service
+	reviewLinkService *reviewlinks.Service
+	reviewService     *reviews.Service
+	analyticsService  *analytics.Service
 }
 
 func NewHTTPServer(ctx context.Context, options Options) (*http.Server, error) {
@@ -102,6 +114,21 @@ func NewHTTPServer(ctx context.Context, options Options) (*http.Server, error) {
 		articleService = articles.NewService(articles.NewPostgresRepository(options.Database.Pool()))
 	}
 
+	reviewLinkService := options.ReviewLinkService
+	if reviewLinkService == nil && options.Database != nil && options.Database.Pool() != nil {
+		reviewLinkService = reviewlinks.NewService(reviewlinks.NewPostgresRepository(options.Database.Pool()))
+	}
+
+	reviewService := options.ReviewService
+	if reviewService == nil && options.Database != nil && options.Database.Pool() != nil {
+		reviewService = reviews.NewService(reviews.NewPostgresRepository(options.Database.Pool()))
+	}
+
+	analyticsService := options.AnalyticsService
+	if analyticsService == nil && options.Database != nil && options.Database.Pool() != nil {
+		analyticsService = analytics.NewService(analytics.NewPostgresRepository(options.Database.Pool()))
+	}
+
 	return &http.Server{
 		Addr: fmt.Sprintf("%s:%d", options.Host, options.Port),
 		Handler: NewHandler(HandlerOptions{
@@ -113,6 +140,9 @@ func NewHTTPServer(ctx context.Context, options Options) (*http.Server, error) {
 			WebAuth:             webAuth,
 			Database:            options.Database,
 			ArticleService:      articleService,
+			ReviewLinkService:   reviewLinkService,
+			ReviewService:       reviewService,
+			AnalyticsService:    analyticsService,
 			FrontendDevProxyURL: options.FrontendDevProxyURL,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
@@ -126,13 +156,16 @@ func NewHandler(options HandlerOptions) http.Handler {
 	}
 
 	h := &appHandler{
-		version:        options.Version,
-		startedAt:      options.StartedAt,
-		authSettings:   authSettings,
-		authService:    options.AuthService,
-		sessionManager: options.SessionManager,
-		database:       options.Database,
-		articleService: options.ArticleService,
+		version:           options.Version,
+		startedAt:         options.StartedAt,
+		authSettings:      authSettings,
+		authService:       options.AuthService,
+		sessionManager:    options.SessionManager,
+		database:          options.Database,
+		articleService:    options.ArticleService,
+		reviewLinkService: options.ReviewLinkService,
+		reviewService:     options.ReviewService,
+		analyticsService:  options.AnalyticsService,
 	}
 
 	mux := http.NewServeMux()
@@ -145,8 +178,20 @@ func NewHandler(options HandlerOptions) http.Handler {
 	mux.HandleFunc("POST /api/articles", h.handleCreateArticle)
 	mux.HandleFunc("GET /api/articles/{id}", h.handleArticle)
 	mux.HandleFunc("PATCH /api/articles/{id}", h.handleUpdateArticle)
+	mux.HandleFunc("POST /api/articles/{id}/versions", h.handleCreateArticleVersion)
+	mux.HandleFunc("POST /api/articles/{id}/share-token", h.handleResetShareToken)
+	mux.HandleFunc("POST /api/articles/{id}/invite", h.handleInviteReader)
 	mux.HandleFunc("GET /api/articles/{id}/readers", h.handleArticleReaders)
 	mux.HandleFunc("GET /api/articles/{id}/reactions", h.handleArticleReactions)
+	mux.HandleFunc("GET /api/articles/{id}/analytics", h.handleArticleAnalytics)
+	mux.HandleFunc("GET /api/articles/{id}/feedback", h.handleArticleFeedback)
+	mux.HandleFunc("POST /api/articles/{id}/export", h.handleArticleExport)
+	mux.HandleFunc("GET /api/readers", h.handleReadersDirectory)
+	mux.HandleFunc("GET /api/r/{token}", h.handleResolveReviewLink)
+	mux.HandleFunc("POST /api/r/{token}/start", h.handleStartReview)
+	mux.HandleFunc("POST /api/reviews/{sessionId}/progress", h.handleReviewProgress)
+	mux.HandleFunc("POST /api/reviews/{sessionId}/reactions", h.handleReviewReaction)
+	mux.HandleFunc("POST /api/reviews/{sessionId}/summary", h.handleReviewSummary)
 	if options.WebAuth != nil {
 		mux.HandleFunc("GET /auth/login", options.WebAuth.HandleLogin)
 		mux.HandleFunc("GET /auth/callback", options.WebAuth.HandleCallback)
@@ -289,12 +334,366 @@ func (h *appHandler) handleUpdateArticle(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, result)
 }
 
-func (h *appHandler) handleArticleReaders(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, []any{})
+func (h *appHandler) handleCreateArticleVersion(w http.ResponseWriter, r *http.Request) {
+	if h.articleService == nil {
+		writeError(w, http.StatusServiceUnavailable, "article service is not configured")
+		return
+	}
+
+	author, ok := h.requireCurrentAuthor(w, r)
+	if !ok {
+		return
+	}
+
+	var input articles.CreateVersionInput
+	if err := decodeJSONBody(r, &input); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	result, err := h.articleService.CreateVersion(r.Context(), author, r.PathValue("id"), input)
+	if err != nil {
+		switch {
+		case errors.Is(err, articles.ErrNotFound):
+			http.NotFound(w, r)
+		case articles.IsValidationError(err):
+			writeError(w, http.StatusBadRequest, err.Error())
+		default:
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, result)
 }
 
-func (h *appHandler) handleArticleReactions(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, []any{})
+func (h *appHandler) handleResetShareToken(w http.ResponseWriter, r *http.Request) {
+	if h.reviewLinkService == nil {
+		writeError(w, http.StatusServiceUnavailable, "review link service is not configured")
+		return
+	}
+
+	author, ok := h.requireCurrentAuthor(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.reviewLinkService.ResetShareToken(r.Context(), author.ID, r.PathValue("id"))
+	if err != nil {
+		switch {
+		case errors.Is(err, reviewlinks.ErrNotFound):
+			http.NotFound(w, r)
+		default:
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (h *appHandler) handleInviteReader(w http.ResponseWriter, r *http.Request) {
+	if h.reviewLinkService == nil {
+		writeError(w, http.StatusServiceUnavailable, "review link service is not configured")
+		return
+	}
+
+	author, ok := h.requireCurrentAuthor(w, r)
+	if !ok {
+		return
+	}
+
+	var input reviewlinks.InviteInput
+	if err := decodeJSONBody(r, &input); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	result, err := h.reviewLinkService.CreateInvite(r.Context(), author.ID, r.PathValue("id"), input)
+	if err != nil {
+		switch {
+		case errors.Is(err, reviewlinks.ErrNotFound):
+			http.NotFound(w, r)
+		case reviewlinks.IsValidationError(err):
+			writeError(w, http.StatusBadRequest, err.Error())
+		default:
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, result)
+}
+
+func (h *appHandler) handleArticleReaders(w http.ResponseWriter, r *http.Request) {
+	if h.analyticsService == nil {
+		writeJSON(w, http.StatusOK, []reviewlinks.Reader{})
+		return
+	}
+
+	author, ok := h.requireCurrentAuthor(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.analyticsService.ListReaders(r.Context(), author.ID, r.PathValue("id"))
+	if err != nil {
+		switch {
+		case errors.Is(err, analytics.ErrNotFound):
+			http.NotFound(w, r)
+		default:
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (h *appHandler) handleArticleReactions(w http.ResponseWriter, r *http.Request) {
+	if h.analyticsService == nil {
+		writeJSON(w, http.StatusOK, []reviews.Reaction{})
+		return
+	}
+
+	author, ok := h.requireCurrentAuthor(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.analyticsService.ListReactions(r.Context(), author.ID, r.PathValue("id"))
+	if err != nil {
+		switch {
+		case errors.Is(err, analytics.ErrNotFound):
+			http.NotFound(w, r)
+		default:
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (h *appHandler) handleArticleAnalytics(w http.ResponseWriter, r *http.Request) {
+	if h.analyticsService == nil {
+		writeError(w, http.StatusServiceUnavailable, "analytics service is not configured")
+		return
+	}
+
+	author, ok := h.requireCurrentAuthor(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.analyticsService.GetArticleAnalytics(r.Context(), author.ID, r.PathValue("id"))
+	if err != nil {
+		switch {
+		case errors.Is(err, analytics.ErrNotFound):
+			http.NotFound(w, r)
+		default:
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (h *appHandler) handleArticleFeedback(w http.ResponseWriter, r *http.Request) {
+	h.handleArticleReactions(w, r)
+}
+
+func (h *appHandler) handleArticleExport(w http.ResponseWriter, r *http.Request) {
+	if h.articleService == nil {
+		writeError(w, http.StatusServiceUnavailable, "article service is not configured")
+		return
+	}
+
+	author, ok := h.requireCurrentAuthor(w, r)
+	if !ok {
+		return
+	}
+
+	article, err := h.articleService.GetArticle(r.Context(), author, r.PathValue("id"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	writeJSON(w, http.StatusAccepted, map[string]string{
+		"status":    "stub",
+		"articleId": article.ID,
+		"message":   "export generation is not implemented yet",
+	})
+}
+
+func (h *appHandler) handleReadersDirectory(w http.ResponseWriter, r *http.Request) {
+	if h.analyticsService == nil {
+		writeJSON(w, http.StatusOK, []analytics.ReaderContact{})
+		return
+	}
+
+	author, ok := h.requireCurrentAuthor(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.analyticsService.ListReaderDirectory(r.Context(), author.ID)
+	if err != nil {
+		switch {
+		case errors.Is(err, analytics.ErrNotFound):
+			http.NotFound(w, r)
+		default:
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (h *appHandler) handleResolveReviewLink(w http.ResponseWriter, r *http.Request) {
+	if h.reviewLinkService == nil {
+		writeError(w, http.StatusServiceUnavailable, "review link service is not configured")
+		return
+	}
+
+	result, err := h.reviewLinkService.ResolveToken(r.Context(), r.PathValue("token"))
+	if err != nil {
+		switch {
+		case errors.Is(err, reviewlinks.ErrNotFound):
+			http.NotFound(w, r)
+		default:
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (h *appHandler) handleStartReview(w http.ResponseWriter, r *http.Request) {
+	if h.reviewLinkService == nil || h.reviewService == nil {
+		writeError(w, http.StatusServiceUnavailable, "review services are not configured")
+		return
+	}
+
+	link, err := h.reviewLinkService.ResolveToken(r.Context(), r.PathValue("token"))
+	if err != nil {
+		switch {
+		case errors.Is(err, reviewlinks.ErrNotFound):
+			http.NotFound(w, r)
+		default:
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	var input reviews.StartSessionInput
+	if err := decodeJSONBody(r, &input); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	result, err := h.reviewService.StartSession(r.Context(), link, input)
+	if err != nil {
+		switch {
+		case errors.Is(err, reviewlinks.ErrNotFound), errors.Is(err, reviews.ErrNotFound):
+			http.NotFound(w, r)
+		case reviews.IsValidationError(err):
+			writeError(w, http.StatusBadRequest, err.Error())
+		default:
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, result)
+}
+
+func (h *appHandler) handleReviewProgress(w http.ResponseWriter, r *http.Request) {
+	if h.reviewService == nil {
+		writeError(w, http.StatusServiceUnavailable, "review service is not configured")
+		return
+	}
+
+	var input reviews.ProgressInput
+	if err := decodeJSONBody(r, &input); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	result, err := h.reviewService.RecordProgress(r.Context(), r.PathValue("sessionId"), input)
+	if err != nil {
+		switch {
+		case errors.Is(err, reviews.ErrNotFound):
+			http.NotFound(w, r)
+		case reviews.IsValidationError(err):
+			writeError(w, http.StatusBadRequest, err.Error())
+		default:
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (h *appHandler) handleReviewReaction(w http.ResponseWriter, r *http.Request) {
+	if h.reviewService == nil {
+		writeError(w, http.StatusServiceUnavailable, "review service is not configured")
+		return
+	}
+
+	var input reviews.ReactionInput
+	if err := decodeJSONBody(r, &input); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	result, err := h.reviewService.AddReaction(r.Context(), r.PathValue("sessionId"), input)
+	if err != nil {
+		switch {
+		case errors.Is(err, reviews.ErrNotFound):
+			http.NotFound(w, r)
+		case reviews.IsValidationError(err):
+			writeError(w, http.StatusBadRequest, err.Error())
+		default:
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, result)
+}
+
+func (h *appHandler) handleReviewSummary(w http.ResponseWriter, r *http.Request) {
+	if h.reviewService == nil {
+		writeError(w, http.StatusServiceUnavailable, "review service is not configured")
+		return
+	}
+
+	var input reviews.SummaryInput
+	if err := decodeJSONBody(r, &input); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	result, err := h.reviewService.SubmitSummary(r.Context(), r.PathValue("sessionId"), input)
+	if err != nil {
+		switch {
+		case errors.Is(err, reviews.ErrNotFound):
+			http.NotFound(w, r)
+		case reviews.IsValidationError(err):
+			writeError(w, http.StatusBadRequest, err.Error())
+		default:
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {

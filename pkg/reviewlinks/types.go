@@ -1,0 +1,84 @@
+package reviewlinks
+
+import (
+	"time"
+
+	"github.com/pkg/errors"
+)
+
+var ErrNotFound = errors.New("review link not found")
+
+type ValidationError struct {
+	Message string
+}
+
+func (e *ValidationError) Error() string {
+	return e.Message
+}
+
+func NewValidationError(message string) error {
+	return &ValidationError{Message: message}
+}
+
+func IsValidationError(err error) bool {
+	var validationErr *ValidationError
+	return errors.As(err, &validationErr)
+}
+
+type ShareLink struct {
+	Token string `json:"token"`
+	URL   string `json:"url"`
+}
+
+type InviteInput struct {
+	Email string `json:"email"`
+	Note  string `json:"note"`
+}
+
+type Reader struct {
+	ID           string     `json:"id"`
+	Name         string     `json:"name"`
+	Email        string     `json:"email"`
+	Avatar       string     `json:"avatar"`
+	ArticleID    string     `json:"articleId"`
+	Progress     int        `json:"progress"`
+	Token        string     `json:"token"`
+	InvitedAt    time.Time  `json:"invitedAt"`
+	LastActiveAt *time.Time `json:"lastActiveAt,omitempty"`
+}
+
+type ReaderIdentity struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type Section struct {
+	ID         string   `json:"id"`
+	Title      string   `json:"title"`
+	Paragraphs []string `json:"paragraphs"`
+}
+
+type ReaderArticle struct {
+	ID       string    `json:"id"`
+	Title    string    `json:"title"`
+	Author   string    `json:"author"`
+	Version  string    `json:"version"`
+	Intro    string    `json:"intro"`
+	Sections []Section `json:"sections"`
+}
+
+type ResolvedLink struct {
+	Token                 string         `json:"-"`
+	ArticleID             string         `json:"-"`
+	ArticleVersionID      string         `json:"-"`
+	InviteID              string         `json:"-"`
+	AccessMode            string         `json:"-"`
+	ReaderEmail           string         `json:"-"`
+	AllowAnonymous        bool           `json:"-"`
+	RequireNote           bool           `json:"-"`
+	ReaderCanSeeReactions bool           `json:"-"`
+	ReaderCanSeeNames     bool           `json:"-"`
+	ShowAuthorNote        bool           `json:"-"`
+	Reader                ReaderIdentity `json:"reader"`
+	Article               ReaderArticle  `json:"article"`
+}

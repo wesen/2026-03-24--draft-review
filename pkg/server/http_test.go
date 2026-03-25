@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -8,8 +9,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-go-golems/draft-review/pkg/analytics"
 	"github.com/go-go-golems/draft-review/pkg/articles"
 	draftauth "github.com/go-go-golems/draft-review/pkg/auth"
+	"github.com/go-go-golems/draft-review/pkg/reviewlinks"
+	"github.com/go-go-golems/draft-review/pkg/reviews"
 	"github.com/google/uuid"
 )
 
@@ -132,6 +136,105 @@ func (f *fakeArticleRepo) UpdateArticle(ctx context.Context, ownerUserID, id str
 	return &articles.Article{ID: id, Title: "Owned Article"}, nil
 }
 
+func (f *fakeArticleRepo) CreateVersion(ctx context.Context, ownerUserID, id string, input articles.CreateVersionInput) (*articles.Article, error) {
+	f.lastOwnerUserID = ownerUserID
+	return &articles.Article{ID: id, Title: "Owned Article", Version: input.Label}, nil
+}
+
+type fakeReviewLinkRepo struct {
+	link *reviewlinks.ResolvedLink
+}
+
+func (f *fakeReviewLinkRepo) ResetShareToken(ctx context.Context, ownerUserID, articleID string) (*reviewlinks.ShareLink, error) {
+	return &reviewlinks.ShareLink{Token: "share-1", URL: "/r/share-1"}, nil
+}
+
+func (f *fakeReviewLinkRepo) CreateInvite(ctx context.Context, ownerUserID, articleID string, input reviewlinks.InviteInput) (*reviewlinks.Reader, error) {
+	return &reviewlinks.Reader{ID: "reader-1", Email: input.Email}, nil
+}
+
+func (f *fakeReviewLinkRepo) ResolveToken(ctx context.Context, token string) (*reviewlinks.ResolvedLink, error) {
+	if f.link != nil {
+		return f.link, nil
+	}
+	return &reviewlinks.ResolvedLink{
+		Token:            token,
+		ArticleID:        "article-1",
+		ArticleVersionID: "version-1",
+		InviteID:         "invite-1",
+		AllowAnonymous:   true,
+		Reader: reviewlinks.ReaderIdentity{
+			ID:   "reader-1",
+			Name: "Reader One",
+		},
+		Article: reviewlinks.ReaderArticle{
+			ID:      "article-1",
+			Title:   "Shared Article",
+			Author:  "Author",
+			Version: "Draft 1",
+			Intro:   "Intro",
+			Sections: []reviewlinks.Section{
+				{ID: "section-1", Title: "Section 1", Paragraphs: []string{"Paragraph 1"}},
+			},
+		},
+	}, nil
+}
+
+type fakeReviewRepo struct{}
+
+func (f *fakeReviewRepo) StartSession(ctx context.Context, link *reviewlinks.ResolvedLink, input reviews.StartSessionInput) (*reviews.StartSessionResult, error) {
+	return &reviews.StartSessionResult{
+		Session: &reviews.Session{
+			ID:               "session-1",
+			ArticleID:        link.Article.ID,
+			ArticleVersionID: link.ArticleVersionID,
+			ReaderID:         link.Reader.ID,
+			ReaderName:       link.Reader.Name,
+			ProgressPercent:  0,
+			StartedAt:        time.Now().UTC(),
+			LastActiveAt:     time.Now().UTC(),
+		},
+		Reader:  link.Reader,
+		Article: link.Article,
+	}, nil
+}
+
+func (f *fakeReviewRepo) RecordProgress(ctx context.Context, sessionID string, input reviews.ProgressInput) (*reviews.ProgressState, error) {
+	return &reviews.ProgressState{SessionID: sessionID, ProgressPercent: 42, LastActiveAt: time.Now().UTC()}, nil
+}
+
+func (f *fakeReviewRepo) AddReaction(ctx context.Context, sessionID string, input reviews.ReactionInput) (*reviews.Reaction, error) {
+	return &reviews.Reaction{ID: "reaction-1"}, nil
+}
+
+func (f *fakeReviewRepo) SubmitSummary(ctx context.Context, sessionID string, input reviews.SummaryInput) (*reviews.Summary, error) {
+	return &reviews.Summary{SessionID: sessionID, SubmittedAt: time.Now().UTC()}, nil
+}
+
+type fakeAnalyticsRepo struct {
+	lastOwnerUserID string
+}
+
+func (f *fakeAnalyticsRepo) ListReaders(ctx context.Context, ownerUserID, articleID string) ([]reviewlinks.Reader, error) {
+	f.lastOwnerUserID = ownerUserID
+	return []reviewlinks.Reader{{ID: "reader-1", Name: "Reader One", ArticleID: articleID}}, nil
+}
+
+func (f *fakeAnalyticsRepo) ListReactions(ctx context.Context, ownerUserID, articleID string) ([]reviews.Reaction, error) {
+	f.lastOwnerUserID = ownerUserID
+	return []reviews.Reaction{{ID: "reaction-1", ArticleID: articleID}}, nil
+}
+
+func (f *fakeAnalyticsRepo) GetArticleAnalytics(ctx context.Context, ownerUserID, articleID string) (*analytics.ArticleAnalytics, error) {
+	f.lastOwnerUserID = ownerUserID
+	return &analytics.ArticleAnalytics{ArticleID: articleID}, nil
+}
+
+func (f *fakeAnalyticsRepo) ListReaderDirectory(ctx context.Context, ownerUserID string) ([]analytics.ReaderContact, error) {
+	f.lastOwnerUserID = ownerUserID
+	return []analytics.ReaderContact{{Email: "reader@example.com"}}, nil
+}
+
 func TestHandleArticlesUsesAuthenticatedAuthor(t *testing.T) {
 	t.Parallel()
 
@@ -167,5 +270,100 @@ func TestHandleArticlesUsesAuthenticatedAuthor(t *testing.T) {
 
 	if articleRepo.lastOwnerUserID != "11111111-1111-1111-1111-111111111111" {
 		t.Fatalf("expected article owner id to come from ensured auth user, got %q", articleRepo.lastOwnerUserID)
+	}
+}
+
+func TestHandleResolveReviewLinkHidesInternalFields(t *testing.T) {
+	t.Parallel()
+
+	handler := NewHandler(HandlerOptions{
+		Version:           "test",
+		StartedAt:         time.Now().UTC(),
+		AuthSettings:      &draftauth.Settings{Mode: draftauth.AuthModeDev, DevUserID: "local-author"},
+		ReviewLinkService: reviewlinks.NewService(&fakeReviewLinkRepo{}),
+	})
+
+	request := httptest.NewRequest(http.MethodGet, "/api/r/token-1", nil)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", recorder.Code)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("failed to decode payload: %v", err)
+	}
+
+	if _, ok := payload["reader"]; !ok {
+		t.Fatalf("expected reader payload")
+	}
+	if _, ok := payload["article"]; !ok {
+		t.Fatalf("expected article payload")
+	}
+	for _, field := range []string{"articleId", "articleVersionId", "inviteId", "allowAnonymous", "token"} {
+		if _, ok := payload[field]; ok {
+			t.Fatalf("did not expect internal field %q in payload", field)
+		}
+	}
+}
+
+func TestHandleArticleReadersUsesAnalyticsService(t *testing.T) {
+	t.Parallel()
+
+	authRepo := &fakeAuthRepo{
+		findErr: draftauth.ErrNotFound,
+		createUser: &draftauth.User{
+			ID:    "11111111-1111-1111-1111-111111111111",
+			Email: "local-author@draft-review.local",
+			Name:  "Development Author",
+		},
+	}
+	analyticsRepo := &fakeAnalyticsRepo{}
+
+	handler := NewHandler(HandlerOptions{
+		Version:   "test",
+		StartedAt: time.Now().UTC(),
+		AuthSettings: &draftauth.Settings{
+			Mode:      draftauth.AuthModeDev,
+			DevUserID: "local-author",
+		},
+		AuthService:      draftauth.NewService(authRepo),
+		AnalyticsService: analytics.NewService(analyticsRepo),
+	})
+
+	request := httptest.NewRequest(http.MethodGet, "/api/articles/article-1/readers", nil)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", recorder.Code)
+	}
+	if analyticsRepo.lastOwnerUserID != "11111111-1111-1111-1111-111111111111" {
+		t.Fatalf("expected analytics owner id to come from ensured auth user, got %q", analyticsRepo.lastOwnerUserID)
+	}
+}
+
+func TestHandleReviewProgressRejectsInvalidPercent(t *testing.T) {
+	t.Parallel()
+
+	handler := NewHandler(HandlerOptions{
+		Version:       "test",
+		StartedAt:     time.Now().UTC(),
+		AuthSettings:  &draftauth.Settings{Mode: draftauth.AuthModeDev, DevUserID: "local-author"},
+		ReviewService: reviews.NewService(&fakeReviewRepo{}),
+	})
+
+	request := httptest.NewRequest(http.MethodPost, "/api/reviews/session-1/progress", bytes.NewBufferString(`{"sectionId":"section-1","progressPercent":101}`))
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", recorder.Code)
 	}
 }

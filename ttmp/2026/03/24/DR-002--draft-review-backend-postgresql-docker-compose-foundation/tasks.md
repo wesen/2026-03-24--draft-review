@@ -74,36 +74,36 @@
 - [x] Persist section reorder/create/delete operations against `article_sections`
 - [x] Support article metadata updates (`title`, `author`, `intro`, `status`)
 - [x] Seed default reaction types for newly created articles
-- [ ] Add article version creation flow
-- [ ] Add article section editing flow
-- [ ] Add share-token reset flow
-- [ ] Add invite creation flow
+- [x] Add article version creation flow
+- [x] Add article section editing flow
+- [x] Add share-token reset flow
+- [x] Add invite creation flow
 
 ### Phase 5: Reader Sessions And Feedback
 
-- [ ] Add `pkg/reviewlinks` package
-- [ ] Add `pkg/reviews/types.go`
-- [ ] Add `pkg/reviews/postgres.go`
-- [ ] Add `pkg/reviews/service.go`
-- [ ] Add `GET /api/r/{token}`
-- [ ] Add `POST /api/r/{token}/start`
-- [ ] Add `POST /api/reviews/{sessionId}/progress`
-- [ ] Add `POST /api/reviews/{sessionId}/reactions`
-- [ ] Add `POST /api/reviews/{sessionId}/summary`
-- [ ] Return article payloads shaped for the reader experience, not the author dashboard
-- [ ] Persist paragraph-level progress and reaction authorship details
+- [x] Add `pkg/reviewlinks` package
+- [x] Add `pkg/reviews/types.go`
+- [x] Add `pkg/reviews/postgres.go`
+- [x] Add `pkg/reviews/service.go`
+- [x] Add `GET /api/r/{token}`
+- [x] Add `POST /api/r/{token}/start`
+- [x] Add `POST /api/reviews/{sessionId}/progress`
+- [x] Add `POST /api/reviews/{sessionId}/reactions`
+- [x] Add `POST /api/reviews/{sessionId}/summary`
+- [x] Return article payloads shaped for the reader experience, not the author dashboard
+- [x] Persist paragraph-level progress and reaction authorship details
 
 ### Phase 6: Analytics And Reader Management
 
-- [ ] Add `pkg/analytics/postgres.go`
-- [ ] Add `pkg/analytics/service.go`
-- [ ] Add `GET /api/articles/{id}/analytics`
-- [ ] Add `GET /api/articles/{id}/feedback`
-- [ ] Add `GET /api/articles/{id}/readers`
-- [ ] Add cross-article reader management query surface
-- [ ] Add draft-killer heuristic implementation
-- [ ] Add export/report generation stub
-- [ ] Replace current placeholder reader/reaction endpoints with real query-backed responses
+- [x] Add `pkg/analytics/postgres.go`
+- [x] Add `pkg/analytics/service.go`
+- [x] Add `GET /api/articles/{id}/analytics`
+- [x] Add `GET /api/articles/{id}/feedback`
+- [x] Add `GET /api/articles/{id}/readers`
+- [x] Add cross-article reader management query surface
+- [x] Add draft-killer heuristic implementation
+- [x] Add export/report generation stub
+- [x] Replace current placeholder reader/reaction endpoints with real query-backed responses
 
 ### Phase 7: Frontend Integration And Operations
 

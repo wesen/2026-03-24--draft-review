@@ -341,6 +341,120 @@ where id = $1
 	return r.GetArticle(ctx, ownerUserID, articleID.String())
 }
 
+func (r *PostgresRepository) CreateVersion(ctx context.Context, ownerUserID, id string, input CreateVersionInput) (*Article, error) {
+	if r == nil || r.pool == nil {
+		return nil, ErrNotFound
+	}
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to begin version creation transaction")
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
+	var (
+		articleID         uuid.UUID
+		currentVersionID  uuid.UUID
+		currentIntro      string
+		currentAuthorNote string
+		currentVersionNum int
+	)
+	err = tx.QueryRow(ctx, `
+select
+    a.id,
+    a.current_version_id,
+    v.intro,
+    v.author_note,
+    v.version_number
+from articles a
+join article_versions v on v.id = a.current_version_id
+where a.id = $1
+  and a.owner_user_id = $2
+for update
+`, id, ownerUserID).Scan(&articleID, &currentVersionID, &currentIntro, &currentAuthorNote, &currentVersionNum)
+	if err != nil {
+		return nil, ErrNotFound
+	}
+
+	nextVersionNum := currentVersionNum + 1
+	versionLabel := strings.TrimSpace(input.Label)
+	if versionLabel == "" {
+		versionLabel = fmt.Sprintf("Draft %d", nextVersionNum)
+	}
+
+	intro := currentIntro
+	if input.Intro != nil {
+		intro = *input.Intro
+	}
+
+	authorNote := currentAuthorNote
+	if input.AuthorNote != nil {
+		authorNote = *input.AuthorNote
+	}
+
+	newVersionID := uuid.New()
+	_, err = tx.Exec(ctx, `
+insert into article_versions (
+    id,
+    article_id,
+    version_number,
+    version_label,
+    intro,
+    author_note
+)
+values ($1, $2, $3, $4, $5, $6)
+`, newVersionID, articleID, nextVersionNum, versionLabel, intro, authorNote)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to insert new article version")
+	}
+
+	_, err = tx.Exec(ctx, `
+insert into article_sections (
+    id,
+    article_version_id,
+    section_key,
+    position,
+    title,
+    body_markdown,
+    body_plaintext,
+    estimated_read_seconds
+)
+select
+    gen_random_uuid(),
+    $1,
+    section_key,
+    position,
+    title,
+    body_markdown,
+    body_plaintext,
+    estimated_read_seconds
+from article_sections
+where article_version_id = $2
+order by position asc
+`, newVersionID, currentVersionID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to copy article sections into new version")
+	}
+
+	_, err = tx.Exec(ctx, `
+update articles
+set current_version_id = $2,
+    updated_at = now()
+where id = $1
+`, articleID, newVersionID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to activate new article version")
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, errors.Wrap(err, "failed to commit version creation transaction")
+	}
+
+	return r.GetArticle(ctx, ownerUserID, articleID.String())
+}
+
 func (r *PostgresRepository) listSectionsForVersion(ctx context.Context, versionID uuid.UUID) ([]Section, error) {
 	rows, err := r.pool.Query(ctx, `
 select id, title, body_plaintext

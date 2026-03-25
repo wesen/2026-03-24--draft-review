@@ -143,3 +143,19 @@ Added a standalone local Keycloak development stack, helper `make` targets, READ
 - /home/manuel/code/wesen/2026-03-24--draft-review/Makefile — Helper targets for bringing the local Keycloak stack up and running the backend in dev or OIDC mode
 - /home/manuel/code/wesen/2026-03-24--draft-review/README.md — Local Keycloak bootstrap, port override, and smoke-test instructions
 - /home/manuel/code/wesen/2026-03-24--draft-review/ttmp/2026/03/24/DR-002--draft-review-backend-postgresql-docker-compose-foundation/reference/01-backend-ticket-diary.md — Diary entry recording the failures, fixes, and final successful smoke flow
+
+
+## 2026-03-24
+
+Implemented the reader-sharing, review-session, analytics, and versioning slices: real share-token and invite persistence, token-based reader article resolution, review progress and reaction storage, summary submission, author analytics/readers/reactions queries, a cross-article reader directory, paragraph-progress persistence, and an authenticated export stub.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/db/migrations/0004_review_paragraph_progress.sql — Adds paragraph-level progress persistence for review sessions
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/reviewlinks/postgres.go — Share-token reset, invite creation, and reader-link resolution
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/reviews/postgres.go — Review session creation, progress tracking, reactions, and summary persistence
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/analytics/postgres.go — Real readers, reactions, analytics, and reader-directory queries
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/articles/postgres.go — Article version cloning and activation
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http.go — Route wiring for sharing, reader sessions, analytics, and export stub
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http_test.go — Contract-focused HTTP coverage for the new routes
+- /home/manuel/code/wesen/2026-03-24--draft-review/README.md — Updated route inventory and known-gap notes

@@ -22,7 +22,7 @@ RelatedFiles:
       Note: Task checklist updated during this diary entry
 ExternalSources: []
 Summary: Chronological diary for the DR-002 backend planning ticket, including repository investigation, document creation, validation, and delivery.
-LastUpdated: 2026-03-24T22:25:00-04:00
+LastUpdated: 2026-03-24T22:15:00-04:00
 WhatFor: Recording how the backend planning ticket was assembled and validated.
 WhenToUse: Use this diary when reviewing the documentation work, reconstructing decisions, or continuing backend implementation later.
 ---
@@ -251,6 +251,131 @@ GET /api/me -> authenticated: true, authMode: "oidc", email: "author@example.com
 POST /api/articles -> creates an article owned by the authenticated local user row
 GET /auth/logout?return_to=%2Fapi%2Fme -> logout confirmation through Keycloak
 GET /api/me -> authenticated: false
+```
+
+## Step 10: Replace The Placeholder Reader Backend With Real Persistence
+
+After the Keycloak/OIDC slice was stable, I moved into the next missing chunk of real product behavior: invite links, share-token reset, reader link resolution, review-session persistence, author analytics, and version creation. Up to this point the backend still had placeholder readers and reactions endpoints, even though the schema already had the tables needed to support the actual flow.
+
+I implemented this as one cohesive vertical slice because these features depend on each other. A share token without `/api/r/{token}` is not useful. A reader link without a review session cannot persist reactions. Analytics without readers and reactions is just another placeholder. Splitting those into too many tiny steps would have produced a lot of integration churn with little value.
+
+### Prompt Context
+
+**User prompt (verbatim):**
+```text
+go ahead, don't stop, go do it all
+```
+
+**Assistant interpretation:** continue through the next substantial backend milestones instead of stopping after the auth infrastructure.
+
+**Inferred user intent:** turn the remaining placeholder backend surfaces into real PostgreSQL-backed behavior and keep the ticket current while doing it.
+
+**Commit (code):** pending during diary capture for this step
+
+### What I did
+- Added `pkg/db/migrations/0004_review_paragraph_progress.sql` to persist paragraph-level progress separately from section-level progress.
+- Added `pkg/reviewlinks` with:
+- share-token reset,
+- invite creation,
+- token resolution for both article share tokens and unique invite tokens,
+- reader-facing article payload shaping.
+- Added `pkg/reviews` with:
+- review-session start,
+- progress persistence,
+- paragraph progress persistence,
+- reaction persistence,
+- summary submission.
+- Added `pkg/analytics` with:
+- real `GET /api/articles/{id}/readers`,
+- real `GET /api/articles/{id}/reactions`,
+- `GET /api/articles/{id}/analytics`,
+- cross-article `GET /api/readers`,
+- draft-killer heuristic calculation.
+- Added `POST /api/articles/{id}/versions` to clone the current article version, copy sections, and activate the new version.
+- Added `POST /api/articles/{id}/export` as an authenticated stub route that reserves the export contract without pretending report generation is done.
+- Updated `pkg/server/http.go` to wire all of the new packages and routes.
+- Added focused tests in:
+- `pkg/reviewlinks/service_test.go`
+- `pkg/reviews/service_test.go`
+- `pkg/server/http_test.go`
+- Ran a live dev-mode smoke test covering:
+- share-token reset,
+- invite creation,
+- `GET /api/r/{token}`,
+- `POST /api/r/{token}/start`,
+- `POST /api/reviews/{sessionId}/progress`,
+- `POST /api/reviews/{sessionId}/reactions`,
+- `POST /api/reviews/{sessionId}/summary`,
+- `GET /api/articles/{id}/readers`,
+- `GET /api/articles/{id}/reactions`,
+- `GET /api/articles/{id}/analytics`,
+- `GET /api/readers`,
+- `POST /api/articles/{id}/versions`.
+
+### Why
+- The existing placeholder routes were blocking real frontend-to-backend alignment.
+- The schema already expected versioning, review sessions, reactions, and analytics, so the missing piece was repository and HTTP wiring rather than new product invention.
+- Version creation belonged in the same implementation window because the article/version tables were already live and it was the most obvious unused author-side capability.
+
+### What worked
+- The first full smoke path succeeded in dev auth mode once the server was restarted on the updated code.
+- The analytics queries returned sensible live values after one invited reader session and one reaction.
+- Version creation cleanly cloned the current section set and advanced the article’s current version pointer.
+- The service-layer validation tests were enough to pin the new payload rules without building a much heavier test harness.
+
+### What didn't work
+- The first implementation of `/api/r/{token}` leaked internal resolver fields like `ArticleID`, `InviteID`, and `AllowAnonymous` because the resolver struct did not mark those fields `json:"-"`. I caught that immediately during the live curl smoke and fixed the JSON tags before proceeding.
+- I did not add automated database integration tests yet. The SQL behavior is currently covered by compile-time checks, unit tests around the service layer, and live smoke runs.
+
+### What I learned
+- The live smoke mattered again. The leaked internal resolver fields would not have been visible from pure service tests.
+- The existing schema was already close enough that most of the work was about correctly projecting between reader-facing, author-facing, and internal storage shapes.
+- A small export stub route is better than leaving the export task invisible; it makes the gap explicit and keeps the route contract available for later implementation.
+
+### What was tricky to build
+- The trickiest part was shaping the same underlying data differently for different audiences:
+- `GET /api/r/{token}` needs only reader-facing `reader` and `article` fields,
+- author analytics needs normalized reader and reaction records,
+- internal services still need hidden fields like `ArticleVersionID`, invite identity, and access rules.
+- Another subtle point was deciding where to compute display names and avatars. I kept that logic close to `reviewlinks` because invites, reader-directory views, and reader link resolution all need consistent derivation from email addresses.
+
+### What warrants a second pair of eyes
+- The current cross-article reader directory route shape (`GET /api/readers`) is sensible, but it is still app-local rather than driven by an existing frontend screen.
+- The version-cloning endpoint currently copies the active version’s intro, author note, and sections wholesale. That is the right default for now, but it may need more explicit UI choices later.
+- The export stub is intentionally minimal and should not be mistaken for a full report pipeline.
+
+### What should be done in the future
+- Wire the frontend reader experience to the real review-session endpoints instead of keeping progress and reactions in local React state.
+- Add automated database integration tests around invites, progress, reactions, analytics, and version cloning.
+- Replace the export stub with real Markdown/PDF generation once the desired export formats are settled.
+
+### Code review instructions
+- Review `pkg/reviewlinks`, `pkg/reviews`, `pkg/analytics`, and `pkg/server/http.go` together; they form one end-to-end slice.
+- Re-run the live smoke path in dev auth mode to confirm the repository code still matches the route contracts.
+- Pay special attention to the JSON surface of `/api/r/{token}` and the ownership checks on author routes.
+
+### Technical details
+- Key commands run:
+```text
+go test ./cmd/... ./pkg/...
+make local-keycloak-up PG_PORT=25432 KEYCLOAK_PORT=18190
+go run ./cmd/draft-review seed dev --dsn 'postgres://draft_review:draft_review@127.0.0.1:25432/draft_review?sslmode=disable'
+make run-local-dev PG_PORT=25432 APP_PORT=8082
+```
+- Representative smoke calls:
+```text
+POST /api/articles/{id}/share-token
+POST /api/articles/{id}/invite
+GET /api/r/{token}
+POST /api/r/{token}/start
+POST /api/reviews/{sessionId}/progress
+POST /api/reviews/{sessionId}/reactions
+POST /api/reviews/{sessionId}/summary
+GET /api/articles/{id}/readers
+GET /api/articles/{id}/reactions
+GET /api/articles/{id}/analytics
+GET /api/readers
+POST /api/articles/{id}/versions
 ```
 
 ## Step 2: Write The Guide, Update Bookkeeping, Validate, And Deliver

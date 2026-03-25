@@ -99,8 +99,20 @@ The current backend exposes these routes:
 - `POST /api/articles`
 - `GET /api/articles/{id}`
 - `PATCH /api/articles/{id}`
+- `POST /api/articles/{id}/versions`
+- `POST /api/articles/{id}/share-token`
+- `POST /api/articles/{id}/invite`
 - `GET /api/articles/{id}/readers`
 - `GET /api/articles/{id}/reactions`
+- `GET /api/articles/{id}/analytics`
+- `GET /api/articles/{id}/feedback`
+- `POST /api/articles/{id}/export`
+- `GET /api/readers`
+- `GET /api/r/{token}`
+- `POST /api/r/{token}/start`
+- `POST /api/reviews/{sessionId}/progress`
+- `POST /api/reviews/{sessionId}/reactions`
+- `POST /api/reviews/{sessionId}/summary`
 
 When `auth-mode=oidc`, the backend also exposes:
 
@@ -109,7 +121,7 @@ When `auth-mode=oidc`, the backend also exposes:
 - `GET /auth/logout`
 - `GET /auth/logout/callback`
 
-The article read and write routes are backed by PostgreSQL. The reader and reaction routes are still placeholders and currently return empty arrays.
+The article, sharing, reader-session, and analytics routes are backed by PostgreSQL. `POST /api/articles/{id}/export` is intentionally still a stub response that reserves the route shape without generating files yet.
 
 ## Local Keycloak Setup
 
@@ -167,7 +179,8 @@ The live OIDC smoke path validated during implementation was:
 ## Known Gaps
 
 - The frontend still does not consume `/api/me` or drive the `/auth/*` browser flow.
-- Article version creation is still in progress; `PATCH /api/articles/{id}` currently updates the current version in place.
-- Reader session, invite, analytics, and feedback APIs are not implemented yet.
+- The frontend still does not call the new review-session endpoints (`/api/r/{token}/start`, `/api/reviews/{sessionId}/*`) and still keeps most reader progress/reaction state in React.
+- `POST /api/articles/{id}/export` is only a stub acknowledgement, not a real report generator.
+- Database integration tests are still missing; the current validation story is unit tests plus live smoke runs.
 - Frontend RTK Query clients still assume the original mock API behavior in some areas.
 - `seed dev` already runs migrations internally, so do not run `migrate up` concurrently against the same fresh database.

@@ -28,6 +28,12 @@ type UpdateArticleInput struct {
 	Sections *[]SectionInput `json:"sections,omitempty"`
 }
 
+type CreateVersionInput struct {
+	Label      string  `json:"label,omitempty"`
+	Intro      *string `json:"intro,omitempty"`
+	AuthorNote *string `json:"authorNote,omitempty"`
+}
+
 type Article struct {
 	ID        string    `json:"id"`
 	Title     string    `json:"title"`

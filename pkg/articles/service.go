@@ -12,6 +12,7 @@ type Repository interface {
 	GetArticle(ctx context.Context, ownerUserID, id string) (*Article, error)
 	CreateArticle(ctx context.Context, ownerUserID string, input CreateArticleInput) (*Article, error)
 	UpdateArticle(ctx context.Context, ownerUserID, id string, input UpdateArticleInput) (*Article, error)
+	CreateVersion(ctx context.Context, ownerUserID, id string, input CreateVersionInput) (*Article, error)
 }
 
 type Service struct {
@@ -123,6 +124,29 @@ func (s *Service) UpdateArticle(ctx context.Context, owner *draftauth.User, id s
 	}
 
 	return s.repo.UpdateArticle(ctx, owner.ID, id, input)
+}
+
+func (s *Service) CreateVersion(ctx context.Context, owner *draftauth.User, id string, input CreateVersionInput) (*Article, error) {
+	if s == nil || s.repo == nil {
+		return nil, ErrNotFound
+	}
+	if owner == nil || strings.TrimSpace(owner.ID) == "" {
+		return nil, ErrNotFound
+	}
+
+	input.Label = strings.TrimSpace(input.Label)
+
+	if input.Intro != nil {
+		normalized := strings.TrimSpace(*input.Intro)
+		input.Intro = &normalized
+	}
+
+	if input.AuthorNote != nil {
+		normalized := strings.TrimSpace(*input.AuthorNote)
+		input.AuthorNote = &normalized
+	}
+
+	return s.repo.CreateVersion(ctx, owner.ID, id, input)
 }
 
 func defaultIfBlank(value, fallback string) string {
