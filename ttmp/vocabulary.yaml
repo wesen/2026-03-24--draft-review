@@ -1,3 +1,24 @@
-topics: []
-docTypes: []
-intent: []
+topics:
+    - slug: docker-compose
+      description: Local multi-service development with docker compose
+    - slug: api
+      description: HTTP API design, contracts, and endpoint behavior
+    - slug: postgresql
+      description: PostgreSQL database design, migrations, and operations
+    - slug: backend
+      description: Backend architecture, services, persistence, and server implementation work
+    - slug: auth
+      description: Authentication, sessions, verification, and password reset flows
+    - slug: glazed
+      description: Glazed command framework, sections, and CLI verb architecture
+    - slug: golang
+      description: Go language backend implementation and package design
+docTypes:
+    - slug: index
+      description: Ticket index document
+intent:
+    - slug: long-term
+      description: Long-lived planning or reference document
+status:
+    - slug: active
+      description: Currently active and in use

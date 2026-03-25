@@ -1,0 +1,102 @@
+# Tasks
+
+## Done
+
+- [x] Create ticket workspace `DR-002`
+- [x] Analyze the current frontend runtime, mock API layer, and screen specification
+- [x] Write the backend architecture and implementation guide
+- [x] Record the investigation diary
+- [x] Relate key repository files to the ticket docs
+- [x] Validate the ticket with `docmgr doctor`
+- [x] Upload the document bundle to reMarkable
+
+## Implementation Queue
+
+### Phase 0: Runtime Scaffold
+
+- [x] Create `go.mod` and baseline Go workspace metadata
+- [x] Create `cmd/draft-review/main.go` root command with Glazed logging setup
+- [x] Create `cmd/draft-review/cmds/serve.go`
+- [x] Create `cmd/draft-review/cmds/migrate_up.go`
+- [x] Create `cmd/draft-review/cmds/migrate_status.go`
+- [x] Create `cmd/draft-review/cmds/seed_dev.go`
+- [ ] Add backend README/run instructions
+
+### Phase 1: Configuration And Database Foundation
+
+- [x] Add `pkg/config/sql.go` with Clay-style SQL connection section helpers
+- [x] Add embedded SQL connection flag schema under `pkg/config/flags/sql-connection.yaml`
+- [x] Add `pkg/config/backend.go` for app-local settings like auto-migrate and frontend proxy URL
+- [x] Add `pkg/db/postgres.go` with `pgxpool` bootstrap
+- [x] Add `pkg/db/migrations.go` with embedded migration runner
+- [x] Add `pkg/db/migrations/0001_init.sql`
+- [x] Add `pkg/db/migrations/0002_seed_reaction_types.sql`
+- [x] Add dev seed/reset workflow
+
+### Phase 2: HTTP Server Foundation
+
+- [x] Add `pkg/server/http.go`
+- [x] Add `GET /healthz`
+- [x] Add `GET /api/info`
+- [x] Add dependency wiring for database-backed services
+- [x] Add graceful shutdown handling in `serve`
+
+### Phase 3: Author Auth
+
+- [ ] Add `pkg/auth/types.go`
+- [ ] Add password hashing and session helpers
+- [ ] Add `POST /api/auth/signup`
+- [ ] Add `POST /api/auth/login`
+- [ ] Add `POST /api/auth/logout`
+- [ ] Add password reset token persistence
+- [ ] Add email verification token persistence
+- [ ] Add `POST /api/auth/forgot-password`
+- [ ] Add `POST /api/auth/reset-password`
+- [ ] Add `POST /api/auth/verify-email`
+
+### Phase 4: Articles And Sharing
+
+- [x] Add `pkg/articles/types.go`
+- [x] Add `pkg/articles/postgres.go`
+- [x] Add `pkg/articles/service.go`
+- [x] Add `GET /api/articles`
+- [ ] Add `POST /api/articles`
+- [x] Add `GET /api/articles/{id}`
+- [ ] Add `PATCH /api/articles/{id}`
+- [ ] Add article version creation flow
+- [ ] Add article section editing flow
+- [ ] Add share-token reset flow
+- [ ] Add invite creation flow
+
+### Phase 5: Reader Sessions And Feedback
+
+- [ ] Add `pkg/reviewlinks` package
+- [ ] Add `pkg/reviews/types.go`
+- [ ] Add `pkg/reviews/postgres.go`
+- [ ] Add `pkg/reviews/service.go`
+- [ ] Add `GET /api/r/{token}`
+- [ ] Add `POST /api/r/{token}/start`
+- [ ] Add `POST /api/reviews/{sessionId}/progress`
+- [ ] Add `POST /api/reviews/{sessionId}/reactions`
+- [ ] Add `POST /api/reviews/{sessionId}/summary`
+
+### Phase 6: Analytics And Reader Management
+
+- [ ] Add `pkg/analytics/postgres.go`
+- [ ] Add `pkg/analytics/service.go`
+- [ ] Add `GET /api/articles/{id}/analytics`
+- [ ] Add `GET /api/articles/{id}/feedback`
+- [ ] Add `GET /api/articles/{id}/readers`
+- [ ] Add cross-article reader management query surface
+- [ ] Add draft-killer heuristic implementation
+- [ ] Add export/report generation stub
+
+### Phase 7: Frontend Integration And Operations
+
+- [ ] Align frontend RTK Query clients with the real Go backend contracts
+- [ ] Add `docker-compose.yml` for backend plus PostgreSQL
+- [ ] Add Dockerfile for the Go service
+- [ ] Add backend unit tests
+- [ ] Add database integration tests
+- [ ] Add HTTP handler tests
+- [ ] Add local developer runbook
