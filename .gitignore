@@ -1,2 +1,4 @@
 .idea/
 frontend/src/assets/hero.png
+bin/
+var/
