@@ -47,6 +47,11 @@
   margin-top: 12px;
 }
 
+.dr-invite-dialog__actions--sent {
+  justify-content: center;
+  margin-top: 16px;
+}
+
 .dr-invite-dialog__sent {
   text-align: center;
   padding: 20px 0;
@@ -63,4 +68,20 @@
   color: var(--dr-subtle);
   margin-bottom: 16px;
   line-height: 1.5;
+}
+
+.dr-invite-dialog__error {
+  margin-top: 12px;
+  color: #8b1e1e;
+  font-size: var(--dr-font-size-sm);
+}
+
+.dr-invite-dialog__link-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.dr-invite-dialog__link-input {
+  flex: 1;
 }

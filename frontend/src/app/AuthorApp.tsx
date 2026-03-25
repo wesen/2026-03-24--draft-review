@@ -339,8 +339,18 @@ export function AuthorApp() {
         <InviteDialog
           onClose={() => setShowInvite(false)}
           onInvite={async (email, note) => {
-            if (!activeArticleId) return;
-            await inviteReader({ articleId: activeArticleId, email, note });
+            if (!activeArticleId) {
+              throw new Error("No active article selected");
+            }
+            const reader = await inviteReader({
+              articleId: activeArticleId,
+              email,
+              note,
+            }).unwrap();
+            return {
+              email: reader.email,
+              inviteUrl: `${backendOrigin}/r/${reader.token}`,
+            };
           }}
         />
       )}

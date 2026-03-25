@@ -204,3 +204,15 @@ Upgraded the CLI root from plain Cobra help to the embedded Glazed help system, 
 - /home/manuel/code/wesen/2026-03-24--draft-review/go.mod — Records the help-system dependency closure
 - /home/manuel/code/wesen/2026-03-24--draft-review/go.sum — Added Glazed help transitive dependencies
 - /home/manuel/code/wesen/2026-03-24--draft-review/README.md — Runbook section for the new help surface
+
+
+## 2026-03-24
+
+Updated the invite-reader dialog so a successful invite now returns a copyable per-reader review URL instead of only a generic success message.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/InviteDialog.tsx — Awaits invite completion, shows the generated reader URL, and exposes copy actions
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/InviteDialog.css — Styles the new reader-link row and inline error state
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/app/AuthorApp.tsx — Builds a backend-origin invite URL from the returned reader token
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/InviteDialog.stories.tsx — Keeps the Storybook contract aligned with the async invite result

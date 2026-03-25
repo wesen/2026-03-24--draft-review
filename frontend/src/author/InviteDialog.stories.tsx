@@ -12,6 +12,12 @@ type Story = StoryObj<typeof InviteDialog>;
 export const Default: Story = {
   args: {
     onClose: () => alert("Close"),
-    onInvite: (email, note) => alert(`Invite ${email}: ${note}`),
+    onInvite: async (email, note) => {
+      alert(`Invite ${email}: ${note}`);
+      return {
+        email,
+        inviteUrl: `http://127.0.0.1:8080/r/invite-demo-${email}`,
+      };
+    },
   },
 };

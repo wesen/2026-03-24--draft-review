@@ -22,7 +22,7 @@ RelatedFiles:
       Note: Task checklist updated during this diary entry
 ExternalSources: []
 Summary: Chronological diary for the DR-002 backend planning ticket, including repository investigation, document creation, validation, and delivery.
-LastUpdated: 2026-03-24T22:28:06-04:00
+LastUpdated: 2026-03-24T23:02:58-04:00
 WhatFor: Recording how the backend planning ticket was assembled and validated.
 WhenToUse: Use this diary when reviewing the documentation work, reconstructing decisions, or continuing backend implementation later.
 ---
@@ -1533,6 +1533,94 @@ go test ./cmd/... ./pkg/...
 missing go.sum entry for module providing package github.com/adrg/frontmatter
 missing go.sum entry for module providing package github.com/charmbracelet/glamour
 missing go.sum entry for module providing package github.com/mattn/go-sqlite3
+```
+
+## Step 14: Make Reader Invites Immediately Copyable
+
+The backend already returned a unique per-reader token from the invite API, but the frontend threw that information away and replaced it with a generic "Invitation Sent!" screen. That was enough to prove the mutation worked, but not enough to support the actual workflow you asked for: create an invite and immediately copy a real reader link into email, Slack, or wherever else you talk to beta readers.
+
+I kept this intentionally small. The backend did not need a schema or API change because `POST /api/articles/{id}/invite` already returns the created reader with its `token`. The missing piece was in the invite dialog: await the mutation instead of marking success optimistically, build the real review URL from the returned token, and expose a copy button in the success state.
+
+### Prompt Context
+
+**User prompt (verbatim):**
+```text
+do the small slice
+```
+
+**Assistant interpretation:** implement the smallest practical version of “invite this reader and give me a link I can copy/paste”.
+
+**Inferred user intent:** keep the existing per-reader invite model, but surface it in the UI immediately so invite creation turns into a usable communication step rather than just a database write.
+
+**Commit (code):** pending during diary capture for this step
+
+### What I did
+- Updated `frontend/src/author/InviteDialog.tsx` so the dialog:
+- awaits the async invite callback,
+- only enters the success state after the mutation resolves,
+- shows backend errors inline,
+- renders the generated per-reader reader URL,
+- exposes copy actions for that URL.
+- Updated `frontend/src/author/InviteDialog.css` to style:
+- the new copyable link row,
+- the sent-state action layout,
+- the inline error message.
+- Updated `frontend/src/app/AuthorApp.tsx` so the real app invite path:
+- unwraps the invite mutation result,
+- builds a stable backend-origin URL using `backendOrigin` plus `/r/${reader.token}`,
+- returns that URL into the dialog.
+- Updated `frontend/src/author/InviteDialog.stories.tsx` so Storybook still satisfies the new async contract and demonstrates the success state with a realistic link.
+- Validated with `npm run build`.
+
+### Why
+- The backend already had the token. Not surfacing it in the UI was wasted value.
+- The old optimistic success state could claim "sent" even if the invite mutation failed.
+- Copy-paste is the shortest route to real usage and does not require adding email-delivery infrastructure.
+
+### What worked
+- No backend change was required because the API contract already returned the reader token.
+- The existing `backendOrigin` setting in `AuthorApp` made it straightforward to generate a backend-owned reader URL rather than accidentally using the Vite origin.
+- The build passed once the dialog contract and Storybook stub were aligned.
+
+### What didn't work
+- The first build failed because the new `onInvite` contract was stricter than the old fire-and-forget callback:
+```text
+Type '(email: string, note: string) => Promise<{ email: string; inviteUrl: string; } | undefined>' is not assignable...
+```
+- I fixed that by making the real app throw if no active article is selected and by updating the Storybook story to return a mock async result instead of `void`.
+
+### What I learned
+- The frontend had all the data it needed already. The gap was purely in how the success path was modeled in the dialog.
+- Using the backend origin explicitly matters here for the same reason it mattered in auth: the shareable link should point at the actual app origin that owns `/r/:token`.
+
+### What was tricky to build
+- The main subtlety was keeping the invite contract strict enough to be useful without forcing a larger redesign of the dialog API. Returning an explicit invite result turned out to be the cleanest minimal shape.
+
+### What warrants a second pair of eyes
+- Whether we also want a second convenience action like "Copy email + link" in addition to the plain link copy.
+- Whether the readers list should surface the same full invite URL directly so authors can re-copy it later without reopening the dialog.
+
+### What should be done in the future
+- Consider adding a “copy invite message” template that includes the link and the personal note.
+- Consider surfacing the full invite URL in the reader-management table so the dialog is not the only place where it can be retrieved.
+
+### Code review instructions
+- Review `frontend/src/author/InviteDialog.tsx` first to check the async success and error states.
+- Then review `frontend/src/app/AuthorApp.tsx` to confirm the URL is built from the backend origin and the returned token.
+- Validate with:
+```text
+cd frontend
+npm run build
+```
+
+### Technical details
+- Commands run:
+```text
+npm run build
+```
+- Final behavior:
+```text
+create invite -> wait for mutation -> show /r/<token> URL -> copy to clipboard
 ```
 
 ## Context

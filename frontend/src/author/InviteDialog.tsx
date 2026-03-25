@@ -3,9 +3,14 @@ import { TitleBar } from "../chrome/TitleBar";
 import { MacButton } from "../chrome/MacButton";
 import "./InviteDialog.css";
 
+interface InviteResult {
+  email: string;
+  inviteUrl: string;
+}
+
 interface InviteDialogProps {
   onClose: () => void;
-  onInvite?: (email: string, note: string) => void;
+  onInvite?: (email: string, note: string) => Promise<InviteResult> | InviteResult;
 }
 
 export function InviteDialog({ onClose, onInvite }: InviteDialogProps) {
@@ -13,11 +18,38 @@ export function InviteDialog({ onClose, onInvite }: InviteDialogProps) {
   const [note, setNote] = useState(
     "I'm working on an article and would love your honest feedback — especially where you feel confused or where things drag."
   );
-  const [sent, setSent] = useState(false);
+  const [inviteResult, setInviteResult] = useState<InviteResult | null>(null);
+  const [isSending, setIsSending] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSend = () => {
-    onInvite?.(email, note);
-    setSent(true);
+  const handleSend = async () => {
+    if (!onInvite || isSending) {
+      return;
+    }
+
+    setIsSending(true);
+    setError(null);
+
+    try {
+      const result = await onInvite(email, note);
+      setInviteResult(result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to create invite";
+      setError(message);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleCopy = () => {
+    if (!inviteResult) {
+      return;
+    }
+
+    navigator.clipboard.writeText(inviteResult.inviteUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -25,7 +57,7 @@ export function InviteDialog({ onClose, onInvite }: InviteDialogProps) {
       <div className="dr-invite-dialog">
         <TitleBar title="Invite Reader" onClose={onClose} />
         <div className="dr-invite-dialog__body">
-          {!sent ? (
+          {!inviteResult ? (
             <>
               <p className="dr-invite-dialog__intro">
                 Send a personal invitation. Remember: you want readers who would
@@ -45,14 +77,15 @@ export function InviteDialog({ onClose, onInvite }: InviteDialogProps) {
                 onChange={(e) => setNote(e.target.value)}
                 rows={4}
               />
+              {error ? <div className="dr-invite-dialog__error">{error}</div> : null}
               <div className="dr-invite-dialog__actions">
                 <MacButton onClick={onClose}>Cancel</MacButton>
                 <MacButton
                   primary
-                  disabled={!email.includes("@")}
+                  disabled={!email.includes("@") || isSending}
                   onClick={handleSend}
                 >
-                  Send Invite
+                  {isSending ? "Sending..." : "Send Invite"}
                 </MacButton>
               </div>
             </>
@@ -63,10 +96,27 @@ export function InviteDialog({ onClose, onInvite }: InviteDialogProps) {
                 Invitation Sent!
               </div>
               <div className="dr-invite-dialog__sent-hint">
-                Your reader will receive a link to review the draft. Remember,
-                only about 1 in 4 invitees will engage — that's normal!
+                This unique link is associated with {inviteResult.email}. You can
+                paste it into email, Slack, or anywhere else you normally reach
+                that reader.
               </div>
-              <MacButton onClick={onClose}>OK</MacButton>
+              <label className="dr-invite-dialog__label">Reader Link</label>
+              <div className="dr-invite-dialog__link-row">
+                <input
+                  className="dr-input dr-invite-dialog__link-input"
+                  value={inviteResult.inviteUrl}
+                  readOnly
+                />
+                <MacButton small onClick={handleCopy}>
+                  {copied ? "Copied!" : "Copy Link"}
+                </MacButton>
+              </div>
+              <div className="dr-invite-dialog__actions dr-invite-dialog__actions--sent">
+                <MacButton onClick={handleCopy}>
+                  {copied ? "Copied!" : "Copy Link"}
+                </MacButton>
+                <MacButton primary onClick={onClose}>Done</MacButton>
+              </div>
             </div>
           )}
         </div>
