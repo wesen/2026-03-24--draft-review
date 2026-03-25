@@ -13,6 +13,14 @@ topics:
       description: Glazed command framework, sections, and CLI verb architecture
     - slug: golang
       description: Go language backend implementation and package design
+    - slug: frontend
+      description: Frontend web UI code (React, CSS, TypeScript)
+    - slug: react
+      description: React component and hook development
+    - slug: ui
+      description: User interface design and implementation
+    - slug: ux
+      description: User experience design and interaction patterns
 docTypes:
     - slug: index
       description: Ticket index document

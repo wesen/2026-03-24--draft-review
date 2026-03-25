@@ -92,15 +92,63 @@
   line-height: 1.8;
   font-size: 13px;
   max-width: 540px;
-  margin: 0 0 12px;
+  margin: 0;
+}
+
+/* Review paragraph — interactive container with hover highlight */
+.dr-review-para {
+  position: relative;
+  border-left: 3px solid transparent;
+  padding-left: 8px;
+  margin-left: -11px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.dr-review-para:hover,
+.dr-review-para--active {
+  border-left-color: var(--dr-on-surface);
+  background: var(--dr-hover-bg);
+}
+
+.dr-review-para--has-reactions {
+  border-left-color: var(--dr-on-surface);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.dr-review-para--filtered {
+  border-left-color: var(--dr-on-surface);
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.dr-review-para__badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  background: var(--dr-on-surface);
+  color: var(--dr-surface);
+  font-size: 8px;
+  font-weight: bold;
+  font-family: monospace;
 }
 
 /* Reactions panel */
 .dr-article-reader__reactions-panel {
-  height: 220px;
+  min-height: 150px;
+  max-height: 50%;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  flex-grow: 1;
 }
 
 .dr-article-reader__filter-tabs {
@@ -162,4 +210,45 @@
   color: var(--dr-subtle);
   margin-bottom: 2px;
   font-weight: bold;
+}
+
+/* Reaction card highlight when its paragraph is hovered */
+.dr-article-reader__reaction-card--highlighted {
+  background: var(--dr-hover-bg);
+  border-color: var(--dr-on-surface);
+}
+
+/* Paragraph filter indicator bar */
+.dr-article-reader__para-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 10px;
+  font-size: var(--dr-font-size-sm);
+  background: rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid var(--dr-on-surface);
+  font-style: italic;
+  color: var(--dr-subtle);
+}
+
+.dr-article-reader__para-filter-clear {
+  cursor: pointer;
+  font-style: normal;
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+/* Paragraph group in reactions list */
+.dr-article-reader__para-group {
+  margin-bottom: 8px;
+}
+
+.dr-article-reader__para-excerpt {
+  font-size: var(--dr-font-size-sm);
+  color: var(--dr-subtle);
+  font-style: italic;
+  padding: 4px 10px;
+  border-left: 2px solid var(--dr-border);
+  margin-bottom: 4px;
+  line-height: 1.4;
 }

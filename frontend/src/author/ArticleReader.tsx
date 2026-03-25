@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import type { Article, Reaction } from "../types";
 import { REACTION_TYPES } from "../theme/tokens";
 import { MacButton } from "../chrome/MacButton";
@@ -12,6 +12,13 @@ interface ArticleReaderProps {
   onBack: () => void;
 }
 
+/** Truncate text for paragraph excerpts */
+function excerpt(text: string, maxLen = 80): string {
+  const plain = text.replace(/[#*_`>\[\]()]/g, "").trim();
+  if (plain.length <= maxLen) return plain;
+  return plain.slice(0, maxLen).trimEnd() + "…";
+}
+
 export function ArticleReader({
   article,
   reactions,
@@ -22,14 +29,65 @@ export function ArticleReader({
     focusSection || article.sections[0]?.id
   );
   const [reactionFilter, setReactionFilter] = useState<string | null>(null);
+  const [hoveredParagraph, setHoveredParagraph] = useState<string | null>(null);
+  const [filteredParagraph, setFilteredParagraph] = useState<string | null>(
+    null
+  );
+
+  const textRef = useRef<HTMLDivElement>(null);
 
   const section = article.sections.find((s) => s.id === selectedSection);
   const sectionReactions = reactions.filter(
     (r) => r.sectionId === selectedSection
   );
-  const filtered = reactionFilter
+
+  // Apply type filter
+  let filtered = reactionFilter
     ? sectionReactions.filter((r) => r.type === reactionFilter)
     : sectionReactions;
+
+  // Apply paragraph filter
+  if (filteredParagraph) {
+    filtered = filtered.filter((r) => r.paragraphId === filteredParagraph);
+  }
+
+  // Group reactions by paragraph for display
+  const groupedByParagraph = new Map<string, Reaction[]>();
+  for (const r of filtered) {
+    const group = groupedByParagraph.get(r.paragraphId) || [];
+    group.push(r);
+    groupedByParagraph.set(r.paragraphId, group);
+  }
+
+  // Build paragraph text lookup for excerpts
+  const paragraphText = new Map<string, string>();
+  if (section) {
+    section.paragraphs.forEach((text, i) => {
+      paragraphText.set(`${section.id}-p${i}`, text);
+    });
+  }
+
+  // Scroll a paragraph into view when hovering a reaction card
+  const scrollParagraphIntoView = useCallback(
+    (paragraphId: string) => {
+      if (!textRef.current) return;
+      const el = textRef.current.querySelector(
+        `[data-paragraph-id="${paragraphId}"]`
+      );
+      el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    },
+    []
+  );
+
+  const handleParagraphClick = (paragraphId: string) => {
+    setFilteredParagraph(
+      filteredParagraph === paragraphId ? null : paragraphId
+    );
+  };
+
+  const clearParagraphFilter = () => {
+    setFilteredParagraph(null);
+  };
 
   return (
     <div className="dr-article-reader">
@@ -49,6 +107,7 @@ export function ArticleReader({
                 onClick={() => {
                   setSelectedSection(s.id);
                   setReactionFilter(null);
+                  setFilteredParagraph(null);
                 }}
                 className={`dr-article-reader__section-item ${
                   isActive ? "dr-article-reader__section-item--active" : ""
@@ -83,27 +142,54 @@ export function ArticleReader({
       {/* Main content */}
       <div className="dr-article-reader__main">
         {/* Article text */}
-        <div className="dr-article-reader__text">
+        <div className="dr-article-reader__text" ref={textRef}>
           <h2 className="dr-article-reader__heading">{section?.title}</h2>
           <div className="dr-article-reader__section-badge">
             Section{" "}
             {article.sections.findIndex((s) => s.id === selectedSection) + 1} of{" "}
             {article.sections.length}
           </div>
-          {section?.paragraphs.map((p, i) => (
-            <Prose key={i} className="dr-article-reader__paragraph">
-              {p}
-            </Prose>
-          ))}
+          {section?.paragraphs.map((p, i) => {
+            const pId = `${section.id}-p${i}`;
+            const pReactionCount = sectionReactions.filter(
+              (r) => r.paragraphId === pId
+            ).length;
+            const isHovered = hoveredParagraph === pId;
+            const isFiltered = filteredParagraph === pId;
+            return (
+              <div
+                key={i}
+                data-paragraph-id={pId}
+                className={`dr-review-para ${
+                  isHovered ? "dr-review-para--active" : ""
+                } ${pReactionCount > 0 ? "dr-review-para--has-reactions" : ""} ${
+                  isFiltered ? "dr-review-para--filtered" : ""
+                }`}
+                onMouseEnter={() => setHoveredParagraph(pId)}
+                onMouseLeave={() => setHoveredParagraph(null)}
+                onClick={() => handleParagraphClick(pId)}
+              >
+                <Prose className="dr-article-reader__paragraph">{p}</Prose>
+                {pReactionCount > 0 && (
+                  <span className="dr-review-para__badge">
+                    {pReactionCount}
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {/* Reactions panel */}
         <div className="dr-article-reader__reactions-panel">
           <div className="dr-article-reader__filter-tabs">
             <div
-              onClick={() => setReactionFilter(null)}
+              onClick={() => {
+                setReactionFilter(null);
+                setFilteredParagraph(null);
+              }}
               className={`dr-article-reader__filter-tab ${
-                !reactionFilter
+                !reactionFilter && !filteredParagraph
                   ? "dr-article-reader__filter-tab--active"
                   : ""
               }`}
@@ -133,28 +219,71 @@ export function ArticleReader({
               );
             })}
           </div>
+
+          {/* Paragraph filter indicator */}
+          {filteredParagraph && (
+            <div className="dr-article-reader__para-filter-bar">
+              <span>
+                Showing reactions for: &ldquo;
+                {excerpt(paragraphText.get(filteredParagraph) || "")}
+                &rdquo;
+              </span>
+              <span
+                className="dr-article-reader__para-filter-clear"
+                onClick={clearParagraphFilter}
+              >
+                Clear
+              </span>
+            </div>
+          )}
+
           <div className="dr-article-reader__reaction-list">
             {filtered.length === 0 ? (
               <div className="dr-article-reader__no-reactions">
                 No {reactionFilter || ""} reactions for this section yet.
               </div>
             ) : (
-              filtered.map((r, i) => {
-                const rt = REACTION_TYPES.find((t) => t.type === r.type);
-                return (
-                  <div key={i} className="dr-article-reader__reaction-card">
-                    <span className="dr-article-reader__reaction-icon">
-                      {rt?.icon}
-                    </span>
-                    <div className="dr-article-reader__reaction-content">
-                      <div className="dr-article-reader__reaction-author">
-                        {r.readerName}
-                      </div>
-                      <div>{r.text}</div>
+              Array.from(groupedByParagraph.entries()).map(
+                ([pId, pReactions]) => (
+                  <div key={pId} className="dr-article-reader__para-group">
+                    <div className="dr-article-reader__para-excerpt">
+                      &para; &ldquo;{excerpt(paragraphText.get(pId) || "")}
+                      &rdquo;
                     </div>
+                    {pReactions.map((r, i) => {
+                      const rt = REACTION_TYPES.find(
+                        (t) => t.type === r.type
+                      );
+                      const isCardHighlighted = hoveredParagraph === r.paragraphId;
+                      return (
+                        <div
+                          key={i}
+                          className={`dr-article-reader__reaction-card ${
+                            isCardHighlighted
+                              ? "dr-article-reader__reaction-card--highlighted"
+                              : ""
+                          }`}
+                          onMouseEnter={() => {
+                            setHoveredParagraph(r.paragraphId);
+                            scrollParagraphIntoView(r.paragraphId);
+                          }}
+                          onMouseLeave={() => setHoveredParagraph(null)}
+                        >
+                          <span className="dr-article-reader__reaction-icon">
+                            {rt?.icon}
+                          </span>
+                          <div className="dr-article-reader__reaction-content">
+                            <div className="dr-article-reader__reaction-author">
+                              {r.readerName}
+                            </div>
+                            <div>{r.text}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })
+                )
+              )
             )}
           </div>
         </div>
