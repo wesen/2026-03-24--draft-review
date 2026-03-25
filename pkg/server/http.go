@@ -19,6 +19,7 @@ type Options struct {
 	Port                int
 	Version             string
 	AuthSettings        *draftauth.Settings
+	AuthService         *draftauth.Service
 	Database            *draftdb.DB
 	ArticleService      *articles.Service
 	FrontendDevProxyURL string
@@ -28,6 +29,7 @@ type HandlerOptions struct {
 	Version             string
 	StartedAt           time.Time
 	AuthSettings        *draftauth.Settings
+	AuthService         *draftauth.Service
 	SessionManager      *draftauth.SessionManager
 	WebAuth             draftauth.WebHandler
 	Database            *draftdb.DB
@@ -56,6 +58,7 @@ type appHandler struct {
 	version        string
 	startedAt      time.Time
 	authSettings   *draftauth.Settings
+	authService    *draftauth.Service
 	sessionManager *draftauth.SessionManager
 	database       *draftdb.DB
 	articleService *articles.Service
@@ -89,6 +92,11 @@ func NewHTTPServer(ctx context.Context, options Options) (*http.Server, error) {
 		}
 	}
 
+	authService := options.AuthService
+	if authService == nil && options.Database != nil && options.Database.Pool() != nil {
+		authService = draftauth.NewService(draftauth.NewPostgresRepository(options.Database.Pool()))
+	}
+
 	articleService := options.ArticleService
 	if articleService == nil && options.Database != nil && options.Database.Pool() != nil {
 		articleService = articles.NewService(articles.NewPostgresRepository(options.Database.Pool()))
@@ -100,6 +108,7 @@ func NewHTTPServer(ctx context.Context, options Options) (*http.Server, error) {
 			Version:             options.Version,
 			StartedAt:           time.Now().UTC(),
 			AuthSettings:        authSettings,
+			AuthService:         authService,
 			SessionManager:      sessionManager,
 			WebAuth:             webAuth,
 			Database:            options.Database,
@@ -120,6 +129,7 @@ func NewHandler(options HandlerOptions) http.Handler {
 		version:        options.Version,
 		startedAt:      options.StartedAt,
 		authSettings:   authSettings,
+		authService:    options.AuthService,
 		sessionManager: options.SessionManager,
 		database:       options.Database,
 		articleService: options.ArticleService,
@@ -182,7 +192,12 @@ func (h *appHandler) handleArticles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.articleService.ListArticles(r.Context())
+	author, ok := h.requireCurrentAuthor(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.articleService.ListArticles(r.Context(), author)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -197,13 +212,18 @@ func (h *appHandler) handleCreateArticle(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	author, ok := h.requireCurrentAuthor(w, r)
+	if !ok {
+		return
+	}
+
 	var input articles.CreateArticleInput
 	if err := decodeJSONBody(r, &input); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	result, err := h.articleService.CreateArticle(r.Context(), input)
+	result, err := h.articleService.CreateArticle(r.Context(), author, input)
 	if err != nil {
 		if articles.IsValidationError(err) {
 			writeError(w, http.StatusBadRequest, err.Error())
@@ -222,7 +242,12 @@ func (h *appHandler) handleArticle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.articleService.GetArticle(r.Context(), r.PathValue("id"))
+	author, ok := h.requireCurrentAuthor(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.articleService.GetArticle(r.Context(), author, r.PathValue("id"))
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -237,13 +262,18 @@ func (h *appHandler) handleUpdateArticle(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	author, ok := h.requireCurrentAuthor(w, r)
+	if !ok {
+		return
+	}
+
 	var input articles.UpdateArticleInput
 	if err := decodeJSONBody(r, &input); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	result, err := h.articleService.UpdateArticle(r.Context(), r.PathValue("id"), input)
+	result, err := h.articleService.UpdateArticle(r.Context(), author, r.PathValue("id"), input)
 	if err != nil {
 		switch {
 		case errors.Is(err, articles.ErrNotFound):
@@ -306,12 +336,49 @@ func (h *appHandler) currentUser(r *http.Request) (*draftauth.UserInfo, bool) {
 	return &user, true
 }
 
+func (h *appHandler) requireCurrentAuthor(w http.ResponseWriter, r *http.Request) (*draftauth.User, bool) {
+	identity, ok := h.currentIdentity(r)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "authentication required")
+		return nil, false
+	}
+	if h.authService == nil {
+		writeError(w, http.StatusInternalServerError, "auth service is not configured")
+		return nil, false
+	}
+
+	user, err := h.authService.EnsureAuthenticatedUser(r.Context(), identity)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to resolve authenticated author")
+		return nil, false
+	}
+
+	return user, true
+}
+
+func (h *appHandler) currentIdentity(r *http.Request) (draftauth.AuthenticatedIdentity, bool) {
+	claims, ok := h.currentClaims(r)
+	if !ok {
+		return draftauth.AuthenticatedIdentity{}, false
+	}
+
+	return draftauth.AuthenticatedIdentity{
+		Issuer:        claims.Issuer,
+		Subject:       claims.Subject,
+		Email:         claims.Email,
+		DisplayName:   claims.DisplayName,
+		EmailVerified: claims.EmailVerified,
+	}, true
+}
+
 func (h *appHandler) currentClaims(r *http.Request) (*draftauth.SessionClaims, bool) {
 	switch h.authSettings.Mode {
 	case draftauth.AuthModeDev:
 		return &draftauth.SessionClaims{
 			Issuer:            "dev",
 			Subject:           h.authSettings.DevUserID,
+			Email:             "local-author@draft-review.local",
+			EmailVerified:     true,
 			PreferredUsername: h.authSettings.DevUserID,
 			DisplayName:       "Development Author",
 			IssuedAt:          time.Now().UTC(),

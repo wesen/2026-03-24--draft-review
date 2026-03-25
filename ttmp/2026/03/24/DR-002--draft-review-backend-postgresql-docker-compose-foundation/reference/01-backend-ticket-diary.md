@@ -911,6 +911,101 @@ curl -sS -o /tmp/draft-review-auth-login.txt -w '%{http_code}' http://127.0.0.1:
 docker compose down
 ```
 
+## Step 11: Bind Authenticated Authors To Local Ownership And Scope Article Routes
+
+Once the Keycloak/OIDC slice existed, the next real gap was ownership. The backend could tell who the current browser user was, but article reads and writes still did not use that identity. They either returned everything or used the old hardcoded owner path. This step closes that gap by adding local author bootstrap and making author article routes owner-scoped.
+
+The implementation uses the same high-level pattern as `hair-booking`'s authenticated client bootstrap: stable external identity fields in the local table, a service that ensures a local row from `issuer` + `subject`, and handlers that resolve the current browser identity before calling the domain service.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 10)
+
+**Assistant interpretation:** Continue from the Keycloak auth pivot by making article ownership actually depend on the authenticated author.
+
+**Inferred user intent:** Finish the first useful auth integration step, not just the browser-session plumbing.
+
+**Commit (code):** pending in this step while the ownership slice is being finalized
+
+### What I did
+- Added `pkg/db/migrations/0003_user_auth_identity.sql` to:
+- add `auth_subject` and `auth_issuer` to `users`,
+- add a unique auth-identity index,
+- backfill the seeded development user to `dev/local-author`.
+- Added `pkg/auth/service.go` and `pkg/auth/postgres.go` to:
+- find local users by auth identity,
+- create local users for new identities,
+- update existing users from current OIDC claims.
+- Added `pkg/auth/service_test.go`.
+- Changed `pkg/articles/service.go` and `pkg/articles/postgres.go` so author routes take an owner user ID and filter by `owner_user_id` for list/detail/update/create.
+- Updated `pkg/server/http.go` to:
+- construct an auth service,
+- resolve the current browser identity into a local author,
+- require an authenticated author for `/api/articles` list/detail/create/update.
+- Updated `pkg/server/http_test.go` with a test that proves article list uses the ensured local author ID.
+- Updated `pkg/db/seed.go` so `seed dev` upserts the development author with auth identity fields instead of leaving it detached from the local auth model.
+- Updated the README, tasks, and design doc to reflect that article routes are now identity-scoped.
+
+### Why
+- Without local author bootstrap, Keycloak auth only affected `/api/me`; it did not actually protect or personalize backend data access.
+- Owner-scoped article queries are the minimum requirement for a real author backend.
+
+### What worked
+- The `hair-booking`-style ensure-user pattern fit Draft Review cleanly.
+- The live smoke test verified the important end-to-end behavior:
+- dev-mode `/api/me` resolves the local author,
+- seeded articles are visible to that author,
+- newly created articles are also owned by that author.
+
+### What didn't work
+- I caught a subtle lifecycle issue before it became a user-facing bug: `migrate` normally runs before `seed`, so the earlier auth-identity backfill migration alone was not enough for fresh databases. A brand-new DB would still get a seeded user row without auth identity fields unless `seed dev` itself also set them.
+- I fixed that by changing `pkg/db/seed.go` to upsert the development user with `auth_subject='local-author'` and `auth_issuer='dev'`.
+
+### What I learned
+- The correct unit of ownership here is not the browser session itself. It is the local `users` row derived from the auth claims. Once that exists, the rest of the backend can stay database-native and not depend directly on cookie/session internals.
+
+### What was tricky to build
+- The tricky part was making the seeded dev data and the new auth bootstrap agree on the same author. If the dev claims and seeded user diverge even slightly, the backend appears "correct" but the author sees an empty article list. That kind of mismatch is easy to miss unless you validate a real migrate -> seed -> serve flow.
+
+### What warrants a second pair of eyes
+- The `CreateAuthenticatedUser` upsert behavior in `pkg/auth/postgres.go`, especially the email-based conflict path and the assumptions it makes about OIDC-provided email stability.
+- The decision to scope even article list/detail routes to the authenticated owner, which is correct for author endpoints but changes the earlier unauthenticated development behavior.
+
+### What should be done in the future
+- Run the same ownership flow in real `auth-mode=oidc` against a live Keycloak realm.
+- Consider whether owner-scoped article routes should move behind a dedicated author sub-router or middleware once more endpoints exist.
+
+### Code review instructions
+- Start with `pkg/db/migrations/0003_user_auth_identity.sql`.
+- Then review `pkg/auth/service.go`, `pkg/auth/postgres.go`, `pkg/articles/service.go`, `pkg/articles/postgres.go`, and `pkg/server/http.go`.
+- Validate with:
+```text
+go test ./cmd/... ./pkg/...
+docker compose up -d postgres
+go run ./cmd/draft-review migrate up --dsn 'postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable'
+go run ./cmd/draft-review seed dev --dsn 'postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable'
+go run ./cmd/draft-review serve --auth-mode dev --dsn 'postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable' --listen-host 127.0.0.1 --listen-port 8080
+curl -sS http://127.0.0.1:8080/api/me
+curl -sS http://127.0.0.1:8080/api/articles
+curl -sS -X POST http://127.0.0.1:8080/api/articles -H 'Content-Type: application/json' -d '{"title":"Owned By Dev Author","author":"Development Author","intro":"Ownership smoke test."}'
+docker compose down
+```
+
+### Technical details
+- Commands run:
+```text
+gofmt -w pkg/auth/*.go pkg/articles/*.go pkg/server/http.go pkg/server/http_test.go
+go test ./cmd/... ./pkg/...
+docker compose up -d postgres
+go run ./cmd/draft-review migrate up --dsn 'postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable'
+go run ./cmd/draft-review seed dev --dsn 'postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable'
+go run ./cmd/draft-review serve --auth-mode dev --dsn 'postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable' --listen-host 127.0.0.1 --listen-port 8080
+curl -sS http://127.0.0.1:8080/api/me
+curl -sS http://127.0.0.1:8080/api/articles
+curl -sS -X POST http://127.0.0.1:8080/api/articles -H 'Content-Type: application/json' -d '{"title":"Owned By Dev Author","author":"Development Author","intro":"Ownership smoke test."}'
+docker compose down
+```
+
 ## Context
 
 This diary belongs to the backend planning ticket for Draft Review. The app is currently a React frontend using MSW and in-memory mock data; this ticket defines the first real backend built on PostgreSQL and local Docker Compose.

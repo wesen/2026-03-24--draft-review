@@ -29,9 +29,15 @@ func SeedDev(ctx context.Context, pool *pgxpool.Pool) error {
 	}()
 
 	_, err = tx.Exec(ctx, `
-insert into users (id, email, name, password_hash, email_verified_at)
-values ($1, 'manuel@example.com', 'Manuel', 'dev-only-password-hash', now())
-on conflict (id) do nothing
+insert into users (id, auth_subject, auth_issuer, email, name, password_hash, email_verified_at)
+values ($1, 'local-author', 'dev', 'local-author@draft-review.local', 'Development Author', 'dev-only-password-hash', now())
+on conflict (id) do update
+set auth_subject = excluded.auth_subject,
+    auth_issuer = excluded.auth_issuer,
+    email = excluded.email,
+    name = excluded.name,
+    email_verified_at = coalesce(users.email_verified_at, excluded.email_verified_at),
+    updated_at = now()
 `, devUserID)
 	if err != nil {
 		return errors.Wrap(err, "failed to seed user")

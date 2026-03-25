@@ -14,8 +14,6 @@ import (
 
 var ErrNotFound = errors.New("article not found")
 
-var defaultOwnerUserID = uuid.MustParse("11111111-1111-1111-1111-111111111111")
-
 type PostgresRepository struct {
 	pool *pgxpool.Pool
 }
@@ -53,7 +51,7 @@ func NewPostgresRepository(pool *pgxpool.Pool) *PostgresRepository {
 	return &PostgresRepository{pool: pool}
 }
 
-func (r *PostgresRepository) ListArticles(ctx context.Context) ([]Article, error) {
+func (r *PostgresRepository) ListArticles(ctx context.Context, ownerUserID string) ([]Article, error) {
 	if r == nil || r.pool == nil {
 		return []Article{}, nil
 	}
@@ -71,8 +69,9 @@ select
     a.updated_at
 from articles a
 join article_versions v on v.id = a.current_version_id
+where a.owner_user_id = $1
 order by a.updated_at desc
-`)
+`, ownerUserID)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list articles")
 	}
@@ -117,7 +116,7 @@ order by a.updated_at desc
 	return ret, nil
 }
 
-func (r *PostgresRepository) GetArticle(ctx context.Context, id string) (*Article, error) {
+func (r *PostgresRepository) GetArticle(ctx context.Context, ownerUserID, id string) (*Article, error) {
 	if r == nil || r.pool == nil {
 		return nil, ErrNotFound
 	}
@@ -138,7 +137,8 @@ select
 from articles a
 join article_versions v on v.id = a.current_version_id
 where a.id = $1
-`, id).Scan(
+  and a.owner_user_id = $2
+`, id, ownerUserID).Scan(
 		&row.ID,
 		&row.VersionID,
 		&row.Title,
@@ -169,7 +169,7 @@ where a.id = $1
 	return article, nil
 }
 
-func (r *PostgresRepository) CreateArticle(ctx context.Context, input CreateArticleInput) (*Article, error) {
+func (r *PostgresRepository) CreateArticle(ctx context.Context, ownerUserID string, input CreateArticleInput) (*Article, error) {
 	if r == nil || r.pool == nil {
 		return nil, ErrNotFound
 	}
@@ -181,10 +181,6 @@ func (r *PostgresRepository) CreateArticle(ctx context.Context, input CreateArti
 	defer func() {
 		_ = tx.Rollback(ctx)
 	}()
-
-	if err := ensureDefaultOwner(ctx, tx); err != nil {
-		return nil, err
-	}
 
 	articleID := uuid.New()
 	versionID := uuid.New()
@@ -206,7 +202,7 @@ insert into articles (
     allow_anonymous
 )
 values ($1, $2, $3, $4, $5, 'draft', 'invite_link', true, true, false, false, true)
-`, articleID, defaultOwnerUserID, versionID, input.Title, input.Author)
+`, articleID, ownerUserID, versionID, input.Title, input.Author)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to insert article")
 	}
@@ -265,10 +261,10 @@ on conflict (article_id, type_key) do nothing
 		return nil, errors.Wrap(err, "failed to commit article creation transaction")
 	}
 
-	return r.GetArticle(ctx, articleID.String())
+	return r.GetArticle(ctx, ownerUserID, articleID.String())
 }
 
-func (r *PostgresRepository) UpdateArticle(ctx context.Context, id string, input UpdateArticleInput) (*Article, error) {
+func (r *PostgresRepository) UpdateArticle(ctx context.Context, ownerUserID, id string, input UpdateArticleInput) (*Article, error) {
 	if r == nil || r.pool == nil {
 		return nil, ErrNotFound
 	}
@@ -287,8 +283,9 @@ func (r *PostgresRepository) UpdateArticle(ctx context.Context, id string, input
 select id, current_version_id
 from articles
 where id = $1
+  and owner_user_id = $2
 for update
-`, id).Scan(&articleID, &versionID)
+`, id, ownerUserID).Scan(&articleID, &versionID)
 	if err != nil {
 		return nil, ErrNotFound
 	}
@@ -341,7 +338,7 @@ where id = $1
 		return nil, errors.Wrap(err, "failed to commit article update transaction")
 	}
 
-	return r.GetArticle(ctx, articleID.String())
+	return r.GetArticle(ctx, ownerUserID, articleID.String())
 }
 
 func (r *PostgresRepository) listSectionsForVersion(ctx context.Context, versionID uuid.UUID) ([]Section, error) {
@@ -374,18 +371,6 @@ order by position asc
 		return nil, errors.Wrap(err, "failed to iterate sections")
 	}
 	return ret, nil
-}
-
-func ensureDefaultOwner(ctx context.Context, tx pgx.Tx) error {
-	_, err := tx.Exec(ctx, `
-insert into users (id, email, name, password_hash, email_verified_at)
-values ($1, 'manuel@example.com', 'Manuel', 'dev-only-password-hash', now())
-on conflict (id) do nothing
-`, defaultOwnerUserID)
-	if err != nil {
-		return errors.Wrap(err, "failed to ensure default owner user")
-	}
-	return nil
 }
 
 func replaceSections(ctx context.Context, tx pgx.Tx, versionID uuid.UUID, sections []SectionInput) error {

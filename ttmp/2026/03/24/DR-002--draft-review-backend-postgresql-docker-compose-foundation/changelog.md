@@ -117,3 +117,16 @@ Pivoted Draft Review auth to the Keycloak / OIDC model used by `hair-booking`, a
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/oidc.go — Keycloak / OIDC login and callback flow
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http.go — Auth route registration and `/api/me`
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http_test.go — `/api/me` server coverage
+
+
+## 2026-03-24
+
+Bound authenticated authors to local `users` rows, added auth-identity columns plus migration/backfill, scoped author article routes by `owner_user_id`, and validated the flow with a live migrate/seed/serve smoke test.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/db/migrations/0003_user_auth_identity.sql — Adds local auth identity mapping to users
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/service.go — Ensures a local author row from auth claims
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/postgres.go — Local user bootstrap and update persistence
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/articles/postgres.go — Owner-scoped article queries and writes
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/db/seed.go — Development author upsert with auth identity fields

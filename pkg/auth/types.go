@@ -4,6 +4,8 @@ import "time"
 
 type User struct {
 	ID              string     `json:"id"`
+	AuthSubject     string     `json:"authSubject,omitempty"`
+	AuthIssuer      string     `json:"authIssuer,omitempty"`
 	Email           string     `json:"email"`
 	Name            string     `json:"name"`
 	EmailVerifiedAt *time.Time `json:"emailVerifiedAt,omitempty"`
@@ -36,4 +38,12 @@ type EmailVerificationToken struct {
 	ExpiresAt  time.Time  `json:"expiresAt"`
 	ConsumedAt *time.Time `json:"consumedAt,omitempty"`
 	CreatedAt  time.Time  `json:"createdAt"`
+}
+
+type AuthenticatedIdentity struct {
+	Issuer        string
+	Subject       string
+	Email         string
+	DisplayName   string
+	EmailVerified bool
 }

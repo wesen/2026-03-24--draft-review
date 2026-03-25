@@ -3,13 +3,15 @@ package articles
 import (
 	"context"
 	"strings"
+
+	draftauth "github.com/go-go-golems/draft-review/pkg/auth"
 )
 
 type Repository interface {
-	ListArticles(ctx context.Context) ([]Article, error)
-	GetArticle(ctx context.Context, id string) (*Article, error)
-	CreateArticle(ctx context.Context, input CreateArticleInput) (*Article, error)
-	UpdateArticle(ctx context.Context, id string, input UpdateArticleInput) (*Article, error)
+	ListArticles(ctx context.Context, ownerUserID string) ([]Article, error)
+	GetArticle(ctx context.Context, ownerUserID, id string) (*Article, error)
+	CreateArticle(ctx context.Context, ownerUserID string, input CreateArticleInput) (*Article, error)
+	UpdateArticle(ctx context.Context, ownerUserID, id string, input UpdateArticleInput) (*Article, error)
 }
 
 type Service struct {
@@ -20,22 +22,31 @@ func NewService(repo Repository) *Service {
 	return &Service{repo: repo}
 }
 
-func (s *Service) ListArticles(ctx context.Context) ([]Article, error) {
+func (s *Service) ListArticles(ctx context.Context, owner *draftauth.User) ([]Article, error) {
 	if s == nil || s.repo == nil {
 		return []Article{}, nil
 	}
-	return s.repo.ListArticles(ctx)
+	if owner == nil || strings.TrimSpace(owner.ID) == "" {
+		return nil, ErrNotFound
+	}
+	return s.repo.ListArticles(ctx, owner.ID)
 }
 
-func (s *Service) GetArticle(ctx context.Context, id string) (*Article, error) {
+func (s *Service) GetArticle(ctx context.Context, owner *draftauth.User, id string) (*Article, error) {
 	if s == nil || s.repo == nil {
 		return nil, ErrNotFound
 	}
-	return s.repo.GetArticle(ctx, id)
+	if owner == nil || strings.TrimSpace(owner.ID) == "" {
+		return nil, ErrNotFound
+	}
+	return s.repo.GetArticle(ctx, owner.ID, id)
 }
 
-func (s *Service) CreateArticle(ctx context.Context, input CreateArticleInput) (*Article, error) {
+func (s *Service) CreateArticle(ctx context.Context, owner *draftauth.User, input CreateArticleInput) (*Article, error) {
 	if s == nil || s.repo == nil {
+		return nil, ErrNotFound
+	}
+	if owner == nil || strings.TrimSpace(owner.ID) == "" {
 		return nil, ErrNotFound
 	}
 
@@ -43,11 +54,14 @@ func (s *Service) CreateArticle(ctx context.Context, input CreateArticleInput) (
 	input.Author = defaultIfBlank(input.Author, "You")
 	input.Intro = strings.TrimSpace(input.Intro)
 
-	return s.repo.CreateArticle(ctx, input)
+	return s.repo.CreateArticle(ctx, owner.ID, input)
 }
 
-func (s *Service) UpdateArticle(ctx context.Context, id string, input UpdateArticleInput) (*Article, error) {
+func (s *Service) UpdateArticle(ctx context.Context, owner *draftauth.User, id string, input UpdateArticleInput) (*Article, error) {
 	if s == nil || s.repo == nil {
+		return nil, ErrNotFound
+	}
+	if owner == nil || strings.TrimSpace(owner.ID) == "" {
 		return nil, ErrNotFound
 	}
 
@@ -108,7 +122,7 @@ func (s *Service) UpdateArticle(ctx context.Context, id string, input UpdateArti
 		input.Sections = &normalized
 	}
 
-	return s.repo.UpdateArticle(ctx, id, input)
+	return s.repo.UpdateArticle(ctx, owner.ID, id, input)
 }
 
 func defaultIfBlank(value, fallback string) string {

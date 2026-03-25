@@ -98,12 +98,12 @@ The article read and write routes are backed by PostgreSQL. The reader and react
 - `auth-mode=dev` gives a synthetic local author identity through `/api/me`.
 - `auth-mode=oidc` expects a Keycloak-compatible issuer and signs its own HTTP-only browser session cookie after callback.
 - `seed dev` inserts a stable local author plus one sample article and its first version.
-- Article creation still uses a temporary development owner until article ownership is bound to authenticated OIDC claims.
+- Author article routes now resolve the current browser identity into a local `users` row and scope article access by `owner_user_id`.
 
 ## Known Gaps
 
-- Article mutation endpoints are not yet bound to the authenticated OIDC author identity.
 - Local Keycloak bootstrap instructions have not been added yet.
+- Full OIDC login/callback smoke validation still needs a live Keycloak realm for end-to-end testing.
 - Article version creation is still in progress; `PATCH /api/articles/{id}` currently updates the current version in place.
 - Reader session, invite, analytics, and feedback APIs are not implemented yet.
 - Frontend RTK Query clients still assume the original mock API behavior in some areas.

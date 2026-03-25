@@ -56,8 +56,10 @@
 - [x] Add `/auth/logout/callback`
 - [x] Add `auth-mode=dev` fallback for local work without Keycloak
 - [ ] Add local Keycloak bootstrap/run instructions
-- [ ] Add authenticated author bootstrap from OIDC claims to local article ownership
-- [ ] Protect article mutation endpoints with authenticated author identity
+- [x] Add authenticated author bootstrap from OIDC claims to local article ownership
+- [x] Protect article mutation endpoints with authenticated author identity
+- [x] Scope author article list/detail endpoints to the authenticated owner
+- [ ] Add manual OIDC callback smoke coverage against a live Keycloak realm
 
 ### Phase 4: Articles And Sharing
 

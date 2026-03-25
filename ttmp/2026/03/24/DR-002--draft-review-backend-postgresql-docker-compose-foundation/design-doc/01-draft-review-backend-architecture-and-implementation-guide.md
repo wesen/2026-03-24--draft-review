@@ -641,6 +641,14 @@ The relational model from the earlier version of this document still holds. The 
 
 Purpose: local author records and article ownership projections derived from OIDC identities.
 
+Key fields:
+
+- `id uuid primary key`
+- `auth_subject text null`
+- `auth_issuer text null`
+- `email text not null unique`
+- `name text not null`
+
 #### `author_sessions`
 
 Purpose: optional future durable session or revocation records if self-contained cookies become insufficient.
