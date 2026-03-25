@@ -29,9 +29,13 @@
 - [x] 3.x Build ArticleReader (author review view with section sidebar + reaction filters)
 - [x] 3.x Build InviteDialog (reader invitation modal)
 - [x] 3.x Wire App.tsx with MSW data (dashboard -> article reader flow)
-- [ ] 3.3 Build ArticleManager (article list with search/sort) -- deferred to Phase 4
-- [ ] 3.4 Build ArticleEditor (split-pane section editor) -- deferred to Phase 4
-- [ ] 3.5 Build ArticleSettings (sharing, link generation, reaction toggles) -- deferred to Phase 4
+- [x] 3.3 Build ArticleManager (article list with search/sort/cards/archived section)
+- [x] 3.4 Build ArticleEditor (split-pane section editor with reorder/add/delete)
+- [x] 3.5 Build ArticleSettings (sharing link gen, access mode, reaction toggles, status)
+- [x] 3.x Extended MSW handlers (create/update article, generate share token)
+- [x] 3.x Extended RTK Query (createArticle, updateArticle, generateShareToken)
+- [x] 3.x Wired ArticleManager/Editor/Settings into AuthorApp with full navigation
+- [x] 3.x Storybook stories for ArticleEditor, ArticleSettings, ArticleManager
 
 ## Phase 4: Integration & Polish
 
@@ -40,6 +44,3 @@
 - [x] 4.2b Reader token resolution via readerApi + error/loading states
 - [ ] 4.3 Error & empty states (further polish)
 - [ ] 4.4 Keyboard shortcuts (further polish)
-- [ ] 3.3 ArticleManager (deferred from Phase 3)
-- [ ] 3.4 ArticleEditor (deferred from Phase 3)
-- [ ] 3.5 ArticleSettings (deferred from Phase 3)

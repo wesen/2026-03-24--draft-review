@@ -11,6 +11,27 @@ export const articleApi = baseApi.injectEndpoints({
       query: (id) => `/articles/${id}`,
       providesTags: (_result, _err, id) => [{ type: "Article", id }],
     }),
+    createArticle: build.mutation<Article, { title: string; author: string; intro: string }>({
+      query: (body) => ({ url: "/articles", method: "POST", body }),
+      invalidatesTags: ["Article"],
+    }),
+    updateArticle: build.mutation<Article, { id: string } & Partial<Article>>({
+      query: ({ id, ...body }) => ({
+        url: `/articles/${id}`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: (_result, _err, { id }) => [
+        { type: "Article", id },
+        "Article",
+      ],
+    }),
+    generateShareToken: build.mutation<{ token: string; url: string }, string>({
+      query: (articleId) => ({
+        url: `/articles/${articleId}/share-token`,
+        method: "POST",
+      }),
+    }),
     getReaders: build.query<Reader[], string>({
       query: (articleId) => `/articles/${articleId}/readers`,
       providesTags: ["Reader"],
@@ -19,7 +40,10 @@ export const articleApi = baseApi.injectEndpoints({
       query: (articleId) => `/articles/${articleId}/reactions`,
       providesTags: ["Reaction"],
     }),
-    inviteReader: build.mutation<Reader, { articleId: string; email: string; note: string }>({
+    inviteReader: build.mutation<
+      Reader,
+      { articleId: string; email: string; note: string }
+    >({
       query: ({ articleId, ...body }) => ({
         url: `/articles/${articleId}/invite`,
         method: "POST",
@@ -27,7 +51,16 @@ export const articleApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Reader"],
     }),
-    addReaction: build.mutation<Reaction, { articleId: string; sectionId: string; paragraphId: string; type: string; text: string }>({
+    addReaction: build.mutation<
+      Reaction,
+      {
+        articleId: string;
+        sectionId: string;
+        paragraphId: string;
+        type: string;
+        text: string;
+      }
+    >({
       query: ({ articleId, ...body }) => ({
         url: `/articles/${articleId}/reactions`,
         method: "POST",
@@ -41,6 +74,9 @@ export const articleApi = baseApi.injectEndpoints({
 export const {
   useGetArticlesQuery,
   useGetArticleQuery,
+  useCreateArticleMutation,
+  useUpdateArticleMutation,
+  useGenerateShareTokenMutation,
   useGetReadersQuery,
   useGetReactionsQuery,
   useInviteReaderMutation,

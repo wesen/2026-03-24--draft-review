@@ -1,0 +1,220 @@
+import { useState, useCallback } from "react";
+import type { Article, Section } from "../types";
+import { MacButton } from "../chrome/MacButton";
+import "./ArticleEditor.css";
+
+interface ArticleEditorProps {
+  article: Article;
+  onSave: (article: Article) => void;
+  onBack: () => void;
+  onPreview?: (article: Article) => void;
+}
+
+export function ArticleEditor({
+  article: initialArticle,
+  onSave,
+  onBack,
+  onPreview,
+}: ArticleEditorProps) {
+  const [article, setArticle] = useState<Article>(initialArticle);
+  const [activeSectionId, setActiveSectionId] = useState(
+    article.sections[0]?.id || ""
+  );
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const activeSection = article.sections.find((s) => s.id === activeSectionId);
+
+  const updateSection = useCallback(
+    (sectionId: string, updates: Partial<Section>) => {
+      setArticle((prev) => ({
+        ...prev,
+        sections: prev.sections.map((s) =>
+          s.id === sectionId ? { ...s, ...updates } : s
+        ),
+      }));
+    },
+    []
+  );
+
+  const addSection = () => {
+    const newSection: Section = {
+      id: `s-new-${Date.now()}`,
+      title: "New Section",
+      paragraphs: [""],
+    };
+    setArticle((prev) => ({
+      ...prev,
+      sections: [...prev.sections, newSection],
+    }));
+    setActiveSectionId(newSection.id);
+  };
+
+  const deleteSection = () => {
+    if (article.sections.length <= 1) return;
+    setArticle((prev) => {
+      const filtered = prev.sections.filter((s) => s.id !== activeSectionId);
+      return { ...prev, sections: filtered };
+    });
+    setActiveSectionId(
+      article.sections.find((s) => s.id !== activeSectionId)?.id || ""
+    );
+    setShowDeleteConfirm(false);
+  };
+
+  const moveSection = (fromIndex: number, direction: -1 | 1) => {
+    const toIndex = fromIndex + direction;
+    if (toIndex < 0 || toIndex >= article.sections.length) return;
+    setArticle((prev) => {
+      const sections = [...prev.sections];
+      [sections[fromIndex], sections[toIndex]] = [
+        sections[toIndex],
+        sections[fromIndex],
+      ];
+      return { ...prev, sections };
+    });
+  };
+
+  const contentText = activeSection?.paragraphs.join("\n\n") || "";
+
+  const handleContentChange = (text: string) => {
+    if (!activeSection) return;
+    const paragraphs = text
+      .split(/\n\n+/)
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
+    if (paragraphs.length === 0) paragraphs.push("");
+    updateSection(activeSection.id, { paragraphs });
+  };
+
+  return (
+    <div className="dr-editor">
+      {/* Sidebar */}
+      <div className="dr-editor__sidebar">
+        <div className="dr-editor__sidebar-header">Sections</div>
+        <div className="dr-editor__section-list">
+          {article.sections.map((s, i) => (
+            <div
+              key={s.id}
+              className={`dr-editor__section-item ${
+                s.id === activeSectionId
+                  ? "dr-editor__section-item--active"
+                  : ""
+              }`}
+              onClick={() => setActiveSectionId(s.id)}
+            >
+              <div className="dr-editor__section-reorder">
+                <span
+                  className="dr-editor__reorder-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    moveSection(i, -1);
+                  }}
+                  title="Move up"
+                >
+                  {"\u25B2"}
+                </span>
+                <span
+                  className="dr-editor__reorder-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    moveSection(i, 1);
+                  }}
+                  title="Move down"
+                >
+                  {"\u25BC"}
+                </span>
+              </div>
+              <span className="dr-editor__section-label">
+                {i + 1}. {s.title}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div className="dr-editor__sidebar-actions">
+          <MacButton fullWidth onClick={addSection}>
+            + Add Section
+          </MacButton>
+          <div className="dr-editor__danger-zone">
+            <div className="dr-editor__danger-label">Danger Zone</div>
+            <MacButton
+              fullWidth
+              disabled={article.sections.length <= 1}
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              Delete Section
+            </MacButton>
+          </div>
+        </div>
+        <div className="dr-editor__sidebar-footer">
+          <MacButton fullWidth small onClick={onBack}>
+            {"\u2190"} Back
+          </MacButton>
+        </div>
+      </div>
+
+      {/* Editor pane */}
+      <div className="dr-editor__main">
+        {activeSection ? (
+          <div className="dr-editor__form">
+            <label className="dr-editor__label">Title</label>
+            <input
+              className="dr-input dr-editor__title-input"
+              value={activeSection.title}
+              onChange={(e) =>
+                updateSection(activeSection.id, { title: e.target.value })
+              }
+            />
+
+            <label className="dr-editor__label">Content</label>
+            <textarea
+              className="dr-textarea dr-editor__content-input"
+              value={contentText}
+              onChange={(e) => handleContentChange(e.target.value)}
+              rows={16}
+            />
+            <div className="dr-editor__hint">
+              Paragraph breaks (blank lines) become separate reactable
+              paragraphs in the reader view.
+            </div>
+
+            <div className="dr-editor__actions">
+              {onPreview && (
+                <MacButton onClick={() => onPreview(article)}>
+                  Preview as Reader
+                </MacButton>
+              )}
+              <MacButton primary onClick={() => onSave(article)}>
+                Save
+              </MacButton>
+            </div>
+          </div>
+        ) : (
+          <div className="dr-editor__empty">
+            No section selected. Add one to get started.
+          </div>
+        )}
+      </div>
+
+      {/* Delete confirmation */}
+      {showDeleteConfirm && (
+        <div className="dr-editor__confirm-overlay">
+          <div className="dr-editor__confirm-dialog">
+            <div className="dr-editor__confirm-title">Delete Section?</div>
+            <div className="dr-editor__confirm-body">
+              Are you sure you want to delete "{activeSection?.title}"? This
+              cannot be undone.
+            </div>
+            <div className="dr-editor__confirm-actions">
+              <MacButton onClick={() => setShowDeleteConfirm(false)}>
+                Cancel
+              </MacButton>
+              <MacButton primary onClick={deleteSection}>
+                Delete
+              </MacButton>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

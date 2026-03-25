@@ -1,0 +1,198 @@
+.dr-editor {
+  display: flex;
+  height: 100%;
+  font-family: var(--dr-font-body);
+  font-size: var(--dr-font-size-md);
+}
+
+/* Sidebar */
+.dr-editor__sidebar {
+  width: 200px;
+  border-right: var(--dr-border-width) solid var(--dr-border-color);
+  display: flex;
+  flex-direction: column;
+  background: var(--dr-surface);
+  flex-shrink: 0;
+}
+
+.dr-editor__sidebar-header {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--dr-on-surface);
+  font-family: var(--dr-font-title);
+  font-size: var(--dr-font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--dr-subtle);
+}
+
+.dr-editor__section-list {
+  flex: 1;
+  overflow: auto;
+}
+
+.dr-editor__section-item {
+  padding: 8px 10px;
+  cursor: pointer;
+  border-bottom: 1px dotted var(--dr-border);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dr-editor__section-item--active {
+  background: var(--dr-on-surface);
+  color: var(--dr-surface);
+}
+
+.dr-editor__section-reorder {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  font-size: 8px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.dr-editor__reorder-btn {
+  cursor: pointer;
+  opacity: 0.5;
+  padding: 1px 2px;
+}
+
+.dr-editor__reorder-btn:hover {
+  opacity: 1;
+}
+
+.dr-editor__section-label {
+  font-size: var(--dr-font-size-base);
+  font-weight: bold;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dr-editor__sidebar-actions {
+  padding: 8px;
+  border-top: 1px solid var(--dr-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dr-editor__danger-zone {
+  border-top: 1px dotted var(--dr-subtle);
+  padding-top: 8px;
+}
+
+.dr-editor__danger-label {
+  font-family: var(--dr-font-title);
+  font-size: var(--dr-font-size-xs);
+  color: var(--dr-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+.dr-editor__sidebar-footer {
+  padding: 8px;
+  border-top: 1px solid var(--dr-on-surface);
+}
+
+/* Main editor */
+.dr-editor__main {
+  flex: 1;
+  overflow: auto;
+}
+
+.dr-editor__form {
+  padding: 20px 28px;
+  max-width: 700px;
+}
+
+.dr-editor__label {
+  display: block;
+  font-family: var(--dr-font-title);
+  font-size: var(--dr-font-size-sm);
+  margin-bottom: 4px;
+  margin-top: 16px;
+}
+
+.dr-editor__label:first-child {
+  margin-top: 0;
+}
+
+.dr-editor__title-input {
+  font-family: var(--dr-font-title);
+  font-size: var(--dr-font-size-lg);
+}
+
+.dr-editor__content-input {
+  font-family: var(--dr-font-body);
+  font-size: 13px;
+  line-height: 1.8;
+  min-height: 300px;
+}
+
+.dr-editor__hint {
+  font-size: var(--dr-font-size-sm);
+  color: var(--dr-subtle);
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+.dr-editor__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--dr-border);
+}
+
+.dr-editor__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--dr-muted);
+}
+
+/* Delete confirmation */
+.dr-editor__confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.dr-editor__confirm-dialog {
+  width: 340px;
+  border: var(--dr-border-width) solid var(--dr-border-color);
+  background: var(--dr-surface);
+  border-radius: 4px;
+  box-shadow: var(--dr-shadow-dialog);
+  padding: var(--dr-space-xl);
+  font-family: var(--dr-font-body);
+}
+
+.dr-editor__confirm-title {
+  font-family: var(--dr-font-title);
+  font-size: var(--dr-font-size-lg);
+  margin-bottom: 8px;
+}
+
+.dr-editor__confirm-body {
+  font-size: var(--dr-font-size-base);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.dr-editor__confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

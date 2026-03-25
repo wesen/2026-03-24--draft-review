@@ -140,6 +140,8 @@ export const reactions: Reaction[] = [
 ];
 
 let nextReactionId = 13;
+let nextArticleId = 4;
+let nextSectionId = 100;
 
 export function addReaction(reaction: Omit<Reaction, "id" | "createdAt">): Reaction {
   const newReaction: Reaction = {
@@ -149,4 +151,31 @@ export function addReaction(reaction: Omit<Reaction, "id" | "createdAt">): React
   };
   reactions.push(newReaction);
   return newReaction;
+}
+
+export function updateArticle(id: string, updates: Partial<Article>): Article | null {
+  const idx = articles.findIndex((a) => a.id === id);
+  if (idx === -1) return null;
+  articles[idx] = { ...articles[idx], ...updates, updatedAt: new Date().toISOString() };
+  return articles[idx];
+}
+
+export function createArticle(data: { title: string; author: string; intro: string }): Article {
+  const article: Article = {
+    id: String(nextArticleId++),
+    title: data.title,
+    author: data.author,
+    version: "Draft 1",
+    status: "draft",
+    intro: data.intro,
+    sections: [{ id: `s${nextSectionId++}`, title: "Untitled Section", paragraphs: [""] }],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  articles.push(article);
+  return article;
+}
+
+export function generateShareToken(articleId: string): string {
+  return `share-${articleId}-${Date.now().toString(36)}`;
 }

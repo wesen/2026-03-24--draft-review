@@ -186,3 +186,53 @@ npm run dev
 | Stories | 13 | All chrome, primitives, reader, and author components |
 
 **Total: ~76 source files, 3500+ lines of component code, decomposed from 2 monolithic JSX prototypes (1669 lines).**
+
+## 2026-03-24 20:30 - Article management trio: Editor, Settings, Manager
+
+**What:** Built the three deferred Phase 3 screens that complete the author content workflow.
+
+**API layer extensions:**
+- MSW: added `PATCH /api/articles/:id` (update), `POST /api/articles` (create), `POST /api/articles/:id/share-token` (generate link)
+- Mock DB: `updateArticle()`, `createArticle()`, `generateShareToken()` functions
+- RTK Query: `createArticle`, `updateArticle`, `generateShareToken` mutations
+
+**ArticleEditor (3.4):**
+- Split-pane layout matching spec screen 08: section sidebar (200px) + content editor
+- Sidebar: numbered section list with up/down reorder buttons, "Add Section", "Delete Section" (with confirmation dialog)
+- Editor pane: title input (Chicago font, large) + content textarea (auto-splits on double newlines into paragraphs)
+- Actions: "Preview as Reader" + "Save"
+- Content model: `paragraphs.join("\n\n")` for editing, split back on save -- matching the prototype's approach where paragraph breaks define reactable units
+- **Design note:** Chose up/down arrow buttons instead of full drag-and-drop for MVP simplicity. Drag-and-drop can be added later with a library like dnd-kit.
+
+**ArticleSettings (3.5):**
+- Three sections matching spec screen 09: SHARING, FEEDBACK, STATUS
+- Sharing: review link display with Copy/Generate/Reset buttons, access mode radio (unique links / open link / password), reader visibility checkboxes
+- Feedback: reaction type toggles (all 4 types), require-note checkbox, allow-anonymous checkbox
+- Status: radio group (Draft / In Review / Complete / Archived)
+- Share link generation calls `generateShareToken` mutation and displays the URL
+- **Scope note:** Custom reactions and password field deferred. The settings are local state for now (only status persists via updateArticle).
+
+**ArticleManager (3.3):**
+- Toolbar: "New Article" button, search input, sort dropdown (Recent / Most Reactions / Most Readers / Status)
+- Article cards: title + status badge, stats (sections/reactions/readers), version, progress bar, draft-killer alert, action buttons (Review / Edit / Share / Invite)
+- Empty state: centered icon + message + "New Article" CTA
+- Archived section: collapsible footer with simplified items
+- Sorting and filtering via `useMemo`
+
+**AuthorApp wiring:**
+- Extended view type: `"dashboard" | "articles" | "article" | "edit" | "settings" | "reader-preview"`
+- View menu now has "Dashboard" and "Articles" actions
+- Full navigation flow: Dashboard -> Articles -> Edit/Settings/Review -> Back
+- Editor save calls `updateArticle` mutation then returns to dashboard
+- Settings save calls `updateArticle` for status, generates share tokens
+
+**Stories:** 6 new story files (2 per component: default + edge case).
+
+**Build:** `npm run build` passes. Bundle: 345KB JS, 27KB CSS.
+
+**How to validate:**
+- Dashboard: click any article tab -> "Open Full Review"
+- View menu -> "Articles" to see the ArticleManager
+- Click "Edit" on any card -> ArticleEditor with sections sidebar
+- Click "Share" on any card -> ArticleSettings with link generation
+- In editor: add/delete/reorder sections, edit content, preview as reader

@@ -1,5 +1,5 @@
 import { http, HttpResponse } from "msw";
-import { articles, readers, reactions, addReaction } from "./db";
+import { articles, readers, reactions, addReaction, updateArticle, createArticle, generateShareToken } from "./db";
 
 export const handlers = [
   // Articles
@@ -11,6 +11,31 @@ export const handlers = [
     const article = articles.find((a) => a.id === params.id);
     if (!article) return new HttpResponse(null, { status: 404 });
     return HttpResponse.json(article);
+  }),
+
+  // Create article
+  http.post("/api/articles", async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    const article = createArticle({
+      title: (body.title as string) || "Untitled Article",
+      author: (body.author as string) || "You",
+      intro: (body.intro as string) || "",
+    });
+    return HttpResponse.json(article, { status: 201 });
+  }),
+
+  // Update article
+  http.patch("/api/articles/:id", async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    const updated = updateArticle(params.id as string, body);
+    if (!updated) return new HttpResponse(null, { status: 404 });
+    return HttpResponse.json(updated);
+  }),
+
+  // Generate share token
+  http.post("/api/articles/:id/share-token", ({ params }) => {
+    const token = generateShareToken(params.id as string);
+    return HttpResponse.json({ token, url: `/r/${token}` });
   }),
 
   // Readers for an article
@@ -32,8 +57,8 @@ export const handlers = [
       articleId: params.id as string,
       sectionId: body.sectionId as string,
       paragraphId: body.paragraphId as string,
-      readerId: body.readerId as string || "anonymous",
-      readerName: body.readerName as string || "Anonymous",
+      readerId: (body.readerId as string) || "anonymous",
+      readerName: (body.readerName as string) || "Anonymous",
       type: body.type as "useful" | "confused" | "slow" | "favorite",
       text: body.text as string,
     });
