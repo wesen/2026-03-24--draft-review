@@ -609,6 +609,105 @@ sed -n '1,240p' docker-compose.yml
 sed -n '1,240p' Dockerfile
 ```
 
+## Step 8: Add Initial Article Write Endpoints And Verify Them Live
+
+With the runbook/checklist slice committed, I moved to the next contract-driven backend gap: article writes. The frontend already has create and update mutations, so this step makes those routes real and keeps the backend moving toward replacing the MSW article mock instead of only reading seeded data.
+
+I kept the scope intentionally narrow. The backend now supports `POST /api/articles` and `PATCH /api/articles/{id}` with request decoding, basic validation, transactional PostgreSQL writes, and section replacement logic. I explicitly did not add version snapshots yet; updates still modify the current article version in place until the dedicated versioning task is implemented.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 7)
+
+**Assistant interpretation:** Continue executing the ticket one slice at a time and commit after a coherent unit of backend behavior lands.
+
+**Inferred user intent:** Replace the frontend article mock surface with real backend behavior in small reviewable steps, while keeping the ticket docs and diary current.
+
+**Commit (code):** pending in this step while the article write slice is being finalized
+
+### What I did
+- Extended `pkg/articles` with:
+- create/update DTOs,
+- validation helpers,
+- repository methods for article creation and mutation,
+- transactional section replacement logic.
+- Updated `pkg/server/http.go` to add:
+- `POST /api/articles`,
+- `PATCH /api/articles/{id}`,
+- JSON request decoding with unknown-field rejection,
+- validation and not-found error mapping.
+- Updated `README.md` and `tasks.md` so the documented API surface and checklist match the implementation.
+- Ran `gofmt` and `go test ./cmd/... ./pkg/...`.
+- Performed a live smoke test against local Docker Compose PostgreSQL:
+- created an article,
+- patched title/status/intro/sections,
+- re-read the article,
+- confirmed invalid status returns HTTP 400.
+
+### Why
+- These routes are already present in the frontend RTK Query layer, so implementing them gives the backend immediate integration value.
+- This slice is small enough to review clearly while still exercising real DB mutations.
+
+### What worked
+- The existing article repository/service split extended cleanly to write operations.
+- Replacing all sections on patch is a simple way to support reorder/create/delete behavior before full versioning exists.
+- The live smoke test confirmed the route behavior against a real PostgreSQL instance, not just compilation.
+
+### What didn't work
+- My first migration smoke-test command failed because `zsh` treated `?sslmode=disable` as a glob when the DSN was not quoted.
+- I also briefly got a misleading empty list response because I ran the first create and list curl calls in parallel, so the read could race the insert.
+
+### What I learned
+- The fastest path to frontend alignment is to keep the DTO shape stable and add backend validation under the existing contract, instead of trying to redesign the payloads mid-implementation.
+- Even small shell details matter in this repo because the default shell is `zsh`; DSNs with `?` need quoting in docs and smoke tests.
+
+### What was tricky to build
+- The main tradeoff was how much "edit article" behavior to support before versioning exists. I chose full current-version replacement for sections because it satisfies the immediate editor contract without pretending version history is already implemented.
+
+### What warrants a second pair of eyes
+- The section replacement approach in `pkg/articles/postgres.go`, especially the decision to regenerate IDs for client-side temporary section identifiers.
+- The decision to use a temporary development owner record until auth is implemented.
+
+### What should be done in the future
+- Add real article version creation instead of mutating the current version in place.
+- Add share-token reset and invite creation after the reader/review flows are scaffolded.
+- Add automated handler or integration tests for the article write paths instead of relying only on the manual smoke test.
+
+### Code review instructions
+- Start with `pkg/articles/service.go`, then `pkg/articles/postgres.go`, then `pkg/server/http.go`.
+- Re-run:
+```text
+go test ./cmd/... ./pkg/...
+docker compose up -d postgres
+go run ./cmd/draft-review migrate up --dsn 'postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable'
+go run ./cmd/draft-review serve --dsn 'postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable' --listen-host 127.0.0.1 --listen-port 8080 --auto-migrate
+```
+- Then exercise:
+```text
+curl -sS -X POST http://127.0.0.1:8080/api/articles -H 'Content-Type: application/json' -d '{"title":"API Smoke Article","author":"Integration Check","intro":"Created during smoke testing."}'
+curl -sS -X PATCH http://127.0.0.1:8080/api/articles/<id> -H 'Content-Type: application/json' -d '{"title":"API Smoke Article Revised","status":"in_review","intro":"Updated during smoke testing.","sections":[{"id":"s-new-1","title":"Rewritten Opening","paragraphs":["First paragraph.","Second paragraph."]},{"id":"s-new-2","title":"Second Section","paragraphs":["More detail here."]}]}'
+curl -sS http://127.0.0.1:8080/api/articles/<id>
+curl -sS -o /tmp/draft-review-invalid.json -w '%{http_code}' -X PATCH http://127.0.0.1:8080/api/articles/<id> -H 'Content-Type: application/json' -d '{"status":"broken"}'
+docker compose down
+```
+
+### Technical details
+- Commands run:
+```text
+gofmt -w pkg/articles/*.go pkg/server/http.go
+go test ./cmd/... ./pkg/...
+docker compose up -d postgres
+go run ./cmd/draft-review migrate up --dsn postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable
+go run ./cmd/draft-review migrate up --dsn 'postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable'
+go run ./cmd/draft-review serve --dsn 'postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable' --listen-host 127.0.0.1 --listen-port 8080 --auto-migrate
+curl -sS -X POST http://127.0.0.1:8080/api/articles -H 'Content-Type: application/json' -d '{"title":"API Smoke Article","author":"Integration Check","intro":"Created during smoke testing."}'
+curl -sS http://127.0.0.1:8080/api/articles
+curl -sS -X PATCH http://127.0.0.1:8080/api/articles/7e6d7677-a626-48ad-8de4-5a2e78ca5fb4 -H 'Content-Type: application/json' -d '{"title":"API Smoke Article Revised","status":"in_review","intro":"Updated during smoke testing.","sections":[{"id":"s-new-1","title":"Rewritten Opening","paragraphs":["First paragraph.","Second paragraph."]},{"id":"s-new-2","title":"Second Section","paragraphs":["More detail here."]}]}'
+curl -sS http://127.0.0.1:8080/api/articles/7e6d7677-a626-48ad-8de4-5a2e78ca5fb4
+curl -sS -o /tmp/draft-review-invalid.json -w '%{http_code}' -X PATCH http://127.0.0.1:8080/api/articles/7e6d7677-a626-48ad-8de4-5a2e78ca5fb4 -H 'Content-Type: application/json' -d '{"status":"broken"}'
+docker compose down
+```
+
 ## Context
 
 This diary belongs to the backend planning ticket for Draft Review. The app is currently a React frontend using MSW and in-memory mock data; this ticket defines the first real backend built on PostgreSQL and local Docker Compose.

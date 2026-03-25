@@ -8,6 +8,26 @@ type Section struct {
 	Paragraphs []string `json:"paragraphs"`
 }
 
+type SectionInput struct {
+	ID         string   `json:"id,omitempty"`
+	Title      string   `json:"title"`
+	Paragraphs []string `json:"paragraphs"`
+}
+
+type CreateArticleInput struct {
+	Title  string `json:"title"`
+	Author string `json:"author"`
+	Intro  string `json:"intro"`
+}
+
+type UpdateArticleInput struct {
+	Title    *string         `json:"title,omitempty"`
+	Author   *string         `json:"author,omitempty"`
+	Intro    *string         `json:"intro,omitempty"`
+	Status   *string         `json:"status,omitempty"`
+	Sections *[]SectionInput `json:"sections,omitempty"`
+}
+
 type Article struct {
 	ID        string    `json:"id"`
 	Title     string    `json:"title"`

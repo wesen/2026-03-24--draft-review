@@ -81,3 +81,15 @@ Expanded the execution checklist and added a repository-level backend runbook co
 - /home/manuel/code/wesen/2026-03-24--draft-review/README.md — Backend quickstart and current API notes
 - /home/manuel/code/wesen/2026-03-24--draft-review/ttmp/2026/03/24/DR-002--draft-review-backend-postgresql-docker-compose-foundation/tasks.md — More detailed execution queue
 - /home/manuel/code/wesen/2026-03-24--draft-review/ttmp/2026/03/24/DR-002--draft-review-backend-postgresql-docker-compose-foundation/reference/01-backend-ticket-diary.md — Diary entry for the runbook/checklist slice
+
+
+## 2026-03-24
+
+Added initial PostgreSQL-backed article write endpoints, including `POST /api/articles`, `PATCH /api/articles/{id}`, request validation, transactional section replacement, and a live Docker/Postgres smoke test.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/articles/service.go — Article write validation and normalization
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/articles/postgres.go — Transactional create/update persistence and section replacement
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http.go — HTTP handlers for article create/update plus JSON decoding
+- /home/manuel/code/wesen/2026-03-24--draft-review/README.md — Updated API surface and current limitation notes

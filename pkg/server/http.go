@@ -3,7 +3,9 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -79,7 +81,9 @@ func NewHandler(options HandlerOptions) http.Handler {
 	})
 	mux.HandleFunc("GET /api/info", h.handleInfo)
 	mux.HandleFunc("GET /api/articles", h.handleArticles)
+	mux.HandleFunc("POST /api/articles", h.handleCreateArticle)
 	mux.HandleFunc("GET /api/articles/{id}", h.handleArticle)
+	mux.HandleFunc("PATCH /api/articles/{id}", h.handleUpdateArticle)
 	mux.HandleFunc("GET /api/articles/{id}/readers", h.handleArticleReaders)
 	mux.HandleFunc("GET /api/articles/{id}/reactions", h.handleArticleReactions)
 
@@ -111,6 +115,31 @@ func (h *appHandler) handleArticles(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, result)
 }
 
+func (h *appHandler) handleCreateArticle(w http.ResponseWriter, r *http.Request) {
+	if h.articleService == nil {
+		writeError(w, http.StatusServiceUnavailable, "article service is not configured")
+		return
+	}
+
+	var input articles.CreateArticleInput
+	if err := decodeJSONBody(r, &input); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	result, err := h.articleService.CreateArticle(r.Context(), input)
+	if err != nil {
+		if articles.IsValidationError(err) {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, result)
+}
+
 func (h *appHandler) handleArticle(w http.ResponseWriter, r *http.Request) {
 	if h.articleService == nil {
 		http.NotFound(w, r)
@@ -120,6 +149,34 @@ func (h *appHandler) handleArticle(w http.ResponseWriter, r *http.Request) {
 	result, err := h.articleService.GetArticle(r.Context(), r.PathValue("id"))
 	if err != nil {
 		http.NotFound(w, r)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (h *appHandler) handleUpdateArticle(w http.ResponseWriter, r *http.Request) {
+	if h.articleService == nil {
+		writeError(w, http.StatusServiceUnavailable, "article service is not configured")
+		return
+	}
+
+	var input articles.UpdateArticleInput
+	if err := decodeJSONBody(r, &input); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	result, err := h.articleService.UpdateArticle(r.Context(), r.PathValue("id"), input)
+	if err != nil {
+		switch {
+		case errors.Is(err, articles.ErrNotFound):
+			http.NotFound(w, r)
+		case articles.IsValidationError(err):
+			writeError(w, http.StatusBadRequest, err.Error())
+		default:
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
 		return
 	}
 
@@ -138,4 +195,27 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(payload)
+}
+
+func writeError(w http.ResponseWriter, status int, message string) {
+	writeJSON(w, status, map[string]string{"error": message})
+}
+
+func decodeJSONBody(r *http.Request, target any) error {
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+
+	if err := decoder.Decode(target); err != nil {
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		return err
+	}
+
+	var trailing any
+	if err := decoder.Decode(&trailing); err != nil && !errors.Is(err, io.EOF) {
+		return fmt.Errorf("request body must contain a single JSON object: %w", err)
+	}
+
+	return nil
 }

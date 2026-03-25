@@ -61,11 +61,13 @@ The current backend exposes these routes:
 - `GET /healthz`
 - `GET /api/info`
 - `GET /api/articles`
+- `POST /api/articles`
 - `GET /api/articles/{id}`
+- `PATCH /api/articles/{id}`
 - `GET /api/articles/{id}/readers`
 - `GET /api/articles/{id}/reactions`
 
-The article read routes are backed by PostgreSQL. The reader and reaction routes are still placeholders and currently return empty arrays.
+The article read and write routes are backed by PostgreSQL. The reader and reaction routes are still placeholders and currently return empty arrays.
 
 ## Local Development Notes
 
@@ -77,6 +79,6 @@ The article read routes are backed by PostgreSQL. The reader and reaction routes
 ## Known Gaps
 
 - Author auth endpoints are not implemented yet.
-- Article write endpoints are still in progress.
+- Article version creation is still in progress; `PATCH /api/articles/{id}` currently updates the current version in place.
 - Reader session, invite, analytics, and feedback APIs are not implemented yet.
 - Frontend RTK Query clients still assume the original mock API behavior in some areas.

@@ -63,13 +63,13 @@
 - [x] Add `pkg/articles/postgres.go`
 - [x] Add `pkg/articles/service.go`
 - [x] Add `GET /api/articles`
-- [ ] Add JSON request validation for article writes
-- [ ] Add `POST /api/articles`
+- [x] Add JSON request validation for article writes
+- [x] Add `POST /api/articles`
 - [x] Add `GET /api/articles/{id}`
-- [ ] Add `PATCH /api/articles/{id}`
-- [ ] Persist section reorder/create/delete operations against `article_sections`
-- [ ] Support article metadata updates (`title`, `author`, `intro`, `status`)
-- [ ] Seed default reaction types for newly created articles
+- [x] Add `PATCH /api/articles/{id}`
+- [x] Persist section reorder/create/delete operations against `article_sections`
+- [x] Support article metadata updates (`title`, `author`, `intro`, `status`)
+- [x] Seed default reaction types for newly created articles
 - [ ] Add article version creation flow
 - [ ] Add article section editing flow
 - [ ] Add share-token reset flow

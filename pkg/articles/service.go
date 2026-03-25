@@ -1,10 +1,15 @@
 package articles
 
-import "context"
+import (
+	"context"
+	"strings"
+)
 
 type Repository interface {
 	ListArticles(ctx context.Context) ([]Article, error)
 	GetArticle(ctx context.Context, id string) (*Article, error)
+	CreateArticle(ctx context.Context, input CreateArticleInput) (*Article, error)
+	UpdateArticle(ctx context.Context, id string, input UpdateArticleInput) (*Article, error)
 }
 
 type Service struct {
@@ -27,4 +32,113 @@ func (s *Service) GetArticle(ctx context.Context, id string) (*Article, error) {
 		return nil, ErrNotFound
 	}
 	return s.repo.GetArticle(ctx, id)
+}
+
+func (s *Service) CreateArticle(ctx context.Context, input CreateArticleInput) (*Article, error) {
+	if s == nil || s.repo == nil {
+		return nil, ErrNotFound
+	}
+
+	input.Title = defaultIfBlank(input.Title, "Untitled Article")
+	input.Author = defaultIfBlank(input.Author, "You")
+	input.Intro = strings.TrimSpace(input.Intro)
+
+	return s.repo.CreateArticle(ctx, input)
+}
+
+func (s *Service) UpdateArticle(ctx context.Context, id string, input UpdateArticleInput) (*Article, error) {
+	if s == nil || s.repo == nil {
+		return nil, ErrNotFound
+	}
+
+	if input.Title != nil {
+		normalized := strings.TrimSpace(*input.Title)
+		if normalized == "" {
+			return nil, NewValidationError("title cannot be empty")
+		}
+		input.Title = &normalized
+	}
+
+	if input.Author != nil {
+		normalized := strings.TrimSpace(*input.Author)
+		if normalized == "" {
+			return nil, NewValidationError("author cannot be empty")
+		}
+		input.Author = &normalized
+	}
+
+	if input.Intro != nil {
+		normalized := strings.TrimSpace(*input.Intro)
+		input.Intro = &normalized
+	}
+
+	if input.Status != nil {
+		normalized := strings.TrimSpace(*input.Status)
+		if !isValidStatus(normalized) {
+			return nil, NewValidationError("status must be one of draft, in_review, complete, archived")
+		}
+		input.Status = &normalized
+	}
+
+	if input.Sections != nil {
+		sections := *input.Sections
+		if len(sections) == 0 {
+			return nil, NewValidationError("sections must contain at least one section")
+		}
+
+		normalized := make([]SectionInput, 0, len(sections))
+		for _, section := range sections {
+			title := strings.TrimSpace(section.Title)
+			if title == "" {
+				return nil, NewValidationError("section title cannot be empty")
+			}
+
+			paragraphs := normalizeParagraphs(section.Paragraphs)
+			if len(paragraphs) == 0 {
+				return nil, NewValidationError("section paragraphs must contain at least one paragraph")
+			}
+
+			normalized = append(normalized, SectionInput{
+				ID:         strings.TrimSpace(section.ID),
+				Title:      title,
+				Paragraphs: paragraphs,
+			})
+		}
+
+		input.Sections = &normalized
+	}
+
+	return s.repo.UpdateArticle(ctx, id, input)
+}
+
+func defaultIfBlank(value, fallback string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return fallback
+	}
+	return trimmed
+}
+
+func normalizeParagraphs(paragraphs []string) []string {
+	ret := make([]string, 0, len(paragraphs))
+	for _, paragraph := range paragraphs {
+		trimmed := strings.TrimSpace(paragraph)
+		if trimmed == "" {
+			continue
+		}
+		ret = append(ret, trimmed)
+	}
+	if len(ret) == 0 {
+		ret = append(ret, "")
+	}
+	return ret
+}
+
+func isValidStatus(status string) bool {
+	switch status {
+	case "draft", "in_review", "complete", "archived":
+		return true
+	default:
+		return false
+	}
 }
