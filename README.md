@@ -28,6 +28,20 @@ go run ./cmd/draft-review serve \
   --frontend-dev-proxy-url http://127.0.0.1:5173
 ```
 
+Run the frontend against the real backend:
+
+```bash
+cd frontend
+npm run dev
+```
+
+If you want the old mock-only frontend behavior instead, opt back into MSW explicitly:
+
+```bash
+cd frontend
+VITE_USE_MSW=1 npm run dev
+```
+
 Start the backend against Keycloak / OIDC:
 
 ```bash
@@ -175,12 +189,11 @@ The live OIDC smoke path validated during implementation was:
 - `auth-mode=oidc` expects a Keycloak-compatible issuer and signs its own HTTP-only browser session cookie after callback.
 - `seed dev` inserts a stable local author plus one sample article and its first version.
 - Author article routes now resolve the current browser identity into a local `users` row and scope article access by `owner_user_id`.
+- The frontend now targets the real Go backend by default; set `VITE_USE_MSW=1` only when you intentionally want the legacy mock layer.
 
 ## Known Gaps
 
-- The frontend still does not consume `/api/me` or drive the `/auth/*` browser flow.
-- The frontend still does not call the new review-session endpoints (`/api/r/{token}/start`, `/api/reviews/{sessionId}/*`) and still keeps most reader progress/reaction state in React.
+- The frontend reader flow now starts review sessions and persists progress, reactions, and an empty summary, but it still does not expose the richer summary fields such as recommendability or notify-on-new-version.
 - `POST /api/articles/{id}/export` is only a stub acknowledgement, not a real report generator.
 - Database integration tests are still missing; the current validation story is unit tests plus live smoke runs.
-- Frontend RTK Query clients still assume the original mock API behavior in some areas.
 - `seed dev` already runs migrations internally, so do not run `migrate up` concurrently against the same fresh database.

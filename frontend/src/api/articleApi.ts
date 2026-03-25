@@ -26,9 +26,32 @@ export const articleApi = baseApi.injectEndpoints({
         "Article",
       ],
     }),
+    createVersion: build.mutation<
+      Article,
+      { articleId: string; label?: string; intro?: string; authorNote?: string }
+    >({
+      query: ({ articleId, ...body }) => ({
+        url: `/articles/${articleId}/versions`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: (_result, _err, { articleId }) => [
+        { type: "Article", id: articleId },
+        "Article",
+      ],
+    }),
     generateShareToken: build.mutation<{ token: string; url: string }, string>({
       query: (articleId) => ({
         url: `/articles/${articleId}/share-token`,
+        method: "POST",
+      }),
+    }),
+    exportArticle: build.mutation<
+      { articleId: string; message: string; status: string },
+      string
+    >({
+      query: (articleId) => ({
+        url: `/articles/${articleId}/export`,
         method: "POST",
       }),
     }),
@@ -76,7 +99,9 @@ export const {
   useGetArticleQuery,
   useCreateArticleMutation,
   useUpdateArticleMutation,
+  useCreateVersionMutation,
   useGenerateShareTokenMutation,
+  useExportArticleMutation,
   useGetReadersQuery,
   useGetReactionsQuery,
   useInviteReaderMutation,

@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { MacWindow, MenuBar } from "../chrome";
+import { MacButton } from "../chrome/MacButton";
 import {
   Dashboard,
   ArticleReader,
@@ -15,7 +16,9 @@ import {
   useGetReactionsQuery,
   useUpdateArticleMutation,
   useGenerateShareTokenMutation,
+  useInviteReaderMutation,
 } from "../api/articleApi";
+import { useGetMeQuery } from "../api/authApi";
 import type { Article } from "../types";
 
 type View =
@@ -27,22 +30,32 @@ type View =
   | "reader-preview";
 
 export function AuthorApp() {
+  const useMockApi = import.meta.env.VITE_USE_MSW === "1";
   const [view, setView] = useState<View>("dashboard");
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [focusSection, setFocusSection] = useState<string | undefined>();
   const [showInvite, setShowInvite] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | undefined>();
 
-  const { data: articles = [] } = useGetArticlesQuery();
+  const { data: meResponse, isLoading: isLoadingMe } = useGetMeQuery(undefined, {
+    skip: useMockApi,
+  });
+  const me = meResponse?.data;
+  const authReady = useMockApi || Boolean(me?.authenticated);
+
+  const { data: articles = [] } = useGetArticlesQuery(undefined, {
+    skip: !authReady,
+  });
   const [updateArticle] = useUpdateArticleMutation();
   const [generateShareToken] = useGenerateShareTokenMutation();
+  const [inviteReader] = useInviteReaderMutation();
 
   const activeArticleId = selectedArticle?.id || articles[0]?.id || "";
   const { data: readers = [] } = useGetReadersQuery(activeArticleId, {
-    skip: !activeArticleId,
+    skip: !authReady || !activeArticleId,
   });
   const { data: reactions = [] } = useGetReactionsQuery(activeArticleId, {
-    skip: !activeArticleId,
+    skip: !authReady || !activeArticleId,
   });
 
   const selectArticle = useCallback(
@@ -66,6 +79,14 @@ export function AuthorApp() {
     setView("dashboard");
     setSelectedArticle(null);
     setShareUrl(undefined);
+  };
+
+  const handleLogin = () => {
+    window.location.assign(`/auth/login?return_to=${encodeURIComponent("/")}`);
+  };
+
+  const handleLogout = () => {
+    window.location.assign(`/auth/logout?return_to=${encodeURIComponent("/")}`);
   };
 
   const totalReactions = reactions.length;
@@ -100,13 +121,76 @@ export function AuthorApp() {
         { label: "Keyboard Shortcuts" },
       ],
     },
+    ...(!useMockApi && me?.authenticated
+      ? [
+          {
+            label: "Account",
+            items: [
+              { label: `Signed in as ${me.displayName || me.email || "Author"}` },
+              { divider: true, label: "" },
+              { label: "Log Out", action: handleLogout },
+            ],
+          },
+        ]
+      : []),
   ];
+
+  if (!useMockApi && isLoadingMe) {
+    return (
+      <div className="dr-desktop">
+        <MenuBar menus={[]} rightStatus="Checking session..." />
+        <MacWindow title="Loading..." maximized>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              fontFamily: "var(--dr-font-body)",
+              fontSize: "var(--dr-font-size-md)",
+            }}
+          >
+            Loading your author session...
+          </div>
+        </MacWindow>
+      </div>
+    );
+  }
+
+  if (!useMockApi && !me?.authenticated) {
+    return (
+      <div className="dr-desktop">
+        <MenuBar menus={[]} rightStatus="Signed out" />
+        <MacWindow title="Draft Review Login" maximized>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              flexDirection: "column",
+              gap: 16,
+              fontFamily: "var(--dr-font-body)",
+              fontSize: "var(--dr-font-size-md)",
+            }}
+          >
+            <div>Sign in to manage your draft reviews.</div>
+            <MacButton primary onClick={handleLogin}>
+              Sign In With Keycloak
+            </MacButton>
+          </div>
+        </MacWindow>
+      </div>
+    );
+  }
 
   return (
     <div className="dr-desktop">
       <MenuBar
         menus={menus}
-        rightStatus={`${totalReactions} reaction${totalReactions !== 1 ? "s" : ""}`}
+        rightStatus={`${totalReactions} reaction${totalReactions !== 1 ? "s" : ""}${
+          me?.displayName ? ` · ${me.displayName}` : ""
+        }`}
       />
 
       {/* Dashboard */}
@@ -237,7 +321,13 @@ export function AuthorApp() {
       )}
 
       {showInvite && (
-        <InviteDialog onClose={() => setShowInvite(false)} />
+        <InviteDialog
+          onClose={() => setShowInvite(false)}
+          onInvite={async (email, note) => {
+            if (!activeArticleId) return;
+            await inviteReader({ articleId: activeArticleId, email, note });
+          }}
+        />
       )}
     </div>
   );

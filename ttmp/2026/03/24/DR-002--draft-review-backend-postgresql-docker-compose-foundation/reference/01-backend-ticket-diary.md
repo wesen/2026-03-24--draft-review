@@ -22,7 +22,7 @@ RelatedFiles:
       Note: Task checklist updated during this diary entry
 ExternalSources: []
 Summary: Chronological diary for the DR-002 backend planning ticket, including repository investigation, document creation, validation, and delivery.
-LastUpdated: 2026-03-24T22:15:00-04:00
+LastUpdated: 2026-03-24T22:30:00-04:00
 WhatFor: Recording how the backend planning ticket was assembled and validated.
 WhenToUse: Use this diary when reviewing the documentation work, reconstructing decisions, or continuing backend implementation later.
 ---
@@ -376,6 +376,92 @@ GET /api/articles/{id}/reactions
 GET /api/articles/{id}/analytics
 GET /api/readers
 POST /api/articles/{id}/versions
+```
+
+## Step 11: Align The Frontend With The Real Backend Routes
+
+Once the backend routes were stable, the remaining practical issue was that the frontend still behaved like a mock-only prototype in development. MSW always started in dev mode, the author app did not consult `/api/me`, and the reader page kept all of its progress and feedback state locally. I treated this as a separate slice because it crosses from backend implementation into app integration and deserved its own validation cycle.
+
+The goal here was not to redesign the frontend. It was to make the current UI actually capable of talking to the backend that now exists, while still preserving an explicit way to opt back into MSW for mock-only work.
+
+### Prompt Context
+
+**User prompt (verbatim):**
+```text
+go ahead, don't stop, go do it all
+```
+
+**Assistant interpretation:** continue into the frontend integration slice once the backend endpoints exist, instead of leaving the app hard-wired to the mock layer.
+
+**Inferred user intent:** the repository should behave like one application, not a backend sidecar plus an unrelated prototype frontend.
+
+**Commit (code):** pending during diary capture for this step
+
+### What I did
+- Added `frontend/src/api/authApi.ts` with `/api/me`.
+- Expanded `frontend/src/api/readerApi.ts` with:
+- `startReview`
+- `updateReviewProgress`
+- `addReviewReaction`
+- `submitReviewSummary`
+- Expanded `frontend/src/api/articleApi.ts` with:
+- `createVersion`
+- `exportArticle`
+- Changed `frontend/src/main.tsx` so MSW only starts when `VITE_USE_MSW=1` is set explicitly.
+- Updated `frontend/src/app/AuthorApp.tsx` to:
+- load `/api/me` when not in mock mode,
+- block the author UI behind login when unauthenticated,
+- add an account/logout menu,
+- wire the invite dialog to the real invite mutation.
+- Updated `frontend/src/app/ReaderApp.tsx` to pass the active review token through to `ReaderPage`.
+- Updated `frontend/src/reader/ReaderPage.tsx` to:
+- start a review session when reading begins,
+- persist section progress,
+- persist new reactions,
+- submit a minimal summary on finish.
+- Built the frontend with `npm run build`.
+
+### Why
+- Leaving MSW as the default meant the repo could still appear "working" while silently bypassing the new backend.
+- `/api/me` is now the backend entrypoint for author auth state, so the author app needed to respect it.
+- The reader flow was the most important place to move from local-only state to real persistence because the new review-session endpoints now exist specifically for that purpose.
+
+### What worked
+- The frontend TypeScript build passed cleanly after the new RTK Query endpoints and auth gate were added.
+- The MSW opt-in approach keeps mock mode available without hiding the real backend by default.
+- The reader flow could be upgraded incrementally without rewriting the existing UI components.
+
+### What didn't work
+- I did not add a richer reader summary UI in this step. The reader now submits a minimal empty summary on completion so the backend session can close cleanly, but the recommendability and notify-on-new-version fields still have no frontend controls.
+- I did not touch the unrelated untracked `frontend/README.md` because it is outside the tracked repository state for this task.
+
+### What I learned
+- The cleanest migration path was to make MSW explicit rather than trying to support both real and mock behavior invisibly.
+- Author auth integration can stay narrow and still be useful: one `/api/me` query plus login/logout redirects gets the current app much closer to the real deployment model.
+- Reader persistence did not require a major state-management refactor; the existing component callbacks were already enough to call the new backend endpoints.
+
+### What was tricky to build
+- The most delicate part was balancing real-backend alignment with not destroying the existing prototype workflow. Making MSW opt-in was a better compromise than trying to keep the old implicit mock behavior and the new backend behavior active at the same time.
+- The second subtle point was React hook ordering in `AuthorApp`: the auth query needed to gate the article queries without turning the component into a conditional-hook bug.
+
+### What warrants a second pair of eyes
+- The reader completion flow now submits an empty summary payload. That is operationally correct but product-incomplete.
+- The author login gate should be verified once a real frontend dev server is run against Keycloak/OIDC mode end to end.
+
+### What should be done in the future
+- Add a real summary form in the reader completion dialog for recommendability and notification opt-in.
+- Add a small frontend runbook note for `VITE_USE_MSW=1` versus real-backend mode once the tracked frontend docs are in scope.
+
+### Code review instructions
+- Review the API client additions and the app boot changes together; the point is to make the frontend hit the real backend by default.
+- Confirm that `VITE_USE_MSW=1` still restores mock mode intentionally.
+- Run `npm run build` and then boot the frontend against the Go backend to check the login gate and reader flow manually.
+
+### Technical details
+- Main command run:
+```text
+cd frontend
+npm run build
 ```
 
 ## Step 2: Write The Guide, Update Bookkeeping, Validate, And Deliver

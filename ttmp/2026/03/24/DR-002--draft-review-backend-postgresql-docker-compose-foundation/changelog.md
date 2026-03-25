@@ -159,3 +159,18 @@ Implemented the reader-sharing, review-session, analytics, and versioning slices
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http.go — Route wiring for sharing, reader sessions, analytics, and export stub
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http_test.go — Contract-focused HTTP coverage for the new routes
 - /home/manuel/code/wesen/2026-03-24--draft-review/README.md — Updated route inventory and known-gap notes
+
+
+## 2026-03-24
+
+Aligned the frontend with the real Go backend by adding auth and reader-session RTK Query clients, making MSW opt-in instead of the default dev path, gating the author app on `/api/me`, wiring invite sending, and persisting reader start/progress/reactions/summary through the new backend endpoints.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/api/authApi.ts — `/api/me` client contract for browser auth state
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/api/readerApi.ts — RTK Query client for reader session start/progress/reactions/summary
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/api/articleApi.ts — Added version/export alignment with the real backend routes
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/app/AuthorApp.tsx — Auth-aware author boot and invite wiring
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/app/ReaderApp.tsx — Passes the review token into the real reader-session flow
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/reader/ReaderPage.tsx — Starts review sessions and persists progress/reactions/summary
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/main.tsx — MSW is now opt-in via `VITE_USE_MSW=1`

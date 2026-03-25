@@ -2,6 +2,12 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import type { ReaderArticle, Reaction, ReactionType } from "../types";
 import { REACTION_TYPES } from "../theme/tokens";
 import { MacButton } from "../chrome/MacButton";
+import {
+  useAddReviewReactionMutation,
+  useStartReviewMutation,
+  useSubmitReviewSummaryMutation,
+  useUpdateReviewProgressMutation,
+} from "../api/readerApi";
 import { WelcomeSplash } from "./WelcomeSplash";
 import { ReaderToolbar } from "./ReaderToolbar";
 import { SectionView } from "./SectionView";
@@ -16,6 +22,7 @@ interface ReaderPageProps {
   onReactionAdd?: (reaction: Omit<Reaction, "id" | "createdAt">) => void;
   /** Called when a reaction is removed */
   onReactionRemove?: (reaction: Reaction) => void;
+  reviewToken?: string;
 }
 
 export function ReaderPage({
@@ -23,8 +30,10 @@ export function ReaderPage({
   initialReactions = [],
   onReactionAdd,
   onReactionRemove,
+  reviewToken,
 }: ReaderPageProps) {
   const [started, setStarted] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [currentSectionId, setCurrentSectionId] = useState(
     article.sections[0]?.id
   );
@@ -32,6 +41,10 @@ export function ReaderPage({
   const [reactions, setReactions] = useState<Reaction[]>(initialReactions);
   const [showDone, setShowDone] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [startReview] = useStartReviewMutation();
+  const [updateReviewProgress] = useUpdateReviewProgressMutation();
+  const [addReviewReaction] = useAddReviewReactionMutation();
+  const [submitReviewSummary] = useSubmitReviewSummaryMutation();
 
   const sectionIndex = article.sections.findIndex(
     (s) => s.id === currentSectionId
@@ -45,16 +58,46 @@ export function ReaderPage({
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, []);
 
-  const markRead = useCallback(() => {
-    setReadSectionIds((prev) =>
-      prev.includes(currentSectionId)
-        ? prev
-        : [...prev, currentSectionId]
-    );
-  }, [currentSectionId]);
+  const persistProgress = useCallback(
+    async (sectionId: string) => {
+      if (!sessionId) return;
+
+      const nextReadCount = readSectionIds.includes(sectionId)
+        ? readSectionIds.length
+        : readSectionIds.length + 1;
+      const progressPercent = Math.round(
+        (nextReadCount / article.sections.length) * 100
+      );
+
+      try {
+        await updateReviewProgress({
+          sessionId,
+          sectionId,
+          paragraphId: `${sectionId}-p0`,
+          completed: true,
+          progressPercent,
+        }).unwrap();
+      } catch (error) {
+        console.error("Failed to persist review progress", error);
+      }
+    },
+    [article.sections.length, readSectionIds, sessionId, updateReviewProgress]
+  );
+
+  const markRead = useCallback(
+    (sectionId: string) => {
+      setReadSectionIds((prev) =>
+        prev.includes(sectionId)
+          ? prev
+          : [...prev, sectionId]
+      );
+      void persistProgress(sectionId);
+    },
+    [persistProgress]
+  );
 
   const goNext = () => {
-    markRead();
+    markRead(currentSectionId);
     if (!isLast) goTo(article.sections[sectionIndex + 1].id);
   };
 
@@ -62,8 +105,18 @@ export function ReaderPage({
     if (!isFirst) goTo(article.sections[sectionIndex - 1].id);
   };
 
-  const finish = () => {
-    markRead();
+  const finish = async () => {
+    markRead(currentSectionId);
+    if (sessionId) {
+      try {
+        await submitReviewSummary({
+          sessionId,
+          notifyNewVersion: false,
+        }).unwrap();
+      } catch (error) {
+        console.error("Failed to submit review summary", error);
+      }
+    }
     setShowDone(true);
   };
 
@@ -93,6 +146,18 @@ export function ReaderPage({
       type,
       text,
     });
+
+    if (sessionId) {
+      void addReviewReaction({
+        sessionId,
+        sectionId: currentSectionId,
+        paragraphId,
+        type,
+        text,
+      }).unwrap().catch((error) => {
+        console.error("Failed to persist review reaction", error);
+      });
+    }
   };
 
   const handleRemoveReaction = (reaction: Reaction) => {
@@ -127,7 +192,15 @@ export function ReaderPage({
     return (
       <WelcomeSplash
         article={article}
-        onStart={() => {
+        onStart={async () => {
+          if (reviewToken && !sessionId) {
+            try {
+              const result = await startReview({ token: reviewToken }).unwrap();
+              setSessionId(result.session.id);
+            } catch (error) {
+              console.error("Failed to start review session", error);
+            }
+          }
           setStarted(true);
           setCurrentSectionId(article.sections[0]?.id);
         }}

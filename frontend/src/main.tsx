@@ -7,8 +7,9 @@ import "./index.css";
 import App from "./App.tsx";
 
 async function boot() {
-  // Start MSW in development
-  if (import.meta.env.DEV) {
+  const useMsw = import.meta.env.DEV && import.meta.env.VITE_USE_MSW === "1";
+
+  if (useMsw) {
     const { worker } = await import("./mocks/browser");
     await worker.start({ onUnhandledRequest: "bypass" });
   }

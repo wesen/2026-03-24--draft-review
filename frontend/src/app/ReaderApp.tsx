@@ -5,6 +5,7 @@ import { useGetReaderLinkQuery } from "../api/readerApi";
 
 export function ReaderApp() {
   const { token } = useParams<{ token: string }>();
+  const useMockApi = import.meta.env.VITE_USE_MSW === "1";
   const { data, isLoading, error } = useGetReaderLinkQuery(token || "", {
     skip: !token,
   });
@@ -71,7 +72,10 @@ export function ReaderApp() {
         title={`${data.article.title} \u2014 Reader View`}
         maximized
       >
-        <ReaderPage article={data.article} />
+        <ReaderPage
+          article={data.article}
+          reviewToken={useMockApi ? undefined : token}
+        />
       </MacWindow>
     </div>
   );

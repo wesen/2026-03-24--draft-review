@@ -107,7 +107,7 @@
 
 ### Phase 7: Frontend Integration And Operations
 
-- [ ] Align frontend RTK Query clients with the real Go backend contracts
+- [x] Align frontend RTK Query clients with the real Go backend contracts
 - [x] Add `docker-compose.yml` for backend plus PostgreSQL
 - [x] Add Dockerfile for the Go service
 - [x] Add backend unit tests

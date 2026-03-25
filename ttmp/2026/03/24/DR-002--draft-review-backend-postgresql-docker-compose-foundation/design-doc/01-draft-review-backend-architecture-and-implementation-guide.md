@@ -52,7 +52,7 @@ RelatedFiles:
       Note: Defines the broader backend requirements including auth
 ExternalSources: []
 Summary: Evidence-backed Go backend design for Draft Review using Glazed command verbs, Clay-style database configuration sections, PostgreSQL, docker compose, and a phased implementation plan grounded in the current frontend and the hair-booking runtime patterns.
-LastUpdated: 2026-03-24T22:15:00-04:00
+LastUpdated: 2026-03-24T22:30:00-04:00
 WhatFor: Designing and implementing the first Go backend for Draft Review.
 WhenToUse: Use this guide when scaffolding the Draft Review Go service, Glazed CLI verbs, PostgreSQL schema, docker compose stack, or frontend-to-backend integration.
 ---
@@ -75,7 +75,7 @@ The current Draft Review repo is still frontend-only. The React app already defi
 - incremental replacement of the current MSW endpoints,
 - a package layout that a new intern can navigate without guessing.
 
-The implemented state has moved beyond the original scaffold: author article CRUD, Keycloak/OIDC auth, local author ownership projection, share-token reset, invite creation, token-based reader article resolution, review-session persistence, analytics queries, version cloning, and a minimal export stub are now present. The main remaining work is frontend cutover to the real auth/review routes and stronger automated database integration coverage.
+The implemented state has moved beyond the original scaffold: author article CRUD, Keycloak/OIDC auth, local author ownership projection, share-token reset, invite creation, token-based reader article resolution, review-session persistence, analytics queries, version cloning, and a minimal export stub are now present. The frontend has also been moved toward the real backend: `/api/me` now gates the author app in non-mock mode, MSW is opt-in, and the reader flow starts/persists review sessions. The main remaining work is richer reader-summary UI and stronger automated database integration coverage.
 
 ## Problem Statement And Scope
 
