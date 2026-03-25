@@ -93,3 +93,14 @@ Added initial PostgreSQL-backed article write endpoints, including `POST /api/ar
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/articles/postgres.go — Transactional create/update persistence and section replacement
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http.go — HTTP handlers for article create/update plus JSON decoding
 - /home/manuel/code/wesen/2026-03-24--draft-review/README.md — Updated API surface and current limitation notes
+
+
+## 2026-03-24
+
+Added the initial auth package with domain types, password hashing helpers, opaque token/session-cookie helpers, and unit tests.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/types.go — Auth-facing DTO and persistence model shapes
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/helpers.go — Password, token, and session cookie helpers
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/helpers_test.go — Focused tests for auth helper behavior

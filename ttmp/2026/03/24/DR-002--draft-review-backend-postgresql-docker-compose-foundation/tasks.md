@@ -45,9 +45,9 @@
 
 ### Phase 3: Author Auth
 
-- [ ] Add `pkg/auth/types.go`
-- [ ] Add password hashing and session helpers
-- [ ] Add author session cookie/token issuance and revocation helpers
+- [x] Add `pkg/auth/types.go`
+- [x] Add password hashing and session helpers
+- [x] Add author session cookie/token issuance and revocation helpers
 - [ ] Add `POST /api/auth/signup`
 - [ ] Add `POST /api/auth/login`
 - [ ] Add `POST /api/auth/logout`

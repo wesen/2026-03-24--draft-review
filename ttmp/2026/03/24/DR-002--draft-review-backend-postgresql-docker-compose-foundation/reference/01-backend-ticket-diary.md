@@ -708,6 +708,78 @@ curl -sS -o /tmp/draft-review-invalid.json -w '%{http_code}' -X PATCH http://127
 docker compose down
 ```
 
+## Step 9: Add Auth Domain Types And Core Session Helpers
+
+After the article write slice, I took one smaller infrastructure task from the auth phase: define the auth-facing types and add the core password/token/session-cookie helpers that future auth handlers will rely on. This is a good stopping point for a small commit because it lands reusable primitives without mixing them into incomplete HTTP endpoint code.
+
+I also added focused unit tests for the helper behavior so this slice improves the test surface instead of only adding passive type definitions.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 7)
+
+**Assistant interpretation:** Keep moving through the ticket queue in coherent slices and commit when a clean boundary is reached.
+
+**Inferred user intent:** Build implementation scaffolding that reduces risk for the next endpoint slices rather than leaving critical auth behavior to be improvised later.
+
+**Commit (code):** pending in this step while the helper slice is being finalized
+
+### What I did
+- Added `pkg/auth/types.go` with:
+- `User`,
+- `Session`,
+- `PasswordResetToken`,
+- `EmailVerificationToken`.
+- Added `pkg/auth/helpers.go` with:
+- bcrypt password hashing and comparison,
+- opaque token generation,
+- token hashing,
+- session cookie issuance,
+- session cookie expiration helpers.
+- Added `pkg/auth/helpers_test.go` covering:
+- password hash round-trip,
+- token generation and hashing,
+- session cookie creation and revocation behavior.
+- Marked the first three auth checklist items complete in `tasks.md`.
+
+### Why
+- Signup/login/logout handlers will need these primitives immediately.
+- Pulling them into a dedicated auth package now keeps later HTTP/database code simpler and more consistent.
+
+### What worked
+- The helper slice stayed nicely isolated from the rest of the codebase.
+- Adding tests here was cheap and immediately useful because the auth helpers are pure functions.
+
+### What didn't work
+- No failures in this step.
+
+### What I learned
+- The auth phase will be easier to stage if I keep separating pure helper logic from database persistence and HTTP handlers.
+
+### What was tricky to build
+- The main design choice was deciding how much auth behavior to add before the repository layer exists. I stopped at the boundary where the next slice clearly becomes signup/login/logout plus token persistence.
+
+### What warrants a second pair of eyes
+- The cookie defaults in `pkg/auth/helpers.go`, especially the `SameSite`, TTL, and `Secure` flag expectations for local development versus deployed environments.
+
+### What should be done in the future
+- Add auth repository methods over `users`, `author_sessions`, `password_reset_tokens`, and `email_verification_tokens`.
+- Wire the helpers into real signup/login/logout endpoints.
+
+### Code review instructions
+- Review `pkg/auth/helpers.go` and `pkg/auth/helpers_test.go` together.
+- Validate with:
+```text
+go test ./cmd/... ./pkg/...
+```
+
+### Technical details
+- Commands run:
+```text
+gofmt -w pkg/auth/*.go
+go test ./cmd/... ./pkg/...
+```
+
 ## Context
 
 This diary belongs to the backend planning ticket for Draft Review. The app is currently a React frontend using MSW and in-memory mock data; this ticket defines the first real backend built on PostgreSQL and local Docker Compose.
