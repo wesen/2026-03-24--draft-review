@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -18,6 +19,7 @@ import (
 	draftdb "github.com/go-go-golems/draft-review/pkg/db"
 	"github.com/go-go-golems/draft-review/pkg/reviewlinks"
 	"github.com/go-go-golems/draft-review/pkg/reviews"
+	draftweb "github.com/go-go-golems/draft-review/pkg/web"
 )
 
 type Options struct {
@@ -41,6 +43,7 @@ type HandlerOptions struct {
 	AuthService         *draftauth.Service
 	SessionManager      *draftauth.SessionManager
 	WebAuth             draftauth.WebHandler
+	PublicFS            fs.FS
 	Database            *draftdb.DB
 	ArticleService      *articles.Service
 	ReviewLinkService   *reviewlinks.Service
@@ -72,6 +75,7 @@ type appHandler struct {
 	authSettings      *draftauth.Settings
 	authService       *draftauth.Service
 	sessionManager    *draftauth.SessionManager
+	publicFS          fs.FS
 	database          *draftdb.DB
 	articleService    *articles.Service
 	reviewLinkService *reviewlinks.Service
@@ -142,6 +146,7 @@ func NewHTTPServer(ctx context.Context, options Options) (*http.Server, error) {
 			AuthService:         authService,
 			SessionManager:      sessionManager,
 			WebAuth:             webAuth,
+			PublicFS:            draftweb.PublicFS,
 			Database:            options.Database,
 			ArticleService:      articleService,
 			ReviewLinkService:   reviewLinkService,
@@ -159,6 +164,11 @@ func NewHandler(options HandlerOptions) http.Handler {
 		authSettings = &draftauth.Settings{Mode: draftauth.AuthModeDev, DevUserID: "local-author"}
 	}
 
+	publicFS := options.PublicFS
+	if publicFS == nil {
+		publicFS = draftweb.PublicFS
+	}
+
 	frontendProxy := newFrontendDevProxy(options.FrontendDevProxyURL)
 
 	h := &appHandler{
@@ -167,6 +177,7 @@ func NewHandler(options HandlerOptions) http.Handler {
 		authSettings:      authSettings,
 		authService:       options.AuthService,
 		sessionManager:    options.SessionManager,
+		publicFS:          publicFS,
 		database:          options.Database,
 		articleService:    options.ArticleService,
 		reviewLinkService: options.ReviewLinkService,
@@ -723,12 +734,39 @@ func (h *appHandler) handleReviewSummary(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *appHandler) handleFrontend(w http.ResponseWriter, r *http.Request) {
-	if h.frontendProxy == nil {
+	if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/auth/") {
 		http.NotFound(w, r)
 		return
 	}
 
-	h.frontendProxy.ServeHTTP(w, r)
+	if h.frontendProxy != nil {
+		h.frontendProxy.ServeHTTP(w, r)
+		return
+	}
+	if h.publicFS == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	requestPath := strings.TrimPrefix(r.URL.Path, "/")
+	if requestPath == "" {
+		requestPath = "index.html"
+	}
+
+	if fileInfo, err := fs.Stat(h.publicFS, requestPath); err == nil && !fileInfo.IsDir() {
+		http.FileServer(http.FS(h.publicFS)).ServeHTTP(w, r)
+		return
+	}
+
+	index, err := h.publicFS.Open("index.html")
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	defer func() { _ = index.Close() }()
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = io.Copy(w, index)
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {

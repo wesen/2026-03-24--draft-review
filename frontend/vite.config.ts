@@ -18,6 +18,14 @@ export default defineConfig({
       '/api': {
         target: process.env.VITE_BACKEND_ORIGIN || 'http://127.0.0.1:8080',
         changeOrigin: true
+      },
+      '/auth': {
+        target: process.env.VITE_BACKEND_ORIGIN || 'http://127.0.0.1:8080',
+        changeOrigin: true
+      },
+      '/healthz': {
+        target: process.env.VITE_BACKEND_ORIGIN || 'http://127.0.0.1:8080',
+        changeOrigin: true
       }
     }
   },

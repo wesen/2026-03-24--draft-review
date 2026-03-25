@@ -27,8 +27,6 @@ services:
       - --dsn
       - postgres://draft_review:draft_review@postgres:5432/draft_review?sslmode=disable
       - --auto-migrate
-      - --frontend-dev-proxy-url
-      - http://host.docker.internal:5173
 
 volumes:
   draft_review_postgres:

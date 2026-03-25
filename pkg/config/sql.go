@@ -4,6 +4,8 @@ import (
 	_ "embed"
 	"fmt"
 	"net/url"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/go-go-golems/glazed/pkg/cmds/schema"
@@ -55,6 +57,37 @@ func NormalizeSQLConnectionSettings(settings *SQLConnectionSettings) (*SQLConnec
 		settings = &SQLConnectionSettings{}
 	}
 
+	if settings.Host == "" {
+		settings.Host = strings.TrimSpace(os.Getenv("DRAFT_REVIEW_HOST"))
+	}
+	if settings.Port == 0 {
+		settings.Port = envIntOr("DRAFT_REVIEW_PORT", 5432)
+	}
+	if settings.Database == "" {
+		settings.Database = strings.TrimSpace(os.Getenv("DRAFT_REVIEW_DATABASE"))
+	}
+	if settings.User == "" {
+		settings.User = strings.TrimSpace(os.Getenv("DRAFT_REVIEW_USER"))
+	}
+	if settings.Password == "" {
+		settings.Password = strings.TrimSpace(os.Getenv("DRAFT_REVIEW_PASSWORD"))
+	}
+	if settings.Schema == "" {
+		settings.Schema = strings.TrimSpace(os.Getenv("DRAFT_REVIEW_SCHEMA"))
+	}
+	if settings.DBType == "" {
+		settings.DBType = strings.TrimSpace(os.Getenv("DRAFT_REVIEW_DB_TYPE"))
+	}
+	if settings.DSN == "" {
+		settings.DSN = strings.TrimSpace(os.Getenv("DRAFT_REVIEW_DSN"))
+	}
+	if settings.Driver == "" {
+		settings.Driver = strings.TrimSpace(os.Getenv("DRAFT_REVIEW_DRIVER"))
+	}
+	if !settings.SSLDisable {
+		settings.SSLDisable = envBoolOr("DRAFT_REVIEW_SSL_DISABLE", false)
+	}
+
 	settings.Host = strings.TrimSpace(settings.Host)
 	settings.Database = strings.TrimSpace(settings.Database)
 	settings.User = strings.TrimSpace(settings.User)
@@ -75,6 +108,18 @@ func NormalizeSQLConnectionSettings(settings *SQLConnectionSettings) (*SQLConnec
 	}
 
 	return settings, nil
+}
+
+func envIntOr(key string, fallback int) int {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return fallback
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil {
+		return fallback
+	}
+	return value
 }
 
 func (s *SQLConnectionSettings) ConnectionString() (string, error) {

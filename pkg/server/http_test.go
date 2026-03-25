@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/go-go-golems/draft-review/pkg/analytics"
@@ -17,6 +19,15 @@ import (
 	"github.com/go-go-golems/draft-review/pkg/reviews"
 	"github.com/google/uuid"
 )
+
+func testPublicFS() fs.FS {
+	return fstest.MapFS{
+		"index.html": {Data: []byte("<!doctype html><html><body>draft-review-shell</body></html>")},
+		"assets/app.js": {
+			Data: []byte("console.log('draft-review');"),
+		},
+	}
+}
 
 func TestHandleMeDevMode(t *testing.T) {
 	t.Parallel()
@@ -54,6 +65,84 @@ func TestHandleMeDevMode(t *testing.T) {
 	}
 	if response.Data.Subject != "local-author" {
 		t.Fatalf("expected subject local-author, got %q", response.Data.Subject)
+	}
+}
+
+func TestHandleFrontendServesEmbeddedIndex(t *testing.T) {
+	t.Parallel()
+
+	handler := NewHandler(HandlerOptions{
+		Version:   "test",
+		StartedAt: time.Now().UTC(),
+		AuthSettings: &draftauth.Settings{
+			Mode: draftauth.AuthModeDev,
+		},
+		PublicFS: testPublicFS(),
+	})
+
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", recorder.Code)
+	}
+	if body := recorder.Body.String(); !bytes.Contains([]byte(body), []byte("draft-review-shell")) {
+		t.Fatalf("expected embedded shell, got %q", body)
+	}
+	if contentType := recorder.Header().Get("Content-Type"); contentType != "text/html; charset=utf-8" {
+		t.Fatalf("expected html content type, got %q", contentType)
+	}
+}
+
+func TestHandleFrontendServesEmbeddedAssets(t *testing.T) {
+	t.Parallel()
+
+	handler := NewHandler(HandlerOptions{
+		Version:   "test",
+		StartedAt: time.Now().UTC(),
+		AuthSettings: &draftauth.Settings{
+			Mode: draftauth.AuthModeDev,
+		},
+		PublicFS: testPublicFS(),
+	})
+
+	request := httptest.NewRequest(http.MethodGet, "/assets/app.js", nil)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", recorder.Code)
+	}
+	if body := recorder.Body.String(); !bytes.Contains([]byte(body), []byte("draft-review")) {
+		t.Fatalf("expected embedded asset body, got %q", body)
+	}
+}
+
+func TestHandleFrontendFallsBackToIndexForReaderRoutes(t *testing.T) {
+	t.Parallel()
+
+	handler := NewHandler(HandlerOptions{
+		Version:   "test",
+		StartedAt: time.Now().UTC(),
+		AuthSettings: &draftauth.Settings{
+			Mode: draftauth.AuthModeDev,
+		},
+		PublicFS: testPublicFS(),
+	})
+
+	request := httptest.NewRequest(http.MethodGet, "/r/invite-123", nil)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", recorder.Code)
+	}
+	if body := recorder.Body.String(); !bytes.Contains([]byte(body), []byte("draft-review-shell")) {
+		t.Fatalf("expected index fallback, got %q", body)
 	}
 }
 

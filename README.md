@@ -7,7 +7,13 @@ The backend uses:
 - Go with a Glazed/Cobra CLI entrypoint
 - PostgreSQL via `pgxpool`
 - Embedded SQL migrations
+- Embedded frontend assets for production and Docker deployment
 - Docker Compose for a local backend-plus-database workflow
+
+Hosted deployment guidance now lives in:
+
+- [docs/deployments/draft-review-coolify.md](/home/manuel/code/wesen/2026-03-24--draft-review/docs/deployments/draft-review-coolify.md)
+- [docs/deployments/draft-review-coolify-playbook.md](/home/manuel/code/wesen/2026-03-24--draft-review/docs/deployments/draft-review-coolify-playbook.md)
 
 ## Current Commands
 
@@ -16,6 +22,8 @@ Start the full local stack with Docker Compose:
 ```bash
 docker compose up --build
 ```
+
+That path now serves the browser app directly from the Go container at `http://127.0.0.1:8080/`; it does not require Vite.
 
 Run PostgreSQL only, then start the backend locally:
 
@@ -204,6 +212,7 @@ The live OIDC smoke path validated during implementation was:
 ## Local Development Notes
 
 - Docker Compose starts PostgreSQL on `127.0.0.1:5432` and the backend on `127.0.0.1:8080`.
+- The production container now embeds the built frontend, so `/`, `/assets/*`, and reader SPA routes work without Vite.
 - The `serve` command can auto-run embedded migrations with `--auto-migrate`.
 - `auth-mode=dev` gives a synthetic local author identity through `/api/me`.
 - `auth-mode=oidc` expects a Keycloak-compatible issuer and signs its own HTTP-only browser session cookie after callback.
@@ -211,7 +220,7 @@ The live OIDC smoke path validated during implementation was:
 - Author article routes now resolve the current browser identity into a local `users` row and scope article access by `owner_user_id`.
 - The frontend now targets the real Go backend by default; set `VITE_USE_MSW=1` only when you intentionally want the legacy mock layer.
 - The backend now really proxies browser routes to the frontend dev server when `--frontend-dev-proxy-url` is set, so `/` and `/r/:token` can be tested through the backend origin.
-- Vite now listens on `0.0.0.0` and proxies `/api` to `VITE_BACKEND_ORIGIN` or `http://127.0.0.1:8080` by default.
+- Vite now listens on `0.0.0.0` and proxies `/api`, `/auth`, and `/healthz` to `VITE_BACKEND_ORIGIN` or `http://127.0.0.1:8080` by default.
 
 ## Known Gaps
 
