@@ -538,6 +538,77 @@ git commit -m "Add initial article read endpoints"
 git rev-parse HEAD
 ```
 
+## Step 7: Expand The Execution Queue And Add A Backend Runbook
+
+Before taking the next API write slice, I tightened the ticket task list and added a repository-level backend README. The goal of this step was to make the implementation queue explicit enough that each later commit can map cleanly to one or two checklist items rather than a vague phase label.
+
+The README also turns the scaffold into something another engineer can actually run without reconstructing command lines from source. That matters now that the repository has a real Go CLI, Docker Compose setup, and migration/seed commands.
+
+### Prompt Context
+
+**User prompt (verbatim):**
+```text
+Add detailed tasks to the ticket, then work on them one by one, comitting at appropriate interval, keeping a diary.
+```
+
+**Assistant interpretation:** Expand the ticket checklist into more concrete implementation items, then start executing them in small reviewable slices while continuing the diary.
+
+**Inferred user intent:** Keep implementation disciplined and traceable. The ticket should act as a live execution plan, not just a high-level design artifact.
+
+**Commit (code):** pending in this step while the runbook/checklist slice is being assembled
+
+### What I did
+- Expanded `tasks.md` with more detailed acceptance items around:
+- backend runbook coverage,
+- article write validation and persistence behavior,
+- reader/session expectations,
+- placeholder replacement work,
+- future smoke-test coverage.
+- Added a top-level `README.md` describing:
+- Docker Compose startup,
+- local `go run` flows,
+- migration and seed commands,
+- the current HTTP API surface,
+- known temporary implementation limits.
+- Marked the runbook-related checklist items complete in the ticket after the README existed.
+
+### Why
+- The next implementation work is easier to review when each task has a concrete definition of done.
+- A backend without a runbook is expensive for the next engineer to pick up, even if the code compiles.
+
+### What worked
+- The existing command surface was already stable enough to document directly.
+- Breaking the queue down further made the next API slice more obvious: article writes are the next contract-driven gap.
+
+### What didn't work
+- No technical failures in this step.
+- The queue is still intentionally broad in later phases like analytics because those packages do not exist yet; those tasks will need another pass once the auth/review flows are real.
+
+### What I learned
+- The ticket is already shifting from research artifact to implementation tracker, and that means the task list needs to describe executable slices rather than architecture topics.
+
+### What was tricky to build
+- The subtle part was documenting current behavior honestly without implying unfinished endpoints are production-ready. The README needs to help someone run the backend today while still making the temporary gaps obvious.
+
+### What warrants a second pair of eyes
+- The README wording around "current API" and "known gaps" should stay aligned with the actual implementation as more endpoints land.
+
+### What should be done in the future
+- Keep the README current as each API slice lands.
+- Continue converting the remaining broad phase tasks into smaller completion units before or during implementation.
+
+### Code review instructions
+- Review `README.md` for command accuracy and alignment with the current CLI.
+- Review `tasks.md` to make sure the added checklist items match the actual intended implementation order.
+
+### Technical details
+- Commands run:
+```text
+rg --files -g 'README*'
+sed -n '1,240p' docker-compose.yml
+sed -n '1,240p' Dockerfile
+```
+
 ## Context
 
 This diary belongs to the backend planning ticket for Draft Review. The app is currently a React frontend using MSW and in-memory mock data; this ticket defines the first real backend built on PostgreSQL and local Docker Compose.

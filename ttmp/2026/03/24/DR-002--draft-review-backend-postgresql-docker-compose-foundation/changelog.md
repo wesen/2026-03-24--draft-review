@@ -71,3 +71,13 @@ Added the first PostgreSQL-backed article read endpoints with commit 845eeb67ff0
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/articles/service.go — Article service wrapper
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http.go — Article list/detail routes and placeholder readers/reactions routes
 
+
+## 2026-03-24
+
+Expanded the execution checklist and added a repository-level backend runbook covering Docker Compose, local CLI flows, current API routes, and temporary implementation limits.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/README.md — Backend quickstart and current API notes
+- /home/manuel/code/wesen/2026-03-24--draft-review/ttmp/2026/03/24/DR-002--draft-review-backend-postgresql-docker-compose-foundation/tasks.md — More detailed execution queue
+- /home/manuel/code/wesen/2026-03-24--draft-review/ttmp/2026/03/24/DR-002--draft-review-backend-postgresql-docker-compose-foundation/reference/01-backend-ticket-diary.md — Diary entry for the runbook/checklist slice

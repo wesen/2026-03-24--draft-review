@@ -20,7 +20,9 @@
 - [x] Create `cmd/draft-review/cmds/migrate_up.go`
 - [x] Create `cmd/draft-review/cmds/migrate_status.go`
 - [x] Create `cmd/draft-review/cmds/seed_dev.go`
-- [ ] Add backend README/run instructions
+- [x] Add backend README/run instructions
+- [x] Document docker-compose startup, migration, seed, and local `go run` flows
+- [x] Document current API surface and temporary implementation limits
 
 ### Phase 1: Configuration And Database Foundation
 
@@ -45,6 +47,7 @@
 
 - [ ] Add `pkg/auth/types.go`
 - [ ] Add password hashing and session helpers
+- [ ] Add author session cookie/token issuance and revocation helpers
 - [ ] Add `POST /api/auth/signup`
 - [ ] Add `POST /api/auth/login`
 - [ ] Add `POST /api/auth/logout`
@@ -60,9 +63,13 @@
 - [x] Add `pkg/articles/postgres.go`
 - [x] Add `pkg/articles/service.go`
 - [x] Add `GET /api/articles`
+- [ ] Add JSON request validation for article writes
 - [ ] Add `POST /api/articles`
 - [x] Add `GET /api/articles/{id}`
 - [ ] Add `PATCH /api/articles/{id}`
+- [ ] Persist section reorder/create/delete operations against `article_sections`
+- [ ] Support article metadata updates (`title`, `author`, `intro`, `status`)
+- [ ] Seed default reaction types for newly created articles
 - [ ] Add article version creation flow
 - [ ] Add article section editing flow
 - [ ] Add share-token reset flow
@@ -79,6 +86,8 @@
 - [ ] Add `POST /api/reviews/{sessionId}/progress`
 - [ ] Add `POST /api/reviews/{sessionId}/reactions`
 - [ ] Add `POST /api/reviews/{sessionId}/summary`
+- [ ] Return article payloads shaped for the reader experience, not the author dashboard
+- [ ] Persist paragraph-level progress and reaction authorship details
 
 ### Phase 6: Analytics And Reader Management
 
@@ -90,6 +99,7 @@
 - [ ] Add cross-article reader management query surface
 - [ ] Add draft-killer heuristic implementation
 - [ ] Add export/report generation stub
+- [ ] Replace current placeholder reader/reaction endpoints with real query-backed responses
 
 ### Phase 7: Frontend Integration And Operations
 
@@ -100,3 +110,4 @@
 - [ ] Add database integration tests
 - [ ] Add HTTP handler tests
 - [ ] Add local developer runbook
+- [ ] Add at least one end-to-end smoke check covering migrate -> seed -> serve -> article API
