@@ -55,11 +55,11 @@
 - [x] Add `/auth/logout`
 - [x] Add `/auth/logout/callback`
 - [x] Add `auth-mode=dev` fallback for local work without Keycloak
-- [ ] Add local Keycloak bootstrap/run instructions
+- [x] Add local Keycloak bootstrap/run instructions
 - [x] Add authenticated author bootstrap from OIDC claims to local article ownership
 - [x] Protect article mutation endpoints with authenticated author identity
 - [x] Scope author article list/detail endpoints to the authenticated owner
-- [ ] Add manual OIDC callback smoke coverage against a live Keycloak realm
+- [x] Add manual OIDC callback smoke coverage against a live Keycloak realm
 
 ### Phase 4: Articles And Sharing
 
@@ -108,10 +108,10 @@
 ### Phase 7: Frontend Integration And Operations
 
 - [ ] Align frontend RTK Query clients with the real Go backend contracts
-- [ ] Add `docker-compose.yml` for backend plus PostgreSQL
-- [ ] Add Dockerfile for the Go service
-- [ ] Add backend unit tests
+- [x] Add `docker-compose.yml` for backend plus PostgreSQL
+- [x] Add Dockerfile for the Go service
+- [x] Add backend unit tests
 - [ ] Add database integration tests
-- [ ] Add HTTP handler tests
-- [ ] Add local developer runbook
-- [ ] Add at least one end-to-end smoke check covering migrate -> seed -> serve -> article API
+- [x] Add HTTP handler tests
+- [x] Add local developer runbook
+- [x] Add at least one end-to-end smoke check covering migrate -> seed -> serve -> article API

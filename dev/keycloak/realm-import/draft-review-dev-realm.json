@@ -1,0 +1,54 @@
+{
+  "realm": "draft-review-dev",
+  "enabled": true,
+  "displayName": "draft-review-dev",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "sslRequired": "external",
+  "clients": [
+    {
+      "clientId": "draft-review-web",
+      "name": "draft-review-web",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "draft-review-web-secret",
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8080/*",
+        "http://127.0.0.1:8080/*",
+        "http://localhost:8081/*",
+        "http://127.0.0.1:8081/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:8081",
+        "http://127.0.0.1:8081"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "author",
+      "email": "author@example.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Author",
+      "lastName": "Example",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "secret",
+          "temporary": false
+        }
+      ],
+      "requiredActions": []
+    }
+  ]
+}

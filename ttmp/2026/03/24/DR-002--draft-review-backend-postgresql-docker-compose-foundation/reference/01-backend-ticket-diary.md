@@ -22,7 +22,7 @@ RelatedFiles:
       Note: Task checklist updated during this diary entry
 ExternalSources: []
 Summary: Chronological diary for the DR-002 backend planning ticket, including repository investigation, document creation, validation, and delivery.
-LastUpdated: 2026-03-24T20:04:39.227367839-04:00
+LastUpdated: 2026-03-24T22:25:00-04:00
 WhatFor: Recording how the backend planning ticket was assembled and validated.
 WhenToUse: Use this diary when reviewing the documentation work, reconstructing decisions, or continuing backend implementation later.
 ---
@@ -119,6 +119,138 @@ docmgr status --summary-only
 docmgr ticket create-ticket --ticket DR-002 --title "Draft Review Backend - PostgreSQL Docker Compose Foundation" --topics backend,postgresql,docker-compose,api,auth
 docmgr doc add --ticket DR-002 --doc-type design-doc --title "Draft Review Backend Architecture and Implementation Guide"
 docmgr doc add --ticket DR-002 --doc-type reference --title "Backend Ticket Diary"
+```
+
+## Step 9: Add A Local Keycloak Dev Stack And Prove The OIDC Flow End To End
+
+Once the backend could sign browser sessions and map OIDC claims onto local authors, the remaining gap was operational: there was no repository-local way to boot Keycloak, no imported development realm, and no live proof that the full browser round-trip actually worked. I closed that by adding a standalone compose file, a realm import, helper `make` targets, and a real browser smoke test against Keycloak rather than stopping at unit tests.
+
+This step was important because OIDC code that passes isolated tests can still fail in practice due to redirect URI mismatches, issuer timing, cookies, or local port conflicts. I wanted one verified path inside this repo that another engineer can reproduce without piecing together commands from `hair-booking`.
+
+### Prompt Context
+
+**User prompt (verbatim):**
+```text
+we want to do auth using keycloak, look at /home/manuel/workspaces/2026-03-19/hair-signup/hair-booking
+```
+
+followed by:
+
+```text
+ok, continue,
+```
+
+and then:
+
+```text
+go ahead, don't stop, go do it all
+```
+
+**Assistant interpretation:** finish the Keycloak direction properly by adding local bootstrap assets, proving the live OIDC flow, documenting the exact runbook, and then continue with the next backend phases.
+
+**Inferred user intent:** do not stop at static auth code or partial docs; leave behind a runnable local OIDC stack and a trustworthy diary of the exact commands, failures, and fixes.
+
+**Commit (code):** pending during diary capture for this step
+
+### What I did
+- Added `docker-compose.local.yml` with:
+- one Postgres service for the app,
+- one Postgres service for Keycloak,
+- one Keycloak service running `start-dev --import-realm`.
+- Added `dev/keycloak/realm-import/draft-review-dev-realm.json` containing:
+- realm `draft-review-dev`,
+- confidential OIDC client `draft-review-web`,
+- redirect URIs for `127.0.0.1` and `localhost` on ports `8080` and `8081`,
+- test user `author` with password `secret`.
+- Added `Makefile` helper targets:
+- `local-keycloak-up`
+- `local-keycloak-down`
+- `local-keycloak-config`
+- `run-local-dev`
+- `run-local-oidc`
+- Fixed the helper targets so `PG_PORT` and `KEYCLOAK_PORT` overrides are propagated into `docker compose`.
+- Updated `README.md` with:
+- local Keycloak setup details,
+- helper target usage,
+- port override examples,
+- a reproducible live smoke path.
+- Booted the local stack on conflict-free ports:
+- Postgres `25432`,
+- Keycloak `18190`,
+- backend `8081`.
+- Ran a real browser-auth smoke test through Playwright:
+- opened `/auth/login`,
+- signed in through Keycloak as `author`,
+- landed on `/api/me`,
+- confirmed an authenticated OIDC identity,
+- created an article with the authenticated browser session,
+- logged out through `/auth/logout`,
+- confirmed `/api/me` became unauthenticated again.
+
+### Why
+- The backend needed a repository-local OIDC harness, not just borrowed assumptions from `hair-booking`.
+- The main failure modes for OIDC are operational rather than algorithmic.
+- A new intern should be able to run one documented path and see the full login and article-ownership flow themselves.
+
+### What worked
+- The imported realm and client were enough for a clean Keycloak login flow.
+- The backend’s signed browser session cookie worked correctly after callback.
+- The local-author bootstrap logic correctly mapped the OIDC user onto a local `users` row and article ownership.
+- The `Makefile` helper flow is now good enough for repeatable local use.
+
+### What didn't work
+- The first attempt to start the local compose stack on the default app Postgres port failed because another local service already owned `15432`.
+- The first attempt to reuse the default Keycloak port also failed because `18080` was already occupied.
+- Early compose revisions with explicit `container_name` values caused stale-container friction during recreation, so I removed the fixed names.
+- I briefly ran `migrate up` and `seed dev` concurrently against the same fresh database and hit:
+```text
+ERROR: duplicate key value violates unique constraint "pg_type_typname_nsp_index"
+```
+That was self-inflicted; `seed dev` already runs migrations internally.
+- One initial backend start in OIDC mode failed because Keycloak’s discovery endpoint was not fully ready yet, so the backend saw a connection reset while booting the authenticator.
+
+### What I learned
+- The helper targets need explicit port override plumbing. Relying on raw shell env overrides makes the runbook harder to trust.
+- `seed dev` should be treated as "migrate plus seed", not as a pure data insert command.
+- The OIDC path was stable once the compose stack was healthy and the redirect URIs matched the actual app port.
+
+### What was tricky to build
+- The subtle part was not the realm JSON itself; it was making the local stack resilient to port collisions that are common on this machine.
+- Another subtle point was logout behavior: Keycloak shows its own intermediate logout confirmation screen, so the smoke test needed one additional click before checking `/api/me`.
+
+### What warrants a second pair of eyes
+- Whether the local realm should also preconfigure alternate redirect URIs for other common dev ports such as Vite-driven author app ports.
+- Whether we want a dedicated scripted smoke command in the repo instead of keeping the live browser verification in the diary/runbook only.
+
+### What should be done in the future
+- Add a scripted OIDC smoke check once the frontend starts consuming `/api/me` and `/auth/*`.
+- Keep the realm import aligned with any future production Keycloak claim mapping changes.
+
+### Code review instructions
+- Review `docker-compose.local.yml`, the realm import JSON, and the `Makefile` targets together; they are one operational unit.
+- Re-run the documented smoke flow with an alternate port set to confirm the override path still works.
+- Confirm that article ownership after OIDC login uses the local `users` row produced by the auth service rather than a synthetic fallback.
+
+### Technical details
+- Main commands run:
+```text
+make local-keycloak-config
+make local-keycloak-up PG_PORT=25432 KEYCLOAK_PORT=18190
+go run ./cmd/draft-review seed dev --dsn 'postgres://draft_review:draft_review@127.0.0.1:25432/draft_review?sslmode=disable'
+make run-local-oidc PG_PORT=25432 KEYCLOAK_PORT=18190 APP_PORT=8081
+```
+- Manual browser flow validated:
+```text
+http://127.0.0.1:8081/auth/login?return_to=%2Fapi%2Fme
+username: author
+password: secret
+```
+- Verified outcomes:
+```text
+GET /api/me -> authenticated: true, authMode: "oidc", email: "author@example.com"
+POST /api/articles -> creates an article owned by the authenticated local user row
+GET /auth/logout?return_to=%2Fapi%2Fme -> logout confirmation through Keycloak
+GET /api/me -> authenticated: false
 ```
 
 ## Step 2: Write The Guide, Update Bookkeeping, Validate, And Deliver

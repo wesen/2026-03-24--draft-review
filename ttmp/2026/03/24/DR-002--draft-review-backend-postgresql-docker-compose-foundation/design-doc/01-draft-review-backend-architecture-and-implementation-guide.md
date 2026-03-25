@@ -52,7 +52,7 @@ RelatedFiles:
       Note: Defines the broader backend requirements including auth
 ExternalSources: []
 Summary: Evidence-backed Go backend design for Draft Review using Glazed command verbs, Clay-style database configuration sections, PostgreSQL, docker compose, and a phased implementation plan grounded in the current frontend and the hair-booking runtime patterns.
-LastUpdated: 2026-03-24T21:10:00-04:00
+LastUpdated: 2026-03-24T22:25:00-04:00
 WhatFor: Designing and implementing the first Go backend for Draft Review.
 WhenToUse: Use this guide when scaffolding the Draft Review Go service, Glazed CLI verbs, PostgreSQL schema, docker compose stack, or frontend-to-backend integration.
 ---
@@ -970,6 +970,37 @@ GET /api/articles/{id}/analytics
   -> query version comparison metrics
   -> return analytics DTO
 ```
+
+## Local OIDC Development Harness
+
+The repo should carry its own OIDC test harness instead of relying on tribal knowledge from `hair-booking`. In practice that means a standalone compose file for app Postgres plus Keycloak, an imported development realm, and helper targets that let a developer switch ports when the common defaults are already occupied.
+
+The concrete repository assets for that harness are:
+
+1. `docker-compose.local.yml` for local Postgres plus Keycloak,
+2. `dev/keycloak/realm-import/draft-review-dev-realm.json` for the imported realm, client, and test user,
+3. `Makefile` targets for `local-keycloak-up`, `local-keycloak-down`, `local-keycloak-config`, `run-local-dev`, and `run-local-oidc`.
+
+The important design rule is that these helpers must support explicit port overrides. On a shared development machine, `15432` or `18080` being occupied is normal, not exceptional. The documented workflow should therefore be valid both with defaults and with overrides such as:
+
+```text
+make local-keycloak-up PG_PORT=25432 KEYCLOAK_PORT=18190
+make run-local-oidc PG_PORT=25432 KEYCLOAK_PORT=18190 APP_PORT=8081
+```
+
+The minimum live acceptance test for the auth slice is:
+
+1. boot the local Keycloak stack,
+2. run `seed dev` against the app Postgres DSN,
+3. start the backend in `auth-mode=oidc`,
+4. visit `/auth/login?return_to=%2Fapi%2Fme`,
+5. sign in as the imported `author` user,
+6. confirm `/api/me` returns an authenticated OIDC identity,
+7. create an article in the same browser session,
+8. log out through `/auth/logout`,
+9. confirm `/api/me` returns `authenticated: false`.
+
+That live path matters because it validates more than unit tests can cover: redirect URI correctness, Keycloak readiness, cookie behavior, and the local-author ownership projection.
 
 ## Implementation Phases
 

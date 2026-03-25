@@ -130,3 +130,16 @@ Bound authenticated authors to local `users` rows, added auth-identity columns p
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/postgres.go — Local user bootstrap and update persistence
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/articles/postgres.go — Owner-scoped article queries and writes
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/db/seed.go — Development author upsert with auth identity fields
+
+
+## 2026-03-24
+
+Added a standalone local Keycloak development stack, helper `make` targets, README/runbook coverage for port overrides, and a live browser-verified OIDC smoke test against the imported `draft-review-dev` realm.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/docker-compose.local.yml — Standalone local Postgres plus Keycloak stack for OIDC testing
+- /home/manuel/code/wesen/2026-03-24--draft-review/dev/keycloak/realm-import/draft-review-dev-realm.json — Imported Keycloak realm, client, and test user
+- /home/manuel/code/wesen/2026-03-24--draft-review/Makefile — Helper targets for bringing the local Keycloak stack up and running the backend in dev or OIDC mode
+- /home/manuel/code/wesen/2026-03-24--draft-review/README.md — Local Keycloak bootstrap, port override, and smoke-test instructions
+- /home/manuel/code/wesen/2026-03-24--draft-review/ttmp/2026/03/24/DR-002--draft-review-backend-postgresql-docker-compose-foundation/reference/01-backend-ticket-diary.md — Diary entry recording the failures, fixes, and final successful smoke flow
