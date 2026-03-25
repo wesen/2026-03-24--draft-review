@@ -31,6 +31,7 @@ type View =
 
 export function AuthorApp() {
   const useMockApi = import.meta.env.VITE_USE_MSW === "1";
+  const backendOrigin = (import.meta.env.VITE_BACKEND_ORIGIN as string | undefined) || "http://127.0.0.1:8080";
   const [view, setView] = useState<View>("dashboard");
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [focusSection, setFocusSection] = useState<string | undefined>();
@@ -82,11 +83,15 @@ export function AuthorApp() {
   };
 
   const handleLogin = () => {
-    window.location.assign(`/auth/login?return_to=${encodeURIComponent("/")}`);
+    window.location.assign(
+      `${backendOrigin}/auth/login?return_to=${encodeURIComponent("/")}`
+    );
   };
 
   const handleLogout = () => {
-    window.location.assign(`/auth/logout?return_to=${encodeURIComponent("/")}`);
+    window.location.assign(
+      `${backendOrigin}/auth/logout?return_to=${encodeURIComponent("/")}`
+    );
   };
 
   const totalReactions = reactions.length;

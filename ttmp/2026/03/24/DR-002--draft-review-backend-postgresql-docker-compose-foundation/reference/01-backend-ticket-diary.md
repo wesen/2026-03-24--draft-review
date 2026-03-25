@@ -22,7 +22,7 @@ RelatedFiles:
       Note: Task checklist updated during this diary entry
 ExternalSources: []
 Summary: Chronological diary for the DR-002 backend planning ticket, including repository investigation, document creation, validation, and delivery.
-LastUpdated: 2026-03-24T22:30:00-04:00
+LastUpdated: 2026-03-24T22:45:00-04:00
 WhatFor: Recording how the backend planning ticket was assembled and validated.
 WhenToUse: Use this diary when reviewing the documentation work, reconstructing decisions, or continuing backend implementation later.
 ---
@@ -462,6 +462,84 @@ go ahead, don't stop, go do it all
 ```text
 cd frontend
 npm run build
+```
+
+## Step 12: Wire The Missing Dev Proxy Path
+
+After the frontend/backend alignment pass, one practical blocker still remained: there was no reliable way to run the real app on one browser origin during development. The backend already exposed a `frontend-dev-proxy-url` setting, but it did not actually proxy any browser routes. That meant auth and API testing still depended on awkward split-origin behavior. I fixed that by implementing the backend reverse proxy for non-API routes and tightening the Vite-side dev behavior around it.
+
+### Prompt Context
+
+**User prompt (verbatim):**
+```text
+alright wire up the proxy so I can test this for real.
+```
+
+**Assistant interpretation:** make the actual development proxy path work, not just document it, so the browser can exercise the real app against the real backend.
+
+**Inferred user intent:** be able to start the dev loop and open one URL that behaves like the real application, especially for auth-sensitive browser testing.
+
+**Commit (code):** pending during diary capture for this step
+
+### What I did
+- Added a real catch-all reverse proxy in `pkg/server/http.go` that forwards non-API browser routes to the configured frontend dev server when `frontend-dev-proxy-url` is set.
+- Added an HTTP test in `pkg/server/http_test.go` proving that `/r/...` is proxied to an upstream dev server instead of returning `404`.
+- Updated `frontend/vite.config.ts` to:
+- listen on `0.0.0.0`,
+- proxy `/api` to `VITE_BACKEND_ORIGIN` or `http://127.0.0.1:8080`.
+- Updated `frontend/src/app/AuthorApp.tsx` so login/logout always target the backend origin explicitly instead of relying on Vite to proxy `/auth`.
+- Updated `README.md` to define the canonical real-app dev loop:
+- backend on `8080`,
+- Vite on `5173`,
+- browser opened on `http://127.0.0.1:8080/`.
+
+### Why
+- Full browser auth flows should run on the backend origin because the OIDC redirect and cookie behavior belong there.
+- The repo already had the right configuration knob; the missing work was implementation and a clear local workflow.
+- A split setup can still be useful, but it should be deliberate: `5173` for UI iteration, `8080` for end-to-end app testing.
+
+### What worked
+- The backend origin now returns the Vite HTML shell on `/` and `/r/...` when the dev proxy is enabled.
+- `http://127.0.0.1:5173/api/me` now works through Vite’s `/api` proxy.
+- `go test ./cmd/... ./pkg/...` still passes.
+- `npm run build` still passes.
+
+### What didn't work
+- Proxying `/auth` through Vite was the wrong abstraction for this app. It produced a `431 Request Header Fields Too Large` response during direct testing and was removed.
+- The correct answer was to treat `8080` as the canonical full-app origin and keep `5173` as a UI-focused dev origin.
+
+### What I learned
+- The missing backend proxy was the actual blocker, not the frontend API clients.
+- Browser auth is much cleaner when the app is accessed through the backend origin from the start.
+- Vite still benefits from an `/api` proxy, but `/auth` should stay anchored on the backend origin for this setup.
+
+### What was tricky to build
+- The subtle part was not writing `httputil.NewSingleHostReverseProxy`; it was deciding where auth should live in development. Once I verified that Vite’s `/auth` proxy path was unhealthy, the right split became obvious:
+- `8080` for end-to-end testing,
+- `5173` for direct frontend iteration with API proxying only.
+
+### What warrants a second pair of eyes
+- The backend reverse proxy should be exercised with a real login/logout browser flow in OIDC mode after the user runs the full stack locally.
+- If embedded frontend serving is added later, the fallback precedence between embedded assets and the dev proxy should be reviewed carefully.
+
+### What should be done in the future
+- Consider adding a single `make dev` target that starts backend plus Vite together.
+- If desired, add a small health or debug route that reports whether the frontend dev proxy target is reachable.
+
+### Code review instructions
+- Read `pkg/server/http.go`, `pkg/server/http_test.go`, and `frontend/vite.config.ts` together; they define the new development routing model.
+- Validate the documented loop by opening `http://127.0.0.1:8080/` with the backend proxy enabled.
+
+### Technical details
+- Live checks run:
+```text
+docker compose up -d postgres
+go run ./cmd/draft-review seed dev --dsn 'postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable'
+go run ./cmd/draft-review serve --dsn 'postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable' --auto-migrate --auth-mode dev --listen-host 127.0.0.1 --listen-port 8080 --frontend-dev-proxy-url http://127.0.0.1:5173
+cd frontend && npm run dev -- --host 0.0.0.0
+curl -s http://127.0.0.1:8080/ | sed -n '1,5p'
+curl -s http://127.0.0.1:8080/r/tok-demo -I
+curl -s http://127.0.0.1:5173/api/me
 ```
 
 ## Step 2: Write The Guide, Update Bookkeeping, Validate, And Deliver

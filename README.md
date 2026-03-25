@@ -42,6 +42,15 @@ cd frontend
 VITE_USE_MSW=1 npm run dev
 ```
 
+Canonical real-app dev loop:
+
+1. Start Postgres.
+2. Start the backend with `--frontend-dev-proxy-url http://127.0.0.1:5173`.
+3. Start Vite in `frontend/`.
+4. Open `http://127.0.0.1:8080/`.
+
+Use `http://127.0.0.1:8080/` for full end-to-end testing because that keeps the browser on the backend origin for `/api`, `/auth`, and the OIDC callback. The Vite origin at `http://127.0.0.1:5173/` is still useful for UI iteration and now proxies `/api`, but browser auth should be exercised through `8080`.
+
 Start the backend against Keycloak / OIDC:
 
 ```bash
@@ -190,6 +199,8 @@ The live OIDC smoke path validated during implementation was:
 - `seed dev` inserts a stable local author plus one sample article and its first version.
 - Author article routes now resolve the current browser identity into a local `users` row and scope article access by `owner_user_id`.
 - The frontend now targets the real Go backend by default; set `VITE_USE_MSW=1` only when you intentionally want the legacy mock layer.
+- The backend now really proxies browser routes to the frontend dev server when `--frontend-dev-proxy-url` is set, so `/` and `/r/:token` can be tested through the backend origin.
+- Vite now listens on `0.0.0.0` and proxies `/api` to `VITE_BACKEND_ORIGIN` or `http://127.0.0.1:8080` by default.
 
 ## Known Gaps
 

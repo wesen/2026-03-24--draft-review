@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/go-go-golems/draft-review/pkg/analytics"
@@ -74,6 +77,7 @@ type appHandler struct {
 	reviewLinkService *reviewlinks.Service
 	reviewService     *reviews.Service
 	analyticsService  *analytics.Service
+	frontendProxy     *httputil.ReverseProxy
 }
 
 func NewHTTPServer(ctx context.Context, options Options) (*http.Server, error) {
@@ -155,6 +159,8 @@ func NewHandler(options HandlerOptions) http.Handler {
 		authSettings = &draftauth.Settings{Mode: draftauth.AuthModeDev, DevUserID: "local-author"}
 	}
 
+	frontendProxy := newFrontendDevProxy(options.FrontendDevProxyURL)
+
 	h := &appHandler{
 		version:           options.Version,
 		startedAt:         options.StartedAt,
@@ -166,6 +172,7 @@ func NewHandler(options HandlerOptions) http.Handler {
 		reviewLinkService: options.ReviewLinkService,
 		reviewService:     options.ReviewService,
 		analyticsService:  options.AnalyticsService,
+		frontendProxy:     frontendProxy,
 	}
 
 	mux := http.NewServeMux()
@@ -198,8 +205,27 @@ func NewHandler(options HandlerOptions) http.Handler {
 		mux.HandleFunc("GET /auth/logout", options.WebAuth.HandleLogout)
 		mux.HandleFunc("GET /auth/logout/callback", options.WebAuth.HandleLogoutCallback)
 	}
+	mux.HandleFunc("/", h.handleFrontend)
 
 	return mux
+}
+
+func newFrontendDevProxy(rawURL string) *httputil.ReverseProxy {
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return nil
+	}
+
+	target, err := url.Parse(rawURL)
+	if err != nil {
+		return nil
+	}
+
+	proxy := httputil.NewSingleHostReverseProxy(target)
+	proxy.ErrorHandler = func(w http.ResponseWriter, _ *http.Request, err error) {
+		writeError(w, http.StatusBadGateway, fmt.Sprintf("frontend dev proxy failed: %v", err))
+	}
+	return proxy
 }
 
 func (h *appHandler) handleInfo(w http.ResponseWriter, _ *http.Request) {
@@ -694,6 +720,15 @@ func (h *appHandler) handleReviewSummary(w http.ResponseWriter, r *http.Request)
 	}
 
 	writeJSON(w, http.StatusOK, result)
+}
+
+func (h *appHandler) handleFrontend(w http.ResponseWriter, r *http.Request) {
+	if h.frontendProxy == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	h.frontendProxy.ServeHTTP(w, r)
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {

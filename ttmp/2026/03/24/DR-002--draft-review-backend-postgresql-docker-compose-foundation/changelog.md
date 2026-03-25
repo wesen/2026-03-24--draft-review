@@ -174,3 +174,16 @@ Aligned the frontend with the real Go backend by adding auth and reader-session 
 - /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/app/ReaderApp.tsx — Passes the review token into the real reader-session flow
 - /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/reader/ReaderPage.tsx — Starts review sessions and persists progress/reactions/summary
 - /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/main.tsx — MSW is now opt-in via `VITE_USE_MSW=1`
+
+
+## 2026-03-24
+
+Wired the missing dev proxies so the real app can be tested end to end: the Go backend now proxies non-API browser routes to the frontend dev server when `frontend-dev-proxy-url` is set, and Vite now proxies `/api` to the backend while listening on `0.0.0.0`.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http.go — Adds the backend reverse proxy fallback for browser routes
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http_test.go — Covers proxying `/` and `/r/...` to an upstream frontend server
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/vite.config.ts — Adds Vite dev-server host binding plus `/api` proxy
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/app/AuthorApp.tsx — Sends login/logout to the backend origin explicitly
+- /home/manuel/code/wesen/2026-03-24--draft-review/README.md — Documents the canonical real-app dev loop on `http://127.0.0.1:8080/`

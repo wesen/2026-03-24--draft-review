@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -365,5 +366,34 @@ func TestHandleReviewProgressRejectsInvalidPercent(t *testing.T) {
 
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", recorder.Code)
+	}
+}
+
+func TestHandleFrontendProxiesToDevServer(t *testing.T) {
+	t.Parallel()
+
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = io.WriteString(w, "proxied:"+r.URL.Path)
+	}))
+	defer upstream.Close()
+
+	handler := NewHandler(HandlerOptions{
+		Version:             "test",
+		StartedAt:           time.Now().UTC(),
+		AuthSettings:        &draftauth.Settings{Mode: draftauth.AuthModeDev, DevUserID: "local-author"},
+		FrontendDevProxyURL: upstream.URL,
+	})
+
+	request := httptest.NewRequest(http.MethodGet, "/r/token-1", nil)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", recorder.Code)
+	}
+	if got := recorder.Body.String(); got != "proxied:/r/token-1" {
+		t.Fatalf("expected proxied body, got %q", got)
 	}
 }
