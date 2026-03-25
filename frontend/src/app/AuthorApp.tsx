@@ -14,6 +14,7 @@ import {
   useGetArticlesQuery,
   useGetReadersQuery,
   useGetReactionsQuery,
+  useCreateArticleMutation,
   useUpdateArticleMutation,
   useGenerateShareTokenMutation,
   useInviteReaderMutation,
@@ -48,6 +49,7 @@ export function AuthorApp() {
   const { data: articles = [] } = useGetArticlesQuery(undefined, {
     skip: !authReady,
   });
+  const [createArticle] = useCreateArticleMutation();
   const [updateArticle] = useUpdateArticleMutation();
   const [generateShareToken] = useGenerateShareTokenMutation();
   const [inviteReader] = useInviteReaderMutation();
@@ -95,13 +97,24 @@ export function AuthorApp() {
     );
   };
 
+  const handleNewArticle = useCallback(async () => {
+    const article = await createArticle({
+      title: "Untitled Article",
+      author: me?.displayName || me?.preferredUsername || me?.email || "You",
+      intro: "",
+    }).unwrap();
+    setSelectedArticle(article);
+    setFocusSection(undefined);
+    setView("edit");
+  }, [createArticle, me?.displayName, me?.email, me?.preferredUsername]);
+
   const totalReactions = reactions.length;
 
   const menus = [
     {
       label: "File",
       items: [
-        { label: "New Article\u2026", shortcut: "\u2318N" },
+        { label: "New Article\u2026", shortcut: "\u2318N", action: () => void handleNewArticle() },
         { divider: true, label: "" },
         { label: "Export Feedback\u2026", shortcut: "\u2318E" },
       ],
@@ -239,7 +252,7 @@ export function AuthorApp() {
               setView("settings");
             }}
             onReview={(id) => handleSelectArticle(id)}
-            onNewArticle={() => {}}
+            onNewArticle={() => void handleNewArticle()}
             onInvite={() => setShowInvite(true)}
           />
         </MacWindow>
