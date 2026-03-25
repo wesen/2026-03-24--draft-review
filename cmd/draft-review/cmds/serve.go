@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	draftauth "github.com/go-go-golems/draft-review/pkg/auth"
 	draftconfig "github.com/go-go-golems/draft-review/pkg/config"
 	draftdb "github.com/go-go-golems/draft-review/pkg/db"
 	"github.com/go-go-golems/draft-review/pkg/server"
@@ -62,6 +63,11 @@ func NewServeCommand(version string) (*ServeCommand, error) {
 		return nil, pkgerrors.Wrap(err, "failed to create sql section")
 	}
 
+	authSection, err := draftauth.NewSection()
+	if err != nil {
+		return nil, pkgerrors.Wrap(err, "failed to create auth section")
+	}
+
 	backendSection, err := draftconfig.NewBackendSection()
 	if err != nil {
 		return nil, pkgerrors.Wrap(err, "failed to create backend section")
@@ -79,14 +85,16 @@ func NewServeCommand(version string) (*ServeCommand, error) {
 
 The backend serves:
 - health and runtime info routes
-- future author and reader JSON endpoints on /api/*
+- author and reader JSON endpoints on /api/*
+- Keycloak-backed browser auth routes on /auth/*
 - a PostgreSQL-backed persistence layer
 
 Examples:
-  draft-review serve --dsn postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable
-  draft-review serve --host 127.0.0.1 --port 8080 --auto-migrate
+  draft-review serve --dsn 'postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable'
+  draft-review serve --auth-mode oidc --oidc-issuer-url http://127.0.0.1:18080/realms/draft-review-dev --oidc-client-id draft-review-web --oidc-client-secret secret --oidc-redirect-url http://127.0.0.1:8080/auth/callback --auth-session-secret local-session-secret
+  draft-review serve --auth-mode dev --listen-host 127.0.0.1 --listen-port 8080 --auto-migrate
 `),
-		cmds.WithSections(defaultSection, sqlSection, backendSection, commandSettingsSection),
+		cmds.WithSections(defaultSection, sqlSection, authSection, backendSection, commandSettingsSection),
 	)
 
 	return &ServeCommand{
@@ -104,6 +112,11 @@ func (c *ServeCommand) Run(ctx context.Context, parsedValues *values.Values) err
 	sqlSettings, err := draftconfig.LoadSQLConnectionSettings(parsedValues)
 	if err != nil {
 		return pkgerrors.Wrap(err, "failed to load sql connection settings")
+	}
+
+	authSettings, err := draftauth.LoadSettingsFromParsedValues(parsedValues)
+	if err != nil {
+		return pkgerrors.Wrap(err, "failed to load auth settings")
 	}
 
 	backendSettings, err := draftconfig.LoadBackendSettings(parsedValues)
@@ -137,6 +150,7 @@ func (c *ServeCommand) Run(ctx context.Context, parsedValues *values.Values) err
 		Host:                settings.ListenHost,
 		Port:                settings.ListenPort,
 		Version:             c.version,
+		AuthSettings:        authSettings,
 		Database:            db,
 		FrontendDevProxyURL: backendSettings.FrontendDevProxyURL,
 	})
@@ -155,6 +169,9 @@ func (c *ServeCommand) Run(ctx context.Context, parsedValues *values.Values) err
 
 	log.Info().
 		Str("address", httpServer.Addr).
+		Str("auth_mode", authSettings.Mode).
+		Str("issuer", authSettings.OIDCIssuerURL).
+		Str("client_id", authSettings.OIDCClientID).
 		Bool("database_configured", db != nil).
 		Bool("auto_migrate", backendSettings.AutoMigrate).
 		Str("frontend_dev_proxy_url", backendSettings.FrontendDevProxyURL).

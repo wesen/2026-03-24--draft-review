@@ -22,9 +22,23 @@ Run PostgreSQL only, then start the backend locally:
 ```bash
 docker compose up postgres
 go run ./cmd/draft-review serve \
-  --dsn postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable \
+  --dsn 'postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable' \
   --auto-migrate \
+  --auth-mode dev \
   --frontend-dev-proxy-url http://127.0.0.1:5173
+```
+
+Start the backend against Keycloak / OIDC:
+
+```bash
+go run ./cmd/draft-review serve \
+  --dsn 'postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable' \
+  --auth-mode oidc \
+  --auth-session-secret local-session-secret \
+  --oidc-issuer-url http://127.0.0.1:18080/realms/draft-review-dev \
+  --oidc-client-id draft-review-web \
+  --oidc-client-secret draft-review-web-secret \
+  --oidc-redirect-url http://127.0.0.1:8080/auth/callback
 ```
 
 Apply migrations without starting the HTTP server:
@@ -60,6 +74,7 @@ The current backend exposes these routes:
 
 - `GET /healthz`
 - `GET /api/info`
+- `GET /api/me`
 - `GET /api/articles`
 - `POST /api/articles`
 - `GET /api/articles/{id}`
@@ -67,18 +82,28 @@ The current backend exposes these routes:
 - `GET /api/articles/{id}/readers`
 - `GET /api/articles/{id}/reactions`
 
+When `auth-mode=oidc`, the backend also exposes:
+
+- `GET /auth/login`
+- `GET /auth/callback`
+- `GET /auth/logout`
+- `GET /auth/logout/callback`
+
 The article read and write routes are backed by PostgreSQL. The reader and reaction routes are still placeholders and currently return empty arrays.
 
 ## Local Development Notes
 
 - Docker Compose starts PostgreSQL on `127.0.0.1:5432` and the backend on `127.0.0.1:8080`.
 - The `serve` command can auto-run embedded migrations with `--auto-migrate`.
+- `auth-mode=dev` gives a synthetic local author identity through `/api/me`.
+- `auth-mode=oidc` expects a Keycloak-compatible issuer and signs its own HTTP-only browser session cookie after callback.
 - `seed dev` inserts a stable local author plus one sample article and its first version.
-- The backend currently uses a temporary development owner for article creation because author authentication has not been implemented yet.
+- Article creation still uses a temporary development owner until article ownership is bound to authenticated OIDC claims.
 
 ## Known Gaps
 
-- Author auth endpoints are not implemented yet.
+- Article mutation endpoints are not yet bound to the authenticated OIDC author identity.
+- Local Keycloak bootstrap instructions have not been added yet.
 - Article version creation is still in progress; `PATCH /api/articles/{id}` currently updates the current version in place.
 - Reader session, invite, analytics, and feedback APIs are not implemented yet.
 - Frontend RTK Query clients still assume the original mock API behavior in some areas.

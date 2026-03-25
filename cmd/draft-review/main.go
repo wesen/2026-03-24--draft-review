@@ -28,7 +28,7 @@ func main() {
 	cobraServeCmd, err := cli.BuildCobraCommandFromCommand(serveCmd,
 		cli.WithParserConfig(cli.CobraParserConfig{
 			AppName:           "draft-review",
-			ShortHelpSections: []string{"default", "sql-connection", "backend"},
+			ShortHelpSections: []string{"default", "sql-connection", "auth", "backend"},
 			MiddlewaresFunc:   cli.CobraCommandDefaultMiddlewares,
 		}),
 	)

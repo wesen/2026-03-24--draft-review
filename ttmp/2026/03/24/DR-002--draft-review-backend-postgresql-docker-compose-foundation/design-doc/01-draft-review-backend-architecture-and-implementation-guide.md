@@ -162,7 +162,7 @@ The current author dashboard computes average progress and "draft-killer" heuris
 
 The screen spec defines several backend-relevant requirements that are not implemented today:
 
-1. author signup/login/forgot-password/email verification,
+1. author authentication and session continuity,
 2. article manager, article creation, section editing, article settings,
 3. share modes: unique invite links, open link, password-protected link,
 4. per-article reaction configuration,
@@ -623,10 +623,13 @@ Purpose:
 
 Purpose:
 
-- author login/signup/logout if Draft Review owns auth directly,
-- or session integration if the auth approach is delegated later.
+- Keycloak / OIDC configuration,
+- signed browser session cookies,
+- `/auth/login`, `/auth/callback`, `/auth/logout`, and `/auth/logout/callback`,
+- `/api/me` identity projection for the frontend,
+- a `dev` fallback mode for local work without Keycloak.
 
-The frontend screen spec clearly expects app-authored flows, so this package should exist even if the auth implementation is basic at first.
+`hair-booking` already demonstrates this pattern, so Draft Review should follow the same split instead of building local password-reset or email-verification flows first.
 
 ## PostgreSQL Schema Design
 
@@ -636,19 +639,19 @@ The relational model from the earlier version of this document still holds. The 
 
 #### `users`
 
-Purpose: author accounts.
+Purpose: local author records and article ownership projections derived from OIDC identities.
 
 #### `author_sessions`
 
-Purpose: durable author login sessions or refresh-token records.
+Purpose: optional future durable session or revocation records if self-contained cookies become insufficient.
 
 #### `password_reset_tokens`
 
-Purpose: forgot-password flow.
+Purpose: not required for the Keycloak-first path. Keep only if Draft Review later adds app-managed credentials.
 
 #### `email_verification_tokens`
 
-Purpose: signup verification.
+Purpose: not required for the Keycloak-first path. Keep only if Draft Review later adds app-managed credentials.
 
 #### `articles`
 
@@ -736,12 +739,11 @@ Keep `/api` as the prefix because the current frontend requires it (`frontend/sr
 
 ### Author/auth endpoints
 
-1. `POST /api/auth/signup`
-2. `POST /api/auth/login`
-3. `POST /api/auth/logout`
-4. `POST /api/auth/forgot-password`
-5. `POST /api/auth/reset-password`
-6. `POST /api/auth/verify-email`
+1. `GET /api/me`
+2. `GET /auth/login`
+3. `GET /auth/callback`
+4. `GET /auth/logout`
+5. `GET /auth/logout/callback`
 
 ### Author/article endpoints
 
@@ -990,11 +992,12 @@ Tasks:
 
 Tasks:
 
-1. author signup/login/logout,
-2. password reset and email verification,
-3. article settings,
-4. access mode enforcement,
-5. reaction configuration.
+1. add Keycloak / OIDC browser auth,
+2. expose `/api/me`,
+3. map authenticated OIDC users onto local author ownership,
+4. article settings,
+5. access mode enforcement,
+6. reaction configuration.
 
 ### Phase 3: versions, editor support, summaries
 

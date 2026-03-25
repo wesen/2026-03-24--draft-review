@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-go-golems/draft-review/pkg/articles"
+	draftauth "github.com/go-go-golems/draft-review/pkg/auth"
 	draftdb "github.com/go-go-golems/draft-review/pkg/db"
 )
 
@@ -17,6 +18,7 @@ type Options struct {
 	Host                string
 	Port                int
 	Version             string
+	AuthSettings        *draftauth.Settings
 	Database            *draftdb.DB
 	ArticleService      *articles.Service
 	FrontendDevProxyURL string
@@ -25,6 +27,9 @@ type Options struct {
 type HandlerOptions struct {
 	Version             string
 	StartedAt           time.Time
+	AuthSettings        *draftauth.Settings
+	SessionManager      *draftauth.SessionManager
+	WebAuth             draftauth.WebHandler
 	Database            *draftdb.DB
 	ArticleService      *articles.Service
 	FrontendDevProxyURL string
@@ -34,6 +39,12 @@ type infoResponse struct {
 	Service            string    `json:"service"`
 	Version            string    `json:"version"`
 	StartedAt          time.Time `json:"startedAt"`
+	AuthMode           string    `json:"authMode"`
+	IssuerURL          string    `json:"issuerUrl,omitempty"`
+	ClientID           string    `json:"clientId,omitempty"`
+	LoginPath          string    `json:"loginPath,omitempty"`
+	LogoutPath         string    `json:"logoutPath,omitempty"`
+	CallbackPath       string    `json:"callbackPath,omitempty"`
 	DatabaseConfigured bool      `json:"databaseConfigured"`
 }
 
@@ -44,11 +55,40 @@ type apiEnvelope struct {
 type appHandler struct {
 	version        string
 	startedAt      time.Time
+	authSettings   *draftauth.Settings
+	sessionManager *draftauth.SessionManager
 	database       *draftdb.DB
 	articleService *articles.Service
 }
 
-func NewHTTPServer(_ context.Context, options Options) (*http.Server, error) {
+func NewHTTPServer(ctx context.Context, options Options) (*http.Server, error) {
+	var (
+		sessionManager *draftauth.SessionManager
+		webAuth        draftauth.WebHandler
+		err            error
+	)
+
+	authSettings := options.AuthSettings
+	if authSettings == nil {
+		authSettings = &draftauth.Settings{Mode: draftauth.AuthModeDev, DevUserID: "local-author"}
+	}
+
+	if authSettings.Mode == draftauth.AuthModeOIDC {
+		sessionManager, err = draftauth.NewSessionManager(
+			authSettings.SessionCookieName,
+			authSettings.SessionSecret,
+			authSettings.OIDCRedirectURL,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		webAuth, err = draftauth.NewOIDCAuthenticator(ctx, authSettings, sessionManager)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	articleService := options.ArticleService
 	if articleService == nil && options.Database != nil && options.Database.Pool() != nil {
 		articleService = articles.NewService(articles.NewPostgresRepository(options.Database.Pool()))
@@ -59,6 +99,9 @@ func NewHTTPServer(_ context.Context, options Options) (*http.Server, error) {
 		Handler: NewHandler(HandlerOptions{
 			Version:             options.Version,
 			StartedAt:           time.Now().UTC(),
+			AuthSettings:        authSettings,
+			SessionManager:      sessionManager,
+			WebAuth:             webAuth,
 			Database:            options.Database,
 			ArticleService:      articleService,
 			FrontendDevProxyURL: options.FrontendDevProxyURL,
@@ -68,9 +111,16 @@ func NewHTTPServer(_ context.Context, options Options) (*http.Server, error) {
 }
 
 func NewHandler(options HandlerOptions) http.Handler {
+	authSettings := options.AuthSettings
+	if authSettings == nil {
+		authSettings = &draftauth.Settings{Mode: draftauth.AuthModeDev, DevUserID: "local-author"}
+	}
+
 	h := &appHandler{
 		version:        options.Version,
 		startedAt:      options.StartedAt,
+		authSettings:   authSettings,
+		sessionManager: options.SessionManager,
 		database:       options.Database,
 		articleService: options.ArticleService,
 	}
@@ -80,12 +130,19 @@ func NewHandler(options HandlerOptions) http.Handler {
 		writeJSON(w, http.StatusOK, apiEnvelope{Data: map[string]string{"status": "ok"}})
 	})
 	mux.HandleFunc("GET /api/info", h.handleInfo)
+	mux.HandleFunc("GET /api/me", h.handleMe)
 	mux.HandleFunc("GET /api/articles", h.handleArticles)
 	mux.HandleFunc("POST /api/articles", h.handleCreateArticle)
 	mux.HandleFunc("GET /api/articles/{id}", h.handleArticle)
 	mux.HandleFunc("PATCH /api/articles/{id}", h.handleUpdateArticle)
 	mux.HandleFunc("GET /api/articles/{id}/readers", h.handleArticleReaders)
 	mux.HandleFunc("GET /api/articles/{id}/reactions", h.handleArticleReactions)
+	if options.WebAuth != nil {
+		mux.HandleFunc("GET /auth/login", options.WebAuth.HandleLogin)
+		mux.HandleFunc("GET /auth/callback", options.WebAuth.HandleCallback)
+		mux.HandleFunc("GET /auth/logout", options.WebAuth.HandleLogout)
+		mux.HandleFunc("GET /auth/logout/callback", options.WebAuth.HandleLogoutCallback)
+	}
 
 	return mux
 }
@@ -95,9 +152,28 @@ func (h *appHandler) handleInfo(w http.ResponseWriter, _ *http.Request) {
 		Service:            "draft-review",
 		Version:            h.version,
 		StartedAt:          h.startedAt,
+		AuthMode:           h.authSettings.Mode,
+		IssuerURL:          h.authSettings.OIDCIssuerURL,
+		ClientID:           h.authSettings.OIDCClientID,
+		LoginPath:          "/auth/login",
+		LogoutPath:         "/auth/logout",
+		CallbackPath:       "/auth/callback",
 		DatabaseConfigured: h.database != nil,
 	}
 	writeJSON(w, http.StatusOK, apiEnvelope{Data: response})
+}
+
+func (h *appHandler) handleMe(w http.ResponseWriter, r *http.Request) {
+	user, ok := h.currentUser(r)
+	if !ok {
+		writeJSON(w, http.StatusOK, apiEnvelope{Data: draftauth.UserInfo{
+			Authenticated: false,
+			AuthMode:      h.authSettings.Mode,
+		}})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, apiEnvelope{Data: user})
 }
 
 func (h *appHandler) handleArticles(w http.ResponseWriter, r *http.Request) {
@@ -218,4 +294,39 @@ func decodeJSONBody(r *http.Request, target any) error {
 	}
 
 	return nil
+}
+
+func (h *appHandler) currentUser(r *http.Request) (*draftauth.UserInfo, bool) {
+	claims, ok := h.currentClaims(r)
+	if !ok {
+		return nil, false
+	}
+
+	user := claims.UserInfo(h.authSettings.Mode)
+	return &user, true
+}
+
+func (h *appHandler) currentClaims(r *http.Request) (*draftauth.SessionClaims, bool) {
+	switch h.authSettings.Mode {
+	case draftauth.AuthModeDev:
+		return &draftauth.SessionClaims{
+			Issuer:            "dev",
+			Subject:           h.authSettings.DevUserID,
+			PreferredUsername: h.authSettings.DevUserID,
+			DisplayName:       "Development Author",
+			IssuedAt:          time.Now().UTC(),
+			ExpiresAt:         time.Now().UTC().Add(24 * time.Hour),
+		}, true
+	case draftauth.AuthModeOIDC:
+		if h.sessionManager == nil {
+			return nil, false
+		}
+		claims, err := h.sessionManager.ReadSession(r)
+		if err != nil {
+			return nil, false
+		}
+		return claims, true
+	default:
+		return nil, false
+	}
 }

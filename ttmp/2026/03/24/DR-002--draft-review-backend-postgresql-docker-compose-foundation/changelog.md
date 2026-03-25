@@ -104,3 +104,16 @@ Added the initial auth package with domain types, password hashing helpers, opaq
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/types.go — Auth-facing DTO and persistence model shapes
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/helpers.go — Password, token, and session cookie helpers
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/helpers_test.go — Focused tests for auth helper behavior
+
+
+## 2026-03-24
+
+Pivoted Draft Review auth to the Keycloak / OIDC model used by `hair-booking`, adding Glazed auth settings, signed browser sessions, `/auth/*` routes, `/api/me`, auth-aware `/api/info`, and focused auth/server tests.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/config.go — Glazed auth section and OIDC settings
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/session.go — Signed browser session cookie manager
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/oidc.go — Keycloak / OIDC login and callback flow
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http.go — Auth route registration and `/api/me`
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http_test.go — `/api/me` server coverage

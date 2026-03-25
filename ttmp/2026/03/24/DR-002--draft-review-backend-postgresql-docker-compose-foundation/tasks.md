@@ -46,16 +46,18 @@
 ### Phase 3: Author Auth
 
 - [x] Add `pkg/auth/types.go`
-- [x] Add password hashing and session helpers
-- [x] Add author session cookie/token issuance and revocation helpers
-- [ ] Add `POST /api/auth/signup`
-- [ ] Add `POST /api/auth/login`
-- [ ] Add `POST /api/auth/logout`
-- [ ] Add password reset token persistence
-- [ ] Add email verification token persistence
-- [ ] Add `POST /api/auth/forgot-password`
-- [ ] Add `POST /api/auth/reset-password`
-- [ ] Add `POST /api/auth/verify-email`
+- [x] Add `pkg/auth/config.go` with a Glazed auth section
+- [x] Add signed browser session helpers
+- [x] Add OIDC / Keycloak login flow helpers
+- [x] Add `GET /api/me`
+- [x] Add `/auth/login`
+- [x] Add `/auth/callback`
+- [x] Add `/auth/logout`
+- [x] Add `/auth/logout/callback`
+- [x] Add `auth-mode=dev` fallback for local work without Keycloak
+- [ ] Add local Keycloak bootstrap/run instructions
+- [ ] Add authenticated author bootstrap from OIDC claims to local article ownership
+- [ ] Protect article mutation endpoints with authenticated author identity
 
 ### Phase 4: Articles And Sharing
 

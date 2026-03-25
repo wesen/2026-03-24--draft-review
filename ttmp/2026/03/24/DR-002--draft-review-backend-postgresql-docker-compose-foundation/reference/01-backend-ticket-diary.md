@@ -780,6 +780,137 @@ gofmt -w pkg/auth/*.go
 go test ./cmd/... ./pkg/...
 ```
 
+## Step 10: Pivot Author Auth To Keycloak / OIDC
+
+After the initial auth helper slice, the direction changed: Draft Review should not build app-managed signup/login/password-reset flows first. Instead, it should follow the `hair-booking` model and use Keycloak-backed browser OIDC, with the backend owning signed session cookies and exposing the authenticated author through `/api/me`.
+
+I treated this as a real implementation pivot, not just a task-list note. That meant replacing the local password-helper dead-end, adding Glazed auth settings, adding session and OIDC packages, wiring `/auth/*` routes and `/api/me`, updating the ticket language, and validating the dev-mode runtime behavior.
+
+### Prompt Context
+
+**User prompt (verbatim):**
+```text
+we want to do auth using keycloak, look at /home/manuel/workspaces/2026-03-19/hair-signup/hair-booking
+```
+
+**Assistant interpretation:** Switch the auth plan and implementation toward the same Keycloak / OIDC pattern used in `hair-booking`.
+
+**Inferred user intent:** Avoid investing further in local password-auth flows and align Draft Review with an existing, already-proven Keycloak integration pattern from the user’s own Go codebase.
+
+**Commit (code):** pending in this step while the Keycloak auth slice is being finalized
+
+### What I did
+- Inspected the `hair-booking` reference files:
+- `pkg/auth/config.go`,
+- `pkg/auth/session.go`,
+- `pkg/auth/oidc.go`,
+- `pkg/server/http.go`,
+- `pkg/server/handlers_me.go`,
+- related tests and serve wiring.
+- Replaced the earlier local-password helper direction by:
+- deleting `pkg/auth/helpers.go`,
+- deleting `pkg/auth/helpers_test.go`,
+- adding `pkg/auth/config.go`,
+- adding `pkg/auth/session.go`,
+- adding `pkg/auth/oidc.go`,
+- adding `pkg/auth/session_test.go`,
+- adding `pkg/auth/oidc_test.go`.
+- Updated `cmd/draft-review/cmds/serve.go` to:
+- register a Glazed auth section,
+- load auth settings,
+- pass auth settings into the server,
+- document OIDC examples.
+- Updated `cmd/draft-review/main.go` so the serve command help includes the auth section.
+- Updated `pkg/server/http.go` to:
+- initialize auth settings,
+- create the session manager and OIDC authenticator,
+- expose `/api/me`,
+- expose `/auth/login`, `/auth/callback`, `/auth/logout`, `/auth/logout/callback` in OIDC mode,
+- include auth metadata in `/api/info`,
+- support `auth-mode=dev` for local work.
+- Added `pkg/server/http_test.go` to cover `/api/me` in dev and unauthenticated OIDC modes.
+- Updated `README.md`, `tasks.md`, `changelog.md`, and the design doc so the ticket now points at Keycloak / OIDC rather than local signup/reset flows.
+
+### Why
+- `hair-booking` already provides a working Glazed + OIDC + signed-cookie model in the same ecosystem.
+- Reusing that pattern is materially better than inventing a different auth architecture for Draft Review.
+
+### What worked
+- The `hair-booking` structure copied over cleanly with only project-specific env names and help text changes.
+- The dev-mode smoke test verified the new runtime surface:
+- `/api/info` now reports auth configuration,
+- `/api/me` returns a synthetic local author in `auth-mode=dev`.
+- The auth package and server tests passed after wiring.
+
+### What didn't work
+- The first `go test ./cmd/... ./pkg/...` failed because the OIDC dependencies were not yet in `go.mod`:
+```text
+pkg/auth/oidc.go:15:2: no required module provides package github.com/go-jose/go-jose/v3
+pkg/auth/oidc.go:18:2: no required module provides package golang.org/x/oauth2
+```
+- I fixed that with `go get github.com/go-jose/go-jose/v3 github.com/go-jose/go-jose/v3/jwt golang.org/x/oauth2` followed by `go mod tidy`.
+- My first auth smoke attempt without a DSN failed because the current SQL config layer still insists on a configured connection string:
+```text
+Error: failed to compute connection string: dsn is empty and host/database/user are not fully configured
+```
+- I also hit a short startup race right after `docker compose up -d postgres`:
+```text
+failed to ping postgres: dial tcp 127.0.0.1:5432: connect: connection refused
+```
+- Retrying the migration command after Postgres finished booting resolved that.
+
+### What I learned
+- The current backend already has a clean seam for browser auth: Glazed section on `serve`, auth initialization in `NewHTTPServer`, session decoding in handler helpers, and `/api/me` as the frontend probe.
+- The remaining hard part is no longer Keycloak wiring. It is binding authenticated OIDC claims to local author ownership in the article layer.
+
+### What was tricky to build
+- The subtle part was not the OIDC code itself; it was making sure the implementation pivot was reflected everywhere. Without updating the ticket/docs, the repo would have compiled with Keycloak auth while the implementation guide still told an intern to build password resets and email verification first.
+
+### What warrants a second pair of eyes
+- The `auth-mode=dev` versus `auth-mode=oidc` behavior split in `pkg/server/http.go`.
+- The decision to leave article ownership on the temporary development owner for one more slice until OIDC identity is threaded into article mutations.
+- The current CLI/database behavior where `serve` still expects explicit SQL connection settings even for auth-only local checks.
+
+### What should be done in the future
+- Add authenticated author bootstrap from OIDC `issuer` + `subject` claims into a local author/user record.
+- Protect article mutation routes with the authenticated author identity.
+- Add local Keycloak startup instructions and, ideally, a small local Keycloak compose/bootstrap flow similar to `hair-booking`.
+
+### Code review instructions
+- Start with `pkg/auth/config.go`, `pkg/auth/session.go`, and `pkg/auth/oidc.go`.
+- Then review `cmd/draft-review/cmds/serve.go` and `pkg/server/http.go`.
+- Validate with:
+```text
+go test ./cmd/... ./pkg/...
+docker compose up -d postgres
+go run ./cmd/draft-review migrate up --dsn 'postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable'
+go run ./cmd/draft-review serve --auth-mode dev --dsn 'postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable' --listen-host 127.0.0.1 --listen-port 8080
+curl -sS http://127.0.0.1:8080/api/info
+curl -sS http://127.0.0.1:8080/api/me
+docker compose down
+```
+
+### Technical details
+- Commands run:
+```text
+rg -n "keycloak|oidc|openid|oauth|session|auth" /home/manuel/workspaces/2026-03-19/hair-signup/hair-booking -S
+sed -n '1,260p' /home/manuel/workspaces/2026-03-19/hair-signup/hair-booking/pkg/auth/config.go
+sed -n '1,340p' /home/manuel/workspaces/2026-03-19/hair-signup/hair-booking/pkg/auth/session.go
+sed -n '1,360p' /home/manuel/workspaces/2026-03-19/hair-signup/hair-booking/pkg/auth/oidc.go
+gofmt -w cmd/draft-review/main.go cmd/draft-review/cmds/serve.go pkg/auth/*.go pkg/server/http.go
+go test ./cmd/... ./pkg/...
+go get github.com/go-jose/go-jose/v3 github.com/go-jose/go-jose/v3/jwt golang.org/x/oauth2
+go mod tidy
+go test ./cmd/... ./pkg/...
+docker compose up -d postgres
+go run ./cmd/draft-review migrate up --dsn 'postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable'
+go run ./cmd/draft-review serve --auth-mode dev --dsn 'postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable' --listen-host 127.0.0.1 --listen-port 8080
+curl -sS http://127.0.0.1:8080/api/info
+curl -sS http://127.0.0.1:8080/api/me
+curl -sS -o /tmp/draft-review-auth-login.txt -w '%{http_code}' http://127.0.0.1:8080/auth/login
+docker compose down
+```
+
 ## Context
 
 This diary belongs to the backend planning ticket for Draft Review. The app is currently a React frontend using MSW and in-memory mock data; this ticket defines the first real backend built on PostgreSQL and local Docker Compose.

@@ -4,11 +4,13 @@ go 1.25.7
 
 require (
 	github.com/go-go-golems/glazed v1.0.5
+	github.com/go-jose/go-jose/v3 v3.0.4
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/cobra v1.10.1
+	golang.org/x/oauth2 v0.36.0
 )
 
 require (
