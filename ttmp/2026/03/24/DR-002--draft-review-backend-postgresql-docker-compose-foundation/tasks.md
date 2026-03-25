@@ -134,3 +134,5 @@
 - [x] Fix the hosted frontend auth-origin fallback so login/logout stay on the current app origin
 - [x] Verify the live hosted new-article flow and add a visible empty-dashboard create action
 - [x] Set HTML shell cache headers so hosted deploys do not strand browsers on stale frontend bundles
+- [x] Add a generic share-link path alongside the per-email invite flow
+- [x] Fix article editor textarea so `Enter` inserts line breaks while drafting

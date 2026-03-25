@@ -1887,3 +1887,59 @@ curl -I https://draft-review.app.scapegoat.dev/
 curl -sS -H 'Cache-Control: no-cache' https://draft-review.app.scapegoat.dev/ | sed -n '1,20p'
 ```
 - Confirm the first response includes `Cache-Control: no-cache` and the HTML points at the current asset hash.
+
+## 2026-03-25 - Share Dialog And Editor Drafting Follow-Up
+
+### Goal
+- Put generic link sharing on the same screen as email-based invites, and fix the article editor so authors can type line breaks normally with `Enter`.
+
+### What I changed
+- Updated `frontend/src/author/InviteDialog.tsx` so the dialog now has two sections:
+- a generic `Share Link` area that generates and copies a reusable review URL
+- an optional `Reader Email` area that still creates a per-reader tracked link
+- Wired `frontend/src/app/AuthorApp.tsx` to pass both the current article `shareUrl` and a share-token generator callback into the invite dialog.
+- Updated the invite dialog styles and Storybook story to reflect the new two-path share UI.
+- Reworked `frontend/src/author/ArticleEditor.tsx` so the content textarea uses a local draft buffer instead of re-parsing the persisted paragraph array on every keystroke.
+- The draft content is now committed when:
+- the textarea blurs
+- the active section changes
+- preview is opened
+- save is clicked
+- Rebuilt the embedded frontend with:
+```text
+go generate ./pkg/web
+```
+- Re-ran backend test coverage with:
+```text
+go test ./cmd/... ./pkg/...
+```
+
+### What worked
+- The share-link change fit cleanly into the existing invite dialog without requiring any backend API changes because the app already had `POST /api/articles/{id}/share-token`.
+- The textarea fix worked once the draft buffer became the source of truth during typing, instead of the normalized paragraph array.
+- The existing save/preview hooks made it straightforward to commit the draft before handing the article object elsewhere.
+
+### What didn't work
+- The original editor implementation normalized text too aggressively:
+```text
+split(/\n\n+/) -> trim() -> filter(length > 0)
+```
+- That meant a just-typed newline could disappear immediately, which made `Enter` feel broken even though the textarea itself was fine.
+
+### What I learned
+- For rich-ish text entry, normalization belongs at commit boundaries, not on every keystroke.
+- The user intent for sharing is broader than “send an email invite”; the UI needs to expose tracked invites and generic links side by side.
+
+### Review notes
+- In the author UI, open the invite dialog and verify:
+```text
+1. Share Link can be generated and copied without entering an email
+2. Reader Email still creates a per-reader link and shows it inline
+```
+- In the article editor, type:
+```text
+Line one
+
+Line two
+```
+- Confirm the blank line remains while typing, and that save/preview still split it into separate reader paragraphs.

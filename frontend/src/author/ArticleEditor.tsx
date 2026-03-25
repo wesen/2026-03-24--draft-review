@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { Article, Section } from "../types";
 import { MacButton } from "../chrome/MacButton";
 import "./ArticleEditor.css";
@@ -24,6 +24,23 @@ export function ArticleEditor({
 
   const activeSection = article.sections.find((s) => s.id === activeSectionId);
 
+  const parseParagraphs = useCallback((text: string) => {
+    const paragraphs = text
+      .split(/\n\n+/)
+      .map((paragraph) => paragraph.trim())
+      .filter((paragraph) => paragraph.length > 0);
+
+    if (paragraphs.length === 0) {
+      paragraphs.push("");
+    }
+
+    return paragraphs;
+  }, []);
+
+  const [contentDraft, setContentDraft] = useState(
+    activeSection?.paragraphs.join("\n\n") || ""
+  );
+
   const updateSection = useCallback(
     (sectionId: string, updates: Partial<Section>) => {
       setArticle((prev) => ({
@@ -36,6 +53,32 @@ export function ArticleEditor({
     []
   );
 
+  useEffect(() => {
+    setContentDraft(activeSection?.paragraphs.join("\n\n") || "");
+  }, [activeSection]);
+
+  const buildArticleWithCommittedDraft = useCallback(
+    (source: Article) => {
+      if (!activeSectionId) {
+        return source;
+      }
+
+      return {
+        ...source,
+        sections: source.sections.map((section) =>
+          section.id === activeSectionId
+            ? { ...section, paragraphs: parseParagraphs(contentDraft) }
+            : section
+        ),
+      };
+    },
+    [activeSectionId, contentDraft, parseParagraphs]
+  );
+
+  const commitContentDraft = useCallback(() => {
+    setArticle((prev) => buildArticleWithCommittedDraft(prev));
+  }, [buildArticleWithCommittedDraft]);
+
   const addSection = () => {
     const newSection: Section = {
       id: `s-new-${Date.now()}`,
@@ -43,8 +86,8 @@ export function ArticleEditor({
       paragraphs: [""],
     };
     setArticle((prev) => ({
-      ...prev,
-      sections: [...prev.sections, newSection],
+      ...buildArticleWithCommittedDraft(prev),
+      sections: [...buildArticleWithCommittedDraft(prev).sections, newSection],
     }));
     setActiveSectionId(newSection.id);
   };
@@ -65,25 +108,14 @@ export function ArticleEditor({
     const toIndex = fromIndex + direction;
     if (toIndex < 0 || toIndex >= article.sections.length) return;
     setArticle((prev) => {
-      const sections = [...prev.sections];
+      const committed = buildArticleWithCommittedDraft(prev);
+      const sections = [...committed.sections];
       [sections[fromIndex], sections[toIndex]] = [
         sections[toIndex],
         sections[fromIndex],
       ];
-      return { ...prev, sections };
+      return { ...committed, sections };
     });
-  };
-
-  const contentText = activeSection?.paragraphs.join("\n\n") || "";
-
-  const handleContentChange = (text: string) => {
-    if (!activeSection) return;
-    const paragraphs = text
-      .split(/\n\n+/)
-      .map((p) => p.trim())
-      .filter((p) => p.length > 0);
-    if (paragraphs.length === 0) paragraphs.push("");
-    updateSection(activeSection.id, { paragraphs });
   };
 
   return (
@@ -100,7 +132,10 @@ export function ArticleEditor({
                   ? "dr-editor__section-item--active"
                   : ""
               }`}
-              onClick={() => setActiveSectionId(s.id)}
+              onClick={() => {
+                commitContentDraft();
+                setActiveSectionId(s.id);
+              }}
             >
               <div className="dr-editor__section-reorder">
                 <span
@@ -168,8 +203,9 @@ export function ArticleEditor({
             <label className="dr-editor__label">Content</label>
             <textarea
               className="dr-textarea dr-editor__content-input"
-              value={contentText}
-              onChange={(e) => handleContentChange(e.target.value)}
+              value={contentDraft}
+              onBlur={commitContentDraft}
+              onChange={(e) => setContentDraft(e.target.value)}
               rows={16}
             />
             <div className="dr-editor__hint">
@@ -179,11 +215,24 @@ export function ArticleEditor({
 
             <div className="dr-editor__actions">
               {onPreview && (
-                <MacButton onClick={() => onPreview(article)}>
+                <MacButton
+                  onClick={() => {
+                    const nextArticle = buildArticleWithCommittedDraft(article);
+                    setArticle(nextArticle);
+                    onPreview(nextArticle);
+                  }}
+                >
                   Preview as Reader
                 </MacButton>
               )}
-              <MacButton primary onClick={() => onSave(article)}>
+              <MacButton
+                primary
+                onClick={() => {
+                  const nextArticle = buildArticleWithCommittedDraft(article);
+                  setArticle(nextArticle);
+                  onSave(nextArticle);
+                }}
+              >
                 Save
               </MacButton>
             </div>

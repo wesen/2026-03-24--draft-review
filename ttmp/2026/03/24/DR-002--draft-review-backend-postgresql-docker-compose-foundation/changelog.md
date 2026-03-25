@@ -281,3 +281,18 @@ Fixed the hosted stale-frontend edge by sending `Cache-Control: no-cache` on HTM
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http_test.go — Frontend handler tests now assert the HTML cache policy
 - /home/manuel/code/wesen/2026-03-24--draft-review/docs/deployments/draft-review-coolify.md — Hosted verification checklist now includes the HTML cache header
 - /home/manuel/code/wesen/2026-03-24--draft-review/docs/deployments/draft-review-coolify-playbook.md — Operator playbook now checks the root HTML cache policy after deploy
+
+
+## 2026-03-25
+
+Updated the share/invite UX so the dialog now exposes a generic article share link on the same screen as the optional per-reader email flow, and fixed the article editor textarea so `Enter` creates real draft line breaks instead of getting collapsed away immediately.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/app/AuthorApp.tsx — Invite dialog now receives the generic share-link generator and current share URL
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/InviteDialog.tsx — Share link and email invite now live together in one dialog
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/InviteDialog.css — Dialog layout updated for the new two-path share UI
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/InviteDialog.stories.tsx — Story updated to demonstrate generic share-link generation
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/ArticleEditor.tsx — Textarea now keeps a local draft buffer so `Enter` and blank lines survive during editing
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/web/public/index.html — Embedded production shell rebuilt for the share/editor follow-up
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/web/public/assets/index-f2YjDYns.js — Embedded production JS bundle containing the invite and editor fixes

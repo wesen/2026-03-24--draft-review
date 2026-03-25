@@ -353,6 +353,15 @@ export function AuthorApp() {
       {showInvite && (
         <InviteDialog
           onClose={() => setShowInvite(false)}
+          shareUrl={shareUrl}
+          onGenerateShareLink={async () => {
+            if (!activeArticleId) {
+              throw new Error("No active article selected");
+            }
+            const result = await generateShareToken(activeArticleId).unwrap();
+            setShareUrl(result.url);
+            return result.url;
+          }}
           onInvite={async (email, note) => {
             if (!activeArticleId) {
               throw new Error("No active article selected");

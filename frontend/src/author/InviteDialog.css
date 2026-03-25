@@ -28,6 +28,18 @@
   line-height: 1.5;
 }
 
+.dr-invite-dialog__section {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: var(--dr-border-thin) solid var(--dr-border-light);
+}
+
+.dr-invite-dialog__section:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
 .dr-invite-dialog__label {
   display: block;
   font-family: var(--dr-font-title);
@@ -38,6 +50,21 @@
 
 .dr-invite-dialog__label:first-of-type {
   margin-top: 0;
+}
+
+.dr-invite-dialog__optional {
+  margin-left: 8px;
+  font-family: var(--dr-font-body);
+  font-size: var(--dr-font-size-xs);
+  color: var(--dr-subtle);
+  text-transform: lowercase;
+}
+
+.dr-invite-dialog__hint {
+  margin-bottom: 8px;
+  line-height: 1.4;
+  color: var(--dr-subtle);
+  font-size: var(--dr-font-size-sm);
 }
 
 .dr-invite-dialog__actions {
@@ -53,8 +80,10 @@
 }
 
 .dr-invite-dialog__sent {
-  text-align: center;
-  padding: 20px 0;
+  margin-top: 12px;
+  padding: 12px;
+  border: var(--dr-border-thin) solid var(--dr-border-light);
+  background: rgba(0, 0, 0, 0.03);
 }
 
 .dr-invite-dialog__sent-title {
