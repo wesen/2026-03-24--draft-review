@@ -94,6 +94,9 @@ func TestHandleFrontendServesEmbeddedIndex(t *testing.T) {
 	if contentType := recorder.Header().Get("Content-Type"); contentType != "text/html; charset=utf-8" {
 		t.Fatalf("expected html content type, got %q", contentType)
 	}
+	if cacheControl := recorder.Header().Get("Cache-Control"); cacheControl != "no-cache" {
+		t.Fatalf("expected no-cache html header, got %q", cacheControl)
+	}
 }
 
 func TestHandleFrontendServesEmbeddedAssets(t *testing.T) {
@@ -143,6 +146,9 @@ func TestHandleFrontendFallsBackToIndexForReaderRoutes(t *testing.T) {
 	}
 	if body := recorder.Body.String(); !bytes.Contains([]byte(body), []byte("draft-review-shell")) {
 		t.Fatalf("expected index fallback, got %q", body)
+	}
+	if cacheControl := recorder.Header().Get("Cache-Control"); cacheControl != "no-cache" {
+		t.Fatalf("expected no-cache html header, got %q", cacheControl)
 	}
 }
 

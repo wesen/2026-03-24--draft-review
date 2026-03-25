@@ -133,3 +133,4 @@
 - [x] Verify the live hosted browser logout flow against `auth.scapegoat.dev`
 - [x] Fix the hosted frontend auth-origin fallback so login/logout stay on the current app origin
 - [x] Verify the live hosted new-article flow and add a visible empty-dashboard create action
+- [x] Set HTML shell cache headers so hosted deploys do not strand browsers on stale frontend bundles

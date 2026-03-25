@@ -1846,3 +1846,44 @@ locator.fill: Error: strict mode violation: getByLabel(/password/i) resolved to 
 3. Confirm POST /api/articles appears in the network tab
 4. Confirm the editor opens on Untitled Article
 ```
+
+## 2026-03-25 - Hosted Shell Cache Follow-Up
+
+### Goal
+- Eliminate the stale-frontend behavior where the public root continued to serve the previous `index.html` after deploy unless the client explicitly revalidated.
+
+### What I changed
+- Verified the edge condition with back-to-back requests:
+```text
+curl -sS https://draft-review.app.scapegoat.dev/ | sed -n '1,20p'
+curl -sS -H 'Cache-Control: no-cache' https://draft-review.app.scapegoat.dev/ | sed -n '1,20p'
+```
+- The first request still referenced `index-muJ7WUsy.js`, while the no-cache request returned the new `index-Qr31Ri10.js`.
+- Updated `pkg/server/http.go` so any HTML shell response sets:
+```text
+Cache-Control: no-cache
+```
+- Applied that header both when serving `/index.html` directly and when falling back to the SPA shell for routes like `/r/<token>`.
+- Added handler assertions in `pkg/server/http_test.go` for the root shell and reader-route fallback.
+- Updated the hosted deployment docs to require checking the HTML cache policy after deploys.
+
+### What worked
+- The stale behavior was easy to prove once I compared a default request to a forced revalidation request.
+- The fix is centralized in the backend frontend-handler path, so it covers both root and SPA fallback HTML without changing asset caching.
+- The existing frontend handler tests made it straightforward to lock in the header contract.
+
+### What didn't work
+- The first redeploy looked finished from the app health view, but plain `curl /` still returned the older shell until I explicitly checked the cache behavior. A healthy app status was not enough to prove the new frontend was actually what users would get.
+
+### What I learned
+- Hosted verification needs two separate checks:
+- whether the new container is healthy
+- whether the root HTML shell is revalidated and points at the latest asset bundle
+
+### Review notes
+- After deploy, run:
+```text
+curl -I https://draft-review.app.scapegoat.dev/
+curl -sS -H 'Cache-Control: no-cache' https://draft-review.app.scapegoat.dev/ | sed -n '1,20p'
+```
+- Confirm the first response includes `Cache-Control: no-cache` and the HTML points at the current asset hash.

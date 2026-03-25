@@ -269,3 +269,15 @@ Verified the hosted new-article path end to end, confirmed that `File -> New Art
 - /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/Dashboard.tsx — Empty dashboard state now shows a primary `New Article` action
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/web/public/index.html — Embedded production shell rebuilt for the hosted create-article follow-up
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/web/public/assets/index-Qr31Ri10.js — Embedded production JS bundle containing the empty-dashboard CTA
+
+
+## 2026-03-25
+
+Fixed the hosted stale-frontend edge by sending `Cache-Control: no-cache` on HTML shell responses, which forces browsers and proxies to revalidate `/` and SPA fallback routes after deploys instead of serving an older `index.html` that points at stale bundles.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http.go — HTML shell responses now set `Cache-Control: no-cache` before serving `index.html`
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http_test.go — Frontend handler tests now assert the HTML cache policy
+- /home/manuel/code/wesen/2026-03-24--draft-review/docs/deployments/draft-review-coolify.md — Hosted verification checklist now includes the HTML cache header
+- /home/manuel/code/wesen/2026-03-24--draft-review/docs/deployments/draft-review-coolify-playbook.md — Operator playbook now checks the root HTML cache policy after deploy

@@ -754,6 +754,9 @@ func (h *appHandler) handleFrontend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if fileInfo, err := fs.Stat(h.publicFS, requestPath); err == nil && !fileInfo.IsDir() {
+		if requestPath == "index.html" {
+			setHTMLCacheHeaders(w)
+		}
 		http.FileServer(http.FS(h.publicFS)).ServeHTTP(w, r)
 		return
 	}
@@ -765,8 +768,13 @@ func (h *appHandler) handleFrontend(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = index.Close() }()
 
+	setHTMLCacheHeaders(w)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = io.Copy(w, index)
+}
+
+func setHTMLCacheHeaders(w http.ResponseWriter) {
+	w.Header().Set("Cache-Control", "no-cache")
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {

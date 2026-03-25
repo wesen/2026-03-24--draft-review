@@ -121,6 +121,7 @@ Check for:
 - `/api/info` reports `authMode: "oidc"` and `issuerUrl: "https://auth.scapegoat.dev/realms/draft-review"`
 - `/auth/login` redirects into the `draft-review` realm
 - the login button on `/` does not send the browser to `http://127.0.0.1:8080/auth/login`
+- `/` returns `Cache-Control: no-cache` so browsers revalidate the HTML shell after deploys
 
 Then do one real browser pass:
 

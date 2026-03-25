@@ -131,4 +131,5 @@ Then complete a real browser login and verify:
 - `/api/me` returns an authenticated OIDC identity after login
 - `/auth/logout?return_to=%2Fapi%2Fme` reaches the Keycloak logout confirmation page and returns to unauthenticated `/api/me`
 - `/` returns the embedded frontend shell rather than `404`
+- `/` returns `Cache-Control: no-cache` so clients revalidate the HTML shell after deploys
 - `/r/<token>` loads the reader shell
