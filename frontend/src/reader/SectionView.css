@@ -9,13 +9,14 @@
 /* Section divider — centered label with horizontal rules */
 .dr-section-view__divider {
   text-align: center;
-  margin: 16px 0;
+  margin: 0 0 20px;
   position: relative;
   font-size: var(--dr-font-size-sm);
   font-family: monospace;
   font-weight: bold;
-  color: #888;
-  letter-spacing: 0.1em;
+  color: #999;
+  letter-spacing: 0.12em;
+  padding: 0 10%;
 }
 
 .dr-section-view__divider::before,
@@ -23,7 +24,7 @@
   content: "";
   position: absolute;
   top: 50%;
-  width: 30%;
+  width: 25%;
   height: 1px;
   background: #ccc;
 }
@@ -36,48 +37,41 @@
   right: 0;
 }
 
+/* Badge — small, subtle, not inverted */
 .dr-section-view__header {
   display: flex;
   align-items: baseline;
-  gap: 10px;
-  margin-bottom: 4px;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 
 .dr-section-view__badge {
-  display: inline-block;
-  border: 2px solid var(--dr-on-surface);
-  padding: 2px 8px;
   font-family: monospace;
-  font-size: var(--dr-font-size-sm);
-  font-weight: bold;
-  background: var(--dr-on-surface);
-  color: var(--dr-surface);
-  letter-spacing: 0.1em;
+  font-size: var(--dr-font-size-xs);
+  color: #999;
   flex-shrink: 0;
 }
 
+/* Title — lighter weight, no bottom border */
 .dr-section-view__title {
   font-family: var(--dr-font-prose);
-  font-size: var(--dr-font-size-2xl, 20px);
-  font-weight: bold;
+  font-size: 16px;
+  font-weight: normal;
   margin: 0;
-  border-bottom: 2px solid var(--dr-on-surface);
-  padding-bottom: 8px;
-  flex: 1;
 }
 
 .dr-section-view__summary {
   margin-top: 20px;
-  padding: 8px 12px;
-  border: 2px solid var(--dr-on-surface);
+  padding: 6px 10px;
+  border: 1px solid #ccc;
   font-size: var(--dr-font-size-sm);
   color: var(--dr-subtle);
   display: flex;
   gap: 12px;
   font-family: monospace;
-  font-weight: bold;
 }
 
 .dr-section-view__summary-label {
   font-family: monospace;
+  font-weight: bold;
 }
