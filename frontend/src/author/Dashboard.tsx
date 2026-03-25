@@ -11,6 +11,9 @@ interface DashboardProps {
   readers: Reader[];
   reactions: Reaction[];
   onSelectArticle: (id: string, sectionId?: string) => void;
+  onEditArticle: (id: string) => void;
+  onArticleSettings: (id: string) => void;
+  onViewArticles: () => void;
   onInvite: () => void;
 }
 
@@ -19,11 +22,27 @@ export function Dashboard({
   readers,
   reactions,
   onSelectArticle,
+  onEditArticle,
+  onArticleSettings,
+  onViewArticles,
   onInvite,
 }: DashboardProps) {
   const [selectedId, setSelectedId] = useState(articles[0]?.id);
   const selected = articles.find((a) => a.id === selectedId) || articles[0];
-  if (!selected) return null;
+
+  if (!selected) {
+    return (
+      <div className="dr-dashboard">
+        <div className="dr-dashboard__empty-state">
+          <div style={{ fontSize: 32, marginBottom: 8 }}>{"\uD83D\uDCDD"}</div>
+          <div className="dr-dashboard__empty-title">No articles yet</div>
+          <div className="dr-dashboard__empty-text">
+            Create your first article to start collecting feedback.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const articleReaders = readers.filter((r) => r.articleId === selected.id);
   const articleReactions = reactions.filter((r) => r.articleId === selected.id);
@@ -61,20 +80,42 @@ export function Dashboard({
 
   return (
     <div className="dr-dashboard">
-      {/* Article selector */}
-      <div className="dr-dashboard__tabs">
-        {articles.map((a) => (
-          <div
-            key={a.id}
-            onClick={() => setSelectedId(a.id)}
-            className={`dr-dashboard__tab ${
-              a.id === selectedId ? "dr-dashboard__tab--active" : ""
-            }`}
-          >
-            <span className="dr-dashboard__tab-status">{a.status.replace("_", " ")}</span>
-            {a.title}
-          </div>
-        ))}
+      {/* Article selector + nav */}
+      <div className="dr-dashboard__top-bar">
+        <div className="dr-dashboard__tabs">
+          {articles.map((a) => (
+            <div
+              key={a.id}
+              onClick={() => setSelectedId(a.id)}
+              className={`dr-dashboard__tab ${
+                a.id === selectedId ? "dr-dashboard__tab--active" : ""
+              }`}
+            >
+              <span className="dr-dashboard__tab-status">
+                {a.status.replace("_", " ")}
+              </span>
+              {a.title}
+            </div>
+          ))}
+        </div>
+        <MacButton small onClick={onViewArticles}>
+          All Articles
+        </MacButton>
+      </div>
+
+      {/* Quick actions for selected article */}
+      <div className="dr-dashboard__actions-bar">
+        <MacButton small onClick={() => onEditArticle(selected.id)}>
+          Edit
+        </MacButton>
+        <MacButton small onClick={() => onArticleSettings(selected.id)}>
+          Share
+        </MacButton>
+        <MacButton small onClick={onInvite}>
+          + Invite Reader
+        </MacButton>
+        <div style={{ flex: 1 }} />
+        <span className="dr-dashboard__version-badge">{selected.version}</span>
       </div>
 
       {/* Stats row */}
@@ -95,14 +136,11 @@ export function Dashboard({
         <div className="dr-dashboard__panel">
           <div className="dr-dashboard__panel-header">
             <span>Readers</span>
-            <MacButton onClick={onInvite} small>
-              + Invite
-            </MacButton>
           </div>
           <div className="dr-dashboard__panel-body">
             {articleReaders.length === 0 ? (
               <div className="dr-dashboard__empty">
-                <div style={{ fontSize: 28, marginBottom: 6 }}>📭</div>
+                <div style={{ fontSize: 28, marginBottom: 6 }}>{"\uD83D\uDCED"}</div>
                 No readers yet. Invite your first beta reader!
               </div>
             ) : (
@@ -186,44 +224,52 @@ export function Dashboard({
             onClick={() => onSelectArticle(selected.id, bookKiller!.id)}
             small
           >
-            Review This Section →
+            Review This Section {"\u2192"}
           </MacButton>
         </div>
       )}
 
       {/* Recent feedback */}
-      <div className="dr-dashboard__panel">
+      <div className="dr-dashboard__panel" style={{ marginBottom: 16 }}>
         <div className="dr-dashboard__panel-header">Recent Feedback</div>
         <div className="dr-dashboard__feedback-list">
-          {articleReactions
-            .slice(-6)
-            .reverse()
-            .map((r, i) => {
-              const rt = REACTION_TYPES.find((t) => t.type === r.type);
-              const section = selected.sections.find(
-                (s) => s.id === r.sectionId
-              );
-              return (
-                <div key={i} className="dr-dashboard__feedback-item">
-                  <span className="dr-dashboard__feedback-icon">
-                    {rt?.icon}
-                  </span>
-                  <div>
-                    <div className="dr-dashboard__feedback-meta">
-                      <strong>{r.readerName}</strong> on{" "}
-                      <em>{section?.title}</em>
+          {articleReactions.length === 0 ? (
+            <div className="dr-dashboard__empty">
+              No feedback yet. Share your article to start collecting reactions.
+            </div>
+          ) : (
+            articleReactions
+              .slice(-6)
+              .reverse()
+              .map((r, i) => {
+                const rt = REACTION_TYPES.find((t) => t.type === r.type);
+                const section = selected.sections.find(
+                  (s) => s.id === r.sectionId
+                );
+                return (
+                  <div key={i} className="dr-dashboard__feedback-item">
+                    <span className="dr-dashboard__feedback-icon">
+                      {rt?.icon}
+                    </span>
+                    <div>
+                      <div className="dr-dashboard__feedback-meta">
+                        <strong>{r.readerName}</strong> on{" "}
+                        <em>{section?.title}</em>
+                      </div>
+                      <div className="dr-dashboard__feedback-text">
+                        {r.text}
+                      </div>
                     </div>
-                    <div className="dr-dashboard__feedback-text">{r.text}</div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+          )}
         </div>
       </div>
 
-      <div style={{ textAlign: "center", marginTop: 16 }}>
+      <div className="dr-dashboard__bottom-actions">
         <MacButton primary onClick={() => onSelectArticle(selected.id)}>
-          Open Full Review →
+          Open Full Review {"\u2192"}
         </MacButton>
       </div>
     </div>

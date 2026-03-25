@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Article, Reaction } from "../types";
 import { REACTION_TYPES } from "../theme/tokens";
 import { MacButton } from "../chrome/MacButton";
+import { Prose } from "../primitives/Prose";
 import "./ArticleReader.css";
 
 interface ArticleReaderProps {
@@ -90,9 +91,9 @@ export function ArticleReader({
             {article.sections.length}
           </div>
           {section?.paragraphs.map((p, i) => (
-            <p key={i} className="dr-article-reader__paragraph">
+            <Prose key={i} className="dr-article-reader__paragraph">
               {p}
-            </p>
+            </Prose>
           ))}
         </div>
 

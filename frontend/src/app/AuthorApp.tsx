@@ -199,13 +199,23 @@ export function AuthorApp() {
       />
 
       {/* Dashboard */}
-      {view === "dashboard" && articles.length > 0 && (
+      {view === "dashboard" && (
         <MacWindow title="Draft Review \u2014 Dashboard" maximized zIndex={2}>
           <Dashboard
             articles={articles}
             readers={readers}
             reactions={reactions}
             onSelectArticle={handleSelectArticle}
+            onEditArticle={(id) => {
+              selectArticle(id);
+              setView("edit");
+            }}
+            onArticleSettings={(id) => {
+              selectArticle(id);
+              setShareUrl(undefined);
+              setView("settings");
+            }}
+            onViewArticles={() => setView("articles")}
             onInvite={() => setShowInvite(true)}
           />
         </MacWindow>

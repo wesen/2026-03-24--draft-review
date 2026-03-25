@@ -289,3 +289,25 @@ npm run dev
 - ReaderToolbar: `#f0f0f0` background (status bar style from reference)
 
 **Build:** `npm run build` clean. CSS grew from 27KB to 29KB (retro scrollbar styles + new patterns).
+
+## 2026-03-24 22:00 - Markdown rendering + Dashboard navigation fix
+
+**Context:** Backend was added (auth, review sessions, versioning). Articles now contain markdown in paragraphs but the reader rendered them as plain text. Dashboard lacked links between views.
+
+**Markdown rendering:**
+- Installed `react-markdown` + `remark-gfm` (GFM tables, strikethrough, etc.)
+- Created `Prose` component (`primitives/Prose.tsx`) -- wraps ReactMarkdown with retro-styled CSS
+- Prose CSS covers: headings (h1-h3), lists, code (inline + block), blockquotes, links, tables, images, hr -- all styled to match the Mac OS 1 aesthetic (2px borders, monospace code, inverted table headers)
+- Wired Prose into `reader/Paragraph.tsx` (was `<p>{text}</p>`, now `<Prose>{text}</Prose>`)
+- Wired Prose into `author/ArticleReader.tsx` (same change for the author review view)
+- Both views now render **bold**, *italic*, `code`, lists, links, blockquotes, etc. properly
+
+**Dashboard navigation fix:**
+- Added 3 new callbacks: `onEditArticle`, `onArticleSettings`, `onViewArticles`
+- Added "All Articles" button next to the tab selector (goes to ArticleManager)
+- Added quick actions bar below tabs: Edit / Share / + Invite Reader + version badge
+- Added empty state when no articles exist (instead of rendering nothing)
+- AuthorApp now passes all callbacks, and dashboard shows even when articles list is empty
+- Removed the `articles.length > 0` guard that hid dashboard entirely
+
+**Build:** passes. JS bundle grew to 503KB (react-markdown + remark-gfm add ~160KB). Chunk size warning -- acceptable for MVP, can code-split later.

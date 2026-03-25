@@ -19,11 +19,6 @@
 }
 
 .dr-para__text {
-  margin: 0;
-  font-family: var(--dr-font-prose);
-  font-size: 13px;
-  line-height: 1.75;
-  color: var(--dr-on-surface);
   user-select: text;
 }
 

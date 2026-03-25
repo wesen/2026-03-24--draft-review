@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { REACTION_TYPES } from "../theme/tokens";
 import { ReactionBadge } from "../primitives/ReactionBadge";
+import { Prose } from "../primitives/Prose";
 import type { Reaction, ReactionType } from "../types";
 import "./Paragraph.css";
 
@@ -47,7 +48,7 @@ export function Paragraph({
     <div
       className={`dr-para ${myReactions.length > 0 ? "dr-para--commented" : ""}`}
     >
-      <p className="dr-para__text">{text}</p>
+      <Prose className="dr-para__text">{text}</Prose>
 
       {/* Always-visible reaction chips */}
       <div className="dr-para__actions">
