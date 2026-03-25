@@ -19,6 +19,7 @@ import {
   useInviteReaderMutation,
 } from "../api/articleApi";
 import { useGetMeQuery } from "../api/authApi";
+import { getBackendOrigin } from "../lib/backendOrigin";
 import type { Article } from "../types";
 
 type View =
@@ -31,7 +32,7 @@ type View =
 
 export function AuthorApp() {
   const useMockApi = import.meta.env.VITE_USE_MSW === "1";
-  const backendOrigin = (import.meta.env.VITE_BACKEND_ORIGIN as string | undefined) || "http://127.0.0.1:8080";
+  const backendOrigin = getBackendOrigin();
   const [view, setView] = useState<View>("dashboard");
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [focusSection, setFocusSection] = useState<string | undefined>();
