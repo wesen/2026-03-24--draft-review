@@ -205,11 +205,23 @@
   line-height: 1.4;
 }
 
+.dr-article-reader__reaction-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
 .dr-article-reader__reaction-author {
   font-size: var(--dr-font-size-sm);
   color: var(--dr-subtle);
-  margin-bottom: 2px;
   font-weight: bold;
+}
+
+.dr-article-reader__reaction-time {
+  font-size: var(--dr-font-size-xs);
+  color: var(--dr-muted);
+  font-family: monospace;
 }
 
 /* Reaction card highlight when its paragraph is hovered */

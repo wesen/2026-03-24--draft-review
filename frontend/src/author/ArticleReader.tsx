@@ -12,6 +12,22 @@ interface ArticleReaderProps {
   onBack: () => void;
 }
 
+/** Format a timestamp as relative time (e.g., "2h ago", "3d ago") */
+function timeAgo(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const seconds = Math.floor((now - then) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  return `${months}mo ago`;
+}
+
 /** Truncate text for paragraph excerpts */
 function excerpt(text: string, maxLen = 80): string {
   const plain = text.replace(/[#*_`>\[\]()]/g, "").trim();
@@ -273,8 +289,13 @@ export function ArticleReader({
                             {rt?.icon}
                           </span>
                           <div className="dr-article-reader__reaction-content">
-                            <div className="dr-article-reader__reaction-author">
-                              {r.readerName}
+                            <div className="dr-article-reader__reaction-meta">
+                              <span className="dr-article-reader__reaction-author">
+                                {r.readerName}
+                              </span>
+                              <span className="dr-article-reader__reaction-time">
+                                {timeAgo(r.createdAt)}
+                              </span>
                             </div>
                             <div>{r.text}</div>
                           </div>
