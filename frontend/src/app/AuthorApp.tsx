@@ -229,6 +229,7 @@ export function AuthorApp() {
               setShareUrl(undefined);
               setView("settings");
             }}
+            onNewArticle={() => void handleNewArticle()}
             onViewArticles={() => setView("articles")}
             onInvite={() => setShowInvite(true)}
           />

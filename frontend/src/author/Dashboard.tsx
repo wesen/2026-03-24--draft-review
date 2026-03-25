@@ -13,6 +13,7 @@ interface DashboardProps {
   onSelectArticle: (id: string, sectionId?: string) => void;
   onEditArticle: (id: string) => void;
   onArticleSettings: (id: string) => void;
+  onNewArticle: () => void;
   onViewArticles: () => void;
   onInvite: () => void;
 }
@@ -24,6 +25,7 @@ export function Dashboard({
   onSelectArticle,
   onEditArticle,
   onArticleSettings,
+  onNewArticle,
   onViewArticles,
   onInvite,
 }: DashboardProps) {
@@ -39,6 +41,9 @@ export function Dashboard({
           <div className="dr-dashboard__empty-text">
             Create your first article to start collecting feedback.
           </div>
+          <MacButton primary onClick={onNewArticle}>
+            New Article {"\u2192"}
+          </MacButton>
         </div>
       </div>
     );

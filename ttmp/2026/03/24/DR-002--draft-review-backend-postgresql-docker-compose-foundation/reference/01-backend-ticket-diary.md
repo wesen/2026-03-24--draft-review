@@ -22,7 +22,7 @@ RelatedFiles:
       Note: Task checklist updated during this diary entry
 ExternalSources: []
 Summary: Chronological diary for the DR-002 backend planning ticket, including repository investigation, document creation, validation, and delivery.
-LastUpdated: 2026-03-24T23:02:58-04:00
+LastUpdated: 2026-03-24T23:28:00-04:00
 WhatFor: Recording how the backend planning ticket was assembled and validated.
 WhenToUse: Use this diary when reviewing the documentation work, reconstructing decisions, or continuing backend implementation later.
 ---
@@ -1644,7 +1644,205 @@ Use this diary when:
 - checking which repository files shaped the design,
 - confirming which validation and delivery commands were used.
 
+## Step 12: Package The Frontend For Real Deployment And Document The Hosted Contract
+
+The deployment request forced me to re-check the actual runtime path rather than trusting the existing local-development docs. That was the right call: the backend could proxy Vite in development, but the production image still only contained the Go API binary, which meant a Coolify rollout would have shipped a healthy `/healthz` and a broken `/`. I fixed that by moving Draft Review onto the same production pattern used successfully in `hair-booking`: build the frontend, copy the generated assets into a Go web package, embed them, and serve the SPA shell directly from the backend when no dev proxy is configured.
+
+This step also exposed two deployment-only bugs that normal `go test` did not catch. First, the Dockerfile pinned Go `1.25.5` while the module required `1.25.7+`. Second, the new Glazed help integration used an in-memory SQLite store that crashes a `CGO_ENABLED=0` binary on startup. I corrected both so the container actually boots in a hosted shape, then verified the image against a real Postgres instance and the embedded shell paths.
+
+### Prompt Context
+
+**User prompt (verbatim):**
+```text
+setup keycloak realm and stuff in ~/code/wesen/terraform, and then deploy to coolify (look at /home/manuel/workspaces/2026-03-19/hair-signup/hair-booking for example. Let me know which documentation you find about coolify / keycloak setup
+```
+
+followed by:
+
+```text
+look at ticket and diaries and other paybooks potentially in these repos
+```
+
+**Assistant interpretation:** inspect the existing deployment and identity playbooks first, then make Draft Review actually deployable in the same hosted shape before attempting the Terraform and Coolify rollout.
+
+**Inferred user intent:** do the real hosted setup rather than stopping at local dev instructions, and reuse the established `hair-booking` and infra-repo operator patterns wherever possible.
+
+**Commit (code):** af42fbe799d081e4cba790440872d3fbc352b1d0 — "Embed frontend for production deployment"
+
+### What I did
+- Read the existing Draft Review ticket checklist and diary plus the shared infra and `hair-booking` deployment playbooks.
+- Confirmed the pre-existing production gap:
+- `Dockerfile` only built the Go binary.
+- `pkg/server/http.go` returned `404` for browser routes unless `frontend-dev-proxy-url` was set.
+- Added `pkg/web` with:
+- embedded production assets,
+- `go generate` support,
+- a generator that builds `frontend/` and copies `frontend/dist` into `pkg/web/public`.
+- Updated `pkg/server/http.go` so non-API/non-auth browser routes:
+- proxy to Vite in dev when configured,
+- otherwise serve embedded assets directly,
+- fall back to `index.html` for SPA routes like `/r/<token>`.
+- Added HTTP tests for embedded `/`, `/assets/app.js`, and SPA fallback behavior.
+- Updated `frontend/vite.config.ts` to proxy `/auth` and `/healthz` in addition to `/api`.
+- Reworked the Docker build into a multi-stage frontend-plus-Go image.
+- Added `curl` and `tzdata` to the runtime image for hosted health-check/debug parity.
+- Fixed the Docker Go toolchain version mismatch by moving from `golang:1.25.5` to `golang:1.25.8`.
+- Fixed the Glazed help/runtime crash by switching the production image build from `CGO_ENABLED=0` to `CGO_ENABLED=1`.
+- Added SQL env fallbacks in `pkg/config/sql.go` so `DRAFT_REVIEW_DSN` works in container-style deployments.
+- Added hosted docs:
+- `docs/deployments/draft-review-coolify.md`
+- `docs/deployments/draft-review-coolify-playbook.md`
+- Validated with:
+- `npm run build`
+- `go generate ./pkg/web`
+- `go test ./cmd/... ./pkg/...`
+- `docker build -t draft-review:local .`
+- live container smoke with Postgres:
+- `curl http://127.0.0.1:18081/healthz`
+- `curl -I http://127.0.0.1:18081/`
+- `curl http://127.0.0.1:18081/api/info`
+
+### Why
+- Coolify deployment only makes sense if the container serves the browser shell itself.
+- The existing repo docs had drifted ahead of the actual production packaging.
+- Reusing the `hair-booking` embed pattern reduced deployment risk and kept the operator model consistent across repos.
+
+### What worked
+- The `hair-booking` frontend-embed pattern transferred cleanly.
+- The embedded shell tests passed immediately once the server stopped hard-failing to `404`.
+- The final Docker image built successfully and served `/`, `/healthz`, and `/api/info` against a live Postgres database.
+- The DSN env fallback made the container runnable with a Coolify-style environment contract instead of requiring CLI flag overrides.
+
+### What didn't work
+- The first Docker build failed because the builder image was too old for the module:
+```text
+go: go.mod requires go >= 1.25.7 (running go 1.25.5; GOTOOLCHAIN=local)
+```
+- The first container smoke failed before serving HTTP because the Glazed help system tried to initialize SQLite inside a `CGO_ENABLED=0` binary:
+```text
+failed to create tables: failed to create sections table: Binary was compiled with 'CGO_ENABLED=0', go-sqlite3 requires cgo to work. This is a stub
+```
+- The first container run using env-only DB config still failed because the SQL section was not actually reading `DRAFT_REVIEW_DSN`:
+```text
+Error: failed to compute connection string: dsn is empty and host/database/user are not fully configured
+```
+- The first host-bridge run on Linux failed because `host.docker.internal` was not resolvable until I added:
+```text
+--add-host=host.docker.internal:host-gateway
+```
+
+### What I learned
+- The current Glazed embedded-help setup is not compatible with a `CGO_ENABLED=0` production binary.
+- The repo had a subtle contract mismatch: docs and local dev workflow implied a deployable full-stack app, but only the API had actually been packaged.
+- For this repo, env-driven DSN support is important because the deployment story is container-first rather than shell-wrapper-first.
+
+### What was tricky to build
+- The hard part was not embedding the frontend assets themselves. The sharp edges were the deployment-only interactions between Glazed help, CGO, Docker toolchain versions, and container-style configuration injection. Each one looked unrelated at first, but together they would have made the first Coolify rollout fail even after the frontend embed was correct.
+
+### What warrants a second pair of eyes
+- Whether the Glazed help system should later move to a non-SQLite backend so the image can return to `CGO_ENABLED=0`.
+- Whether the generated frontend assets should remain committed in `pkg/web/public` or be treated as build artifacts only.
+- Whether we want a dedicated `make docker-smoke` target so the Postgres-backed container check becomes routine.
+
+### What should be done in the future
+- Finalize the hosted Keycloak realm settings and secret flow in `~/code/wesen/terraform`.
+- Deploy the app to Coolify and verify the real hosted OIDC browser loop.
+- Consider code-splitting the frontend bundle; Vite currently warns about a chunk just over 500 kB after minification.
+
+### Code review instructions
+- Start with `pkg/server/http.go` and `pkg/web/generate_build.go`.
+- Then review `Dockerfile` and `pkg/config/sql.go` together because they define the real deployment contract.
+- Confirm the new operator docs reflect the actual image/runtime shape:
+- `docs/deployments/draft-review-coolify.md`
+- `docs/deployments/draft-review-coolify-playbook.md`
+- Re-run the key validations:
+```text
+npm run build
+go generate ./pkg/web
+go test ./cmd/... ./pkg/...
+docker build -t draft-review:local .
+docker compose up -d postgres
+docker run --rm --add-host=host.docker.internal:host-gateway -p 18081:8080 \
+  -e 'DRAFT_REVIEW_DSN=postgres://draft_review:draft_review@host.docker.internal:5432/draft_review?sslmode=disable' \
+  -e DRAFT_REVIEW_AUTO_MIGRATE=true \
+  -e DRAFT_REVIEW_AUTH_MODE=dev \
+  draft-review:local
+curl -fsS http://127.0.0.1:18081/healthz
+curl -fsSI http://127.0.0.1:18081/
+curl -fsS http://127.0.0.1:18081/api/info
+```
+
+### Technical details
+- Local playbooks consulted:
+- `/home/manuel/code/wesen/terraform/docs/shared-keycloak-platform-playbook.md`
+- `/home/manuel/code/wesen/terraform/ttmp/2026/03/19/TF-001-SHARED-KEYCLOAK-INFRA--centralize-shared-keycloak-terraform-and-coolify-deployment-guidance/playbook/01-shared-keycloak-terraform-and-coolify-deployment-playbook.md`
+- `/home/manuel/workspaces/2026-03-19/hair-signup/hair-booking/docs/deployments/hair-booking-coolify.md`
+- `/home/manuel/workspaces/2026-03-19/hair-signup/hair-booking/docs/deployments/hair-booking-coolify-playbook.md`
+- Official docs consulted:
+- Coolify environment-variable docs explaining build vs runtime variable injection
+- Keycloak hostname docs for production reverse-proxy exposure
+- Keycloak OIDC client docs covering valid redirect URIs and web origins
+
 ## Related
 
 - `ttmp/2026/03/24/DR-002--draft-review-backend-postgresql-docker-compose-foundation/design-doc/01-draft-review-backend-architecture-and-implementation-guide.md`
 - `ttmp/2026/03/24/DR-001--draft-review-mvp-react-redux-storybook-implementation/design-doc/01-draft-review-mvp-implementation-plan.md`
+
+## 2026-03-25 - Hosted New-Article Follow-Up
+
+### Goal
+- Reproduce the user report that `New Article` on the hosted app did nothing and emitted no HTTP request, verify the live deployment state, and either prove a cache issue or ship the missing fix.
+
+### What I changed
+- Confirmed the public HTML was already serving the newer frontend bundle:
+```text
+curl -sS https://draft-review.app.scapegoat.dev/ | sed -n '1,120p'
+```
+- Confirmed the live JS bundle already contained the `Untitled Article` create path and `/api/articles` mutation wiring:
+```text
+curl -sS https://draft-review.app.scapegoat.dev/assets/index-muJ7WUsy.js | rg -n 'Untitled Article|/api/articles'
+```
+- Used a scripted browser check against the hosted app to log in through Keycloak, then trigger `File -> New Article…` and capture requests/responses.
+- Verified the hosted click emitted:
+```text
+POST https://draft-review.app.scapegoat.dev/api/articles
+201 POST https://draft-review.app.scapegoat.dev/api/articles
+```
+- Found the remaining real issue: the empty dashboard state showed only “No articles yet” with no visible create CTA, so first-run users had to know about the menu item.
+- Added a primary `New Article` button to the empty dashboard in `frontend/src/author/Dashboard.tsx`.
+- Wired the dashboard empty-state CTA to the shared `handleNewArticle` mutation handler in `frontend/src/app/AuthorApp.tsx`.
+- Rebuilt the frontend and embedded assets with:
+```text
+npm run build
+go generate ./pkg/web
+go test ./cmd/... ./pkg/...
+```
+
+### What worked
+- The hosted app was already on the corrected bundle; the prior deploy was not stale.
+- The menu path worked exactly as intended once exercised with a real browser session.
+- The server returned `201` and immediately loaded the new article editor plus reader/reaction queries for the created article.
+- The dashboard CTA patch was small and reused the same creation handler, so there was no duplicate article-creation logic.
+
+### What didn't work
+- My first browser automation attempt failed because the Keycloak login page exposes both the password input and the “show password” toggle under a loose `/password/i` label match:
+```text
+locator.fill: Error: strict mode violation: getByLabel(/password/i) resolved to 2 elements
+```
+- A direct search for a dashboard `New Article` button after login found nothing because there actually was no button in the empty state.
+
+### What I learned
+- The user report was directionally right, but the live root cause was split in two: the hidden menu path worked, while the obvious first-run path did not exist.
+- For this app, first-run empty states need to expose the primary workflow directly instead of relying on desktop-style menu discovery.
+
+### What was tricky
+- Verifying the production issue required separating “the latest deploy is live” from “the visible UX still fails the user goal.” The JS bundle and menu handler were correct, but the empty dashboard still produced a broken first impression.
+
+### Review notes
+- Re-run the hosted browser flow after deploy:
+```text
+1. Log into https://draft-review.app.scapegoat.dev/
+2. From the empty dashboard, click New Article ->
+3. Confirm POST /api/articles appears in the network tab
+4. Confirm the editor opens on Untitled Article
+```

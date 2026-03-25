@@ -216,3 +216,56 @@ Updated the invite-reader dialog so a successful invite now returns a copyable p
 - /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/InviteDialog.css — Styles the new reader-link row and inline error state
 - /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/app/AuthorApp.tsx — Builds a backend-origin invite URL from the returned reader token
 - /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/InviteDialog.stories.tsx — Keeps the Storybook contract aligned with the async invite result
+
+
+## 2026-03-24
+
+Made the app deployable as a real single-container web app by embedding the frontend into the Go binary, adding production SPA/static serving, updating the Docker build/runtime path, and documenting the Coolify deployment contract with commit af42fbe799d081e4cba790440872d3fbc352b1d0.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/web/assets.go — Embedded production frontend filesystem
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/web/generate_build.go — Frontend build-and-copy generator used by Go and Docker builds
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http.go — SPA fallback and static asset serving when no dev proxy is configured
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/config/sql.go — Container-friendly DSN environment fallback
+- /home/manuel/code/wesen/2026-03-24--draft-review/Dockerfile — Multi-stage frontend/backend production image with CGO-enabled Glazed help support
+- /home/manuel/code/wesen/2026-03-24--draft-review/docs/deployments/draft-review-coolify.md — Hosted deployment contract
+- /home/manuel/code/wesen/2026-03-24--draft-review/docs/deployments/draft-review-coolify-playbook.md — Operator deployment runbook
+
+
+## 2026-03-25
+
+Provisioned and verified the hosted Draft Review stack end to end: applied the shared Keycloak realm/client in `~/code/wesen/terraform`, created and configured the Coolify app, injected the production OIDC and Postgres env vars, verified live browser login at `https://draft-review.app.scapegoat.dev/`, added the missing post-logout redirect support in the shared browser-client Terraform module, and confirmed live browser logout against the hosted Keycloak realm.
+
+### Related Files
+
+- /home/manuel/code/wesen/terraform/keycloak/modules/browser-client/main.tf — Shared Keycloak browser client now passes post-logout redirect URIs
+- /home/manuel/code/wesen/terraform/keycloak/modules/browser-client/variables.tf — Adds the shared post-logout redirect input
+- /home/manuel/code/wesen/terraform/keycloak/apps/draft-review/envs/hosted/main.tf — Hosted Draft Review realm and client configuration
+- /home/manuel/code/wesen/terraform/docs/shared-keycloak-platform-playbook.md — Shared infra playbook updated with logout and hosted app guidance
+- /home/manuel/code/wesen/2026-03-24--draft-review/docs/deployments/draft-review-coolify.md — Draft Review deployment contract updated with the live hosted values and API caveats
+- /home/manuel/code/wesen/2026-03-24--draft-review/docs/deployments/draft-review-coolify-playbook.md — Draft Review operator playbook updated with the real rollout sequence
+
+
+## 2026-03-25
+
+Fixed the hosted frontend auth-origin fallback in commit `8c3ffa1` so the production bundle uses the current browser origin by default instead of hardcoding `http://127.0.0.1:8080` for login, logout, and invite-link generation.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/lib/backendOrigin.ts — New helper that prefers `VITE_BACKEND_ORIGIN` and otherwise falls back to `window.location.origin`
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/app/AuthorApp.tsx — Auth and invite flows now use the current app origin in hosted mode
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/web/public/index.html — Embedded production shell rebuilt for the hosted hotfix
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/web/public/assets/index-mxg-qtMl.js — Embedded production JS bundle containing the hosted-origin fix
+
+
+## 2026-03-25
+
+Verified the hosted new-article path end to end, confirmed that `File -> New Article…` now emits `POST /api/articles` with a `201` response, and fixed the remaining UX gap by adding a visible empty-dashboard `New Article` button so first-run authors no longer need to discover the menu path.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/app/AuthorApp.tsx — Dashboard now receives the shared article-creation handler used by the menu and article manager
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/Dashboard.tsx — Empty dashboard state now shows a primary `New Article` action
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/web/public/index.html — Embedded production shell rebuilt for the hosted create-article follow-up
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/web/public/assets/index-Qr31Ri10.js — Embedded production JS bundle containing the empty-dashboard CTA

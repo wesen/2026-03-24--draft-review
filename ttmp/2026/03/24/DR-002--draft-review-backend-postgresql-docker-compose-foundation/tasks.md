@@ -117,3 +117,19 @@
 - [x] Add HTTP handler tests
 - [x] Add local developer runbook
 - [x] Add at least one end-to-end smoke check covering migrate -> seed -> serve -> article API
+
+### Phase 8: Hosted Deployment Readiness
+
+- [x] Embed the production frontend into the Go binary for non-dev serving
+- [x] Add SPA fallback and static asset serving for `/`, `/assets/*`, and reader routes
+- [x] Add Docker multi-stage build for frontend plus backend packaging
+- [x] Add Docker runtime dependencies needed for health checks
+- [x] Add deployment docs for Coolify and hosted OIDC configuration
+- [x] Add SQL config env fallback for container-style DSN injection
+- [x] Finalize hosted Keycloak realm settings in `~/code/wesen/terraform`
+- [x] Apply the hosted `draft-review` Terraform environment
+- [x] Configure or update the Coolify application for `draft-review`
+- [x] Verify the live hosted browser login flow against `auth.scapegoat.dev`
+- [x] Verify the live hosted browser logout flow against `auth.scapegoat.dev`
+- [x] Fix the hosted frontend auth-origin fallback so login/logout stay on the current app origin
+- [x] Verify the live hosted new-article flow and add a visible empty-dashboard create action
