@@ -1,51 +1,119 @@
-.dr-paragraph {
+.dr-para {
   position: relative;
-  margin-bottom: 6px;
-}
-
-.dr-paragraph__text {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.85;
-  color: var(--dr-on-surface);
-  padding: 4px 0 4px 38px;
   border-left: 3px solid transparent;
-  transition: border-color 0.15s;
+  padding-left: 8px;
+  margin-left: -11px;
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+  transition: background 0.1s, border-color 0.1s;
 }
 
-.dr-paragraph__text--reacted {
+.dr-para:hover {
   border-left-color: var(--dr-on-surface);
+  background: var(--dr-hover-bg);
 }
 
-.dr-paragraph__add {
-  position: absolute;
-  left: 6px;
-  top: 4px;
-  width: 22px;
-  height: 22px;
-  border: var(--dr-border-thin) solid var(--dr-border-color);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  background: var(--dr-surface);
-  font-family: var(--dr-font-title);
+.dr-para--commented {
+  border-left-color: var(--dr-on-surface) !important;
+  background: rgba(0, 0, 0, 0.06) !important;
+}
+
+.dr-para__text {
+  margin: 0;
+  font-family: var(--dr-font-prose);
   font-size: 13px;
-  line-height: 1;
-  box-shadow: var(--dr-shadow-button-hover);
+  line-height: 1.75;
+  color: var(--dr-on-surface);
+  user-select: text;
 }
 
-.dr-paragraph__add:hover {
+/* Always-visible reaction chips — subtle until hover */
+.dr-para__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 0 6px 0;
+  opacity: 0.35;
+  transition: opacity 0.15s;
+}
+
+.dr-para:hover .dr-para__actions,
+.dr-para__actions:focus-within {
+  opacity: 1;
+}
+
+.dr-para__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1.5px solid var(--dr-on-surface);
+  padding: 2px 7px;
+  font-family: monospace;
+  font-size: 9px;
+  font-weight: bold;
+  background: var(--dr-surface);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.dr-para__chip:hover {
   background: var(--dr-on-surface);
   color: var(--dr-surface);
 }
 
-.dr-paragraph__picker {
-  margin-left: 38px;
-  margin-top: 4px;
+.dr-para__chip:active {
+  transform: translate(1px, 1px);
 }
 
-.dr-paragraph__reactions {
-  padding-left: 38px;
+.dr-para__chip--active {
+  background: var(--dr-on-surface);
+  color: var(--dr-surface);
+}
+
+.dr-para__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background: var(--dr-on-surface);
+  color: var(--dr-surface);
+  font-size: 8px;
+  font-weight: bold;
+  font-family: monospace;
+  margin-left: 2px;
+}
+
+/* Comment input */
+.dr-para__comment-box {
+  margin-top: 4px;
+  border: 2px solid var(--dr-on-surface);
+  background: var(--dr-surface);
+  padding: 8px;
+  box-shadow: var(--dr-shadow-sm);
+}
+
+.dr-para__comment-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--dr-font-prose);
+  font-size: var(--dr-font-size-base);
+  border: 2px solid var(--dr-on-surface);
+  padding: 5px 7px;
+  resize: vertical;
+  min-height: 50px;
+  outline: none;
+  line-height: 1.5;
+}
+
+.dr-para__comment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.dr-para__reactions {
+  padding-top: 2px;
 }

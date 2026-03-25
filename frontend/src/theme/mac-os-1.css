@@ -2,29 +2,33 @@
 
 :root {
   /* Colors */
-  --dr-bg: #e8e8e8;
+  --dr-bg: #aaaaaa;
   --dr-surface: #ffffff;
   --dr-on-surface: #000000;
-  --dr-muted: #a0a0a0;
+  --dr-muted: #999999;
   --dr-subtle: #555555;
-  --dr-border: #c0c0c0;
+  --dr-border: #000000;
+  --dr-border-light: #cccccc;
+  --dr-hover-bg: rgba(0, 0, 0, 0.04);
 
   /* Typography */
   --dr-font-title: "Chicago_12", "ChicagoFLF", "Geneva", monospace;
   --dr-font-body: "Geneva", "Monaco", monospace;
+  --dr-font-prose: "Georgia", serif;
   --dr-font-size-xs: 9px;
   --dr-font-size-sm: 10px;
   --dr-font-size-base: 11px;
   --dr-font-size-md: 12px;
   --dr-font-size-lg: 14px;
   --dr-font-size-xl: 18px;
+  --dr-font-size-2xl: 20px;
 
   /* Borders */
   --dr-border-width: 2px;
   --dr-border-thin: 1.5px;
   --dr-border-color: var(--dr-on-surface);
-  --dr-border-radius-window: 3px;
-  --dr-border-radius-button: 8px;
+  --dr-border-radius-window: 0px;
+  --dr-border-radius-button: 0px;
 
   /* Patterns */
   --dr-stripe-pattern: repeating-linear-gradient(
@@ -41,15 +45,18 @@
     var(--dr-surface) 2px,
     var(--dr-surface) 4px
   );
-  --dr-desktop-pattern: repeating-conic-gradient(
-    var(--dr-border) 0% 25%,
-    transparent 0% 50%
-  )
-  0 0 / 4px 4px;
+  --dr-desktop-pattern: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 1px,
+    rgba(0, 0, 0, 0.03) 1px,
+    rgba(0, 0, 0, 0.03) 2px
+  );
 
   /* Shadows */
-  --dr-shadow-window: 3px 3px 0 rgba(0, 0, 0, 0.3);
-  --dr-shadow-dialog: 4px 4px 0 rgba(0, 0, 0, 0.3);
+  --dr-shadow-window: 4px 4px 0 #000;
+  --dr-shadow-dialog: 6px 6px 0 #000;
+  --dr-shadow-sm: 2px 2px 0 #000;
   --dr-shadow-button-hover: 1px 1px 0 rgba(0, 0, 0, 0.15);
 
   /* Spacing */
@@ -62,15 +69,45 @@
 
   /* Component sizes */
   --dr-titlebar-height: 22px;
-  --dr-menubar-height: 22px;
-  --dr-close-box-size: 14px;
+  --dr-menubar-height: 20px;
+  --dr-close-box-size: 12px;
 }
 
 /* Desktop background */
 .dr-desktop {
   position: fixed;
   inset: 0;
-  background: var(--dr-bg) var(--dr-desktop-pattern);
+  background-color: var(--dr-bg);
+  background-image: var(--dr-desktop-pattern);
   font-family: var(--dr-font-body);
   font-size: var(--dr-font-size-md);
+  cursor: default;
+  user-select: none;
+}
+
+/* Retro scrollbars */
+::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--dr-surface);
+  border-left: 2px solid var(--dr-on-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: repeating-linear-gradient(
+    45deg,
+    #000 0,
+    #000 1px,
+    #fff 0,
+    #fff 50%
+  );
+  background-size: 4px 4px;
+  border: 2px solid #000;
+}
+
+::-webkit-scrollbar-button {
+  display: none;
 }

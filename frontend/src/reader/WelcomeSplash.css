@@ -4,32 +4,34 @@
   justify-content: center;
   height: 100%;
   padding: var(--dr-space-2xl);
+  user-select: text;
 }
 
 .dr-welcome__inner {
-  max-width: 460px;
+  max-width: 420px;
   text-align: center;
   font-family: var(--dr-font-body);
   font-size: var(--dr-font-size-md);
 }
 
 .dr-welcome__icon {
-  width: 72px;
-  height: 72px;
-  border: var(--dr-border-width) solid var(--dr-border-color);
-  border-radius: 6px;
+  width: 64px;
+  height: 64px;
+  border: 2px solid var(--dr-on-surface);
   margin: 0 auto 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 36px;
+  font-size: 28px;
+  background: var(--dr-on-surface);
+  color: var(--dr-surface);
 }
 
 .dr-welcome__title {
-  font-family: var(--dr-font-title);
-  font-size: var(--dr-font-size-xl);
+  font-family: var(--dr-font-prose);
+  font-size: var(--dr-font-size-2xl, 20px);
+  font-weight: bold;
   margin-bottom: 4px;
-  letter-spacing: -0.3px;
 }
 
 .dr-welcome__author {
@@ -40,50 +42,47 @@
 
 .dr-welcome__version {
   display: inline-block;
-  padding: 2px 10px;
-  border: 1px solid var(--dr-on-surface);
-  border-radius: 2px;
-  font-size: var(--dr-font-size-xs);
-  font-family: var(--dr-font-title);
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  padding: 2px 8px;
+  border: 2px solid var(--dr-on-surface);
+  font-family: monospace;
+  font-size: var(--dr-font-size-sm);
+  font-weight: bold;
   margin-bottom: 20px;
+  background: var(--dr-on-surface);
+  color: var(--dr-surface);
+  letter-spacing: 0.1em;
 }
 
 .dr-welcome__note {
-  border: var(--dr-border-width) solid var(--dr-border-color);
-  border-radius: 3px;
+  border: 2px solid var(--dr-on-surface);
   padding: var(--dr-space-lg);
   background: var(--dr-surface);
   text-align: left;
   line-height: 1.7;
   margin-bottom: 20px;
+  font-family: var(--dr-font-prose);
+  font-size: var(--dr-font-size-base);
 }
 
 .dr-welcome__note-header {
-  font-family: var(--dr-font-title);
-  font-size: var(--dr-font-size-base);
+  font-family: monospace;
+  font-size: var(--dr-font-size-sm);
+  font-weight: bold;
   margin-bottom: 8px;
 }
 
 .dr-welcome__howto {
-  border: var(--dr-border-width) solid var(--dr-border-color);
-  border-radius: 3px;
+  border: 2px solid var(--dr-on-surface);
   padding: var(--dr-space-lg);
   text-align: left;
   margin-bottom: 24px;
-  background: repeating-linear-gradient(
-    45deg,
-    var(--dr-surface) 0px,
-    var(--dr-surface) 8px,
-    #f7f7f7 8px,
-    #f7f7f7 16px
-  );
+  background: #f5f5f5;
 }
 
 .dr-welcome__howto-header {
-  font-family: var(--dr-font-title);
-  font-size: var(--dr-font-size-base);
+  font-family: monospace;
+  font-size: var(--dr-font-size-sm);
+  font-weight: bold;
   margin-bottom: 8px;
 }
 
@@ -93,6 +92,7 @@
   gap: 6px;
   font-size: var(--dr-font-size-base);
   line-height: 1.5;
+  font-family: var(--dr-font-body);
 }
 
 .dr-welcome__howto-row {
@@ -113,10 +113,12 @@
   font-size: var(--dr-font-size-base);
   color: var(--dr-subtle);
   line-height: 1.5;
+  font-family: var(--dr-font-prose);
 }
 
 .dr-welcome__meta {
   font-size: var(--dr-font-size-sm);
   color: var(--dr-muted);
   margin-top: 10px;
+  font-family: monospace;
 }

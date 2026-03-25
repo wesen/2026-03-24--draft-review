@@ -1,46 +1,45 @@
 .dr-titlebar {
   background: var(--dr-surface);
-  border-bottom: var(--dr-border-width) solid var(--dr-border-color);
-  padding: 2px 6px;
+  border-bottom: 2px solid var(--dr-border-color);
+  padding: 0 4px;
   display: flex;
   align-items: center;
-  min-height: var(--dr-titlebar-height);
+  height: var(--dr-titlebar-height);
   user-select: none;
   flex-shrink: 0;
+  gap: 4px;
+  cursor: move;
 }
 
 .dr-titlebar__close {
   width: var(--dr-close-box-size);
   height: var(--dr-close-box-size);
   border: var(--dr-border-thin) solid var(--dr-border-color);
-  border-radius: 1px;
+  background: var(--dr-surface);
   cursor: pointer;
-  margin-right: 8px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
 }
 
 .dr-titlebar__close:hover {
   background: var(--dr-on-surface);
+  color: var(--dr-surface);
 }
 
 .dr-titlebar__stripe {
-  flex: 1;
-  height: 10px;
-  background: var(--dr-stripe-pattern);
-}
-
-.dr-titlebar__stripe:first-of-type {
-  margin-right: 8px;
-}
-
-.dr-titlebar__stripe:last-of-type {
-  margin-left: 8px;
+  display: none;
 }
 
 .dr-titlebar__title {
-  font-family: var(--dr-font-title);
-  font-size: var(--dr-font-size-md);
+  flex: 1;
+  text-align: center;
+  font-family: var(--dr-font-body);
+  font-size: var(--dr-font-size-base);
   font-weight: bold;
   white-space: nowrap;
-  letter-spacing: 0.3px;
+  overflow: hidden;
+  letter-spacing: 0.03em;
 }

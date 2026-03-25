@@ -1,11 +1,14 @@
 .dr-reader-toolbar {
-  padding: 6px 14px;
-  border-bottom: var(--dr-border-thin) solid var(--dr-border-color);
+  padding: 4px 14px;
+  border-bottom: 2px solid var(--dr-border-color);
   display: flex;
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
   flex-wrap: wrap;
+  background: #f0f0f0;
+  font-family: monospace;
+  font-size: var(--dr-font-size-sm);
 }
 
 .dr-reader-toolbar__bar {
@@ -15,5 +18,6 @@
 .dr-reader-toolbar__percent {
   font-size: var(--dr-font-size-sm);
   color: var(--dr-subtle);
-  font-family: var(--dr-font-title);
+  font-family: monospace;
+  font-weight: bold;
 }

@@ -5,7 +5,7 @@
   right: 0;
   height: var(--dr-menubar-height);
   background: var(--dr-surface);
-  border-bottom: var(--dr-border-width) solid var(--dr-border-color);
+  border-bottom: 1px solid var(--dr-border-color);
   display: flex;
   align-items: center;
   z-index: 9999;
@@ -24,12 +24,22 @@
 }
 
 .dr-menubar__item {
-  padding: 0 10px;
+  padding: 0 6px;
+  height: 100%;
+  display: flex;
+  align-items: center;
   cursor: pointer;
+  font-weight: bold;
+}
+
+.dr-menubar__item:hover {
+  background: var(--dr-on-surface);
+  color: var(--dr-surface);
 }
 
 .dr-menubar__item--active {
-  font-weight: bold;
+  background: var(--dr-on-surface);
+  color: var(--dr-surface);
 }
 
 .dr-menubar__spacer {

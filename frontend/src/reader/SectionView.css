@@ -1,7 +1,39 @@
 .dr-section-view {
-  max-width: 600px;
+  max-width: 540px;
   margin: 0 auto;
-  padding: 28px 32px 60px;
+  padding: 20px 24px 60px;
+  line-height: 1.75;
+  user-select: text;
+}
+
+/* Section divider — centered label with horizontal rules */
+.dr-section-view__divider {
+  text-align: center;
+  margin: 16px 0;
+  position: relative;
+  font-size: var(--dr-font-size-sm);
+  font-family: monospace;
+  font-weight: bold;
+  color: #888;
+  letter-spacing: 0.1em;
+}
+
+.dr-section-view__divider::before,
+.dr-section-view__divider::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 30%;
+  height: 1px;
+  background: #ccc;
+}
+
+.dr-section-view__divider::before {
+  left: 0;
+}
+
+.dr-section-view__divider::after {
+  right: 0;
 }
 
 .dr-section-view__header {
@@ -12,40 +44,40 @@
 }
 
 .dr-section-view__badge {
-  font-family: var(--dr-font-title);
+  display: inline-block;
+  border: 2px solid var(--dr-on-surface);
+  padding: 2px 8px;
+  font-family: monospace;
   font-size: var(--dr-font-size-sm);
-  color: var(--dr-subtle);
-  border: 1px solid var(--dr-border);
-  border-radius: 2px;
-  padding: 1px 7px;
+  font-weight: bold;
+  background: var(--dr-on-surface);
+  color: var(--dr-surface);
+  letter-spacing: 0.1em;
   flex-shrink: 0;
 }
 
 .dr-section-view__title {
-  font-family: var(--dr-font-title);
-  font-size: var(--dr-font-size-xl);
+  font-family: var(--dr-font-prose);
+  font-size: var(--dr-font-size-2xl, 20px);
+  font-weight: bold;
   margin: 0;
-  letter-spacing: -0.3px;
-}
-
-.dr-section-view__divider {
-  height: 2px;
-  background: var(--dr-stripe-pattern);
-  margin-bottom: 22px;
-  margin-top: 8px;
+  border-bottom: 2px solid var(--dr-on-surface);
+  padding-bottom: 8px;
+  flex: 1;
 }
 
 .dr-section-view__summary {
   margin-top: 20px;
   padding: 8px 12px;
-  border: 1px solid var(--dr-border);
-  border-radius: 2px;
+  border: 2px solid var(--dr-on-surface);
   font-size: var(--dr-font-size-sm);
   color: var(--dr-subtle);
   display: flex;
   gap: 12px;
+  font-family: monospace;
+  font-weight: bold;
 }
 
 .dr-section-view__summary-label {
-  font-family: var(--dr-font-title);
+  font-family: monospace;
 }

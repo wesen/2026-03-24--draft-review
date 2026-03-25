@@ -10,22 +10,23 @@
 }
 
 .dr-reader-page__nav {
-  max-width: 600px;
+  max-width: 540px;
   margin: 0 auto;
-  padding: 0 32px;
+  padding: 0 24px;
   margin-top: 32px;
   padding-top: 16px;
-  border-top: var(--dr-border-width) solid var(--dr-on-surface);
+  border-top: 2px solid var(--dr-on-surface);
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .dr-reader-page__hint {
-  max-width: 600px;
+  max-width: 540px;
   margin: 0 auto;
   text-align: center;
-  padding: 12px 32px 60px;
+  padding: 12px 24px 60px;
   font-size: var(--dr-font-size-sm);
   color: var(--dr-muted);
+  font-family: monospace;
 }

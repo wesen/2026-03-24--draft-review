@@ -236,3 +236,56 @@ npm run dev
 - Click "Edit" on any card -> ArticleEditor with sections sidebar
 - Click "Share" on any card -> ArticleSettings with link generation
 - In editor: add/delete/reorder sections, edit content, preview as reader
+
+## 2026-03-24 21:15 - Reader styling overhaul (reference: draft-review.html)
+
+**What:** Updated the reader-side styling to match the sharper, more elegant aesthetic from `imports/draft-review.html` (the DraftDesk reference design).
+
+**Reference analysis — key differences identified:**
+1. **Georgia serif** for draft content instead of monospace (much more readable)
+2. **Always-visible reaction chips** at 35% opacity below each paragraph, full opacity on hover — instead of hidden behind a `+` button
+3. **Paragraph hover**: left border + subtle background highlight (`rgba(0,0,0,0.04)`)
+4. **Pure black shadows** (`4px 4px 0 #000`) instead of semi-transparent
+5. **Desktop background**: subtle horizontal lines instead of checkered pattern
+6. **Sharp corners** everywhere (border-radius: 0) instead of rounded
+7. **Retro scrollbars** with hatched thumb pattern
+8. **Section dividers**: centered `§ SECTION NAME` with horizontal rules (from reference `.section-divider`)
+9. **Comment count badges** on paragraphs with reactions
+10. **Monospace for UI labels**, serif for content
+
+**Theme changes (`mac-os-1.css`):**
+- Desktop bg: `#aaaaaa` with horizontal line pattern (was `#e8e8e8` checkered)
+- All border-radius: `0px` (was `3px`/`8px`)
+- Shadows: pure black `4px 4px 0 #000` (was `rgba(0,0,0,0.3)`)
+- New tokens: `--dr-font-prose` (Georgia serif), `--dr-hover-bg`, `--dr-shadow-sm`, `--dr-border-light`, `--dr-font-size-2xl`
+- Menubar: `20px` height, `1px` border (was `22px`, `2px`)
+- Close box: `12px` (was `14px`)
+- Retro scrollbar styles (hatched thumb, white track, no buttons)
+
+**Paragraph component rewrite:**
+- **Before:** Hidden `+` button on hover -> ReactionPicker popup
+- **After:** Always-visible reaction chips (Useful/Confusing/Slow/Love) at 35% opacity, fade to 100% on paragraph hover. Clicking a chip selects it (highlighted), shows inline comment textarea. Click again or Enter to submit. Comment count badge appears when paragraph has reactions.
+- This matches the reference's `.para-actions` / `.reaction-chip` pattern exactly
+
+**SectionView changes:**
+- Section divider: centered `§ SECTION NAME` label with `::before`/`::after` horizontal rules (from reference `.section-divider`)
+- Title uses Georgia serif, `20px`, bold, with `2px` bottom border
+- Badge: inverted (black bg, white text, monospace) like reference `.draft-badge`
+
+**WelcomeSplash changes:**
+- Icon: inverted (black bg), square, `64px`
+- Version badge: inverted (black bg, white text, monospace)
+- Author note: serif font, `2px` border
+- How-to section: `#f5f5f5` solid background (was hatched gradient)
+- Monospace for labels, serif for content
+
+**Other CSS updates:**
+- TitleBar: simplified (removed stripe pattern, centered text, sharper close box with hover invert)
+- MacButton: sharp corners, `:active` inverts and translates `1px,1px` (reference `.btn:active`)
+- MenuBar: items highlight on hover (invert to black bg)
+- ProgressBar: `#ddd` background, `1px` border (matching reference)
+- SectionNav: square dots (removed border-radius)
+- DoneDialog: `3px` border, stronger shadow, monospace labels
+- ReaderToolbar: `#f0f0f0` background (status bar style from reference)
+
+**Build:** `npm run build` clean. CSS grew from 27KB to 29KB (retro scrollbar styles + new patterns).

@@ -26,13 +26,15 @@ export function SectionView({
 
   return (
     <div className="dr-section-view">
+      <div className="dr-section-view__divider">
+        {"\u00A7"} {section.title.toUpperCase()}
+      </div>
       <div className="dr-section-view__header">
         <span className="dr-section-view__badge">
-          {sectionIndex + 1} / {totalSections}
+          {sectionIndex + 1}/{totalSections}
         </span>
         <h2 className="dr-section-view__title">{section.title}</h2>
       </div>
-      <div className="dr-section-view__divider" />
 
       {section.paragraphs.map((text, pi) => (
         <Paragraph

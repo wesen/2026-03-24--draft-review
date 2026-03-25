@@ -7,8 +7,7 @@
 .dr-section-nav__dot {
   width: 10px;
   height: 10px;
-  border: var(--dr-border-thin) solid var(--dr-border-color);
-  border-radius: 50%;
+  border: 1.5px solid var(--dr-on-surface);
   background: var(--dr-surface);
   cursor: pointer;
   transition: all 0.15s;
@@ -16,7 +15,7 @@
 
 .dr-section-nav__dot--current {
   width: 18px;
-  border-radius: 3px;
+  background: var(--dr-on-surface);
 }
 
 .dr-section-nav__dot--read {
