@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { MacWindow, MenuBar } from "../chrome";
 import { MacButton } from "../chrome/MacButton";
 import {
@@ -45,9 +45,6 @@ export function AuthorApp() {
   const previewArticle = useAppSelector((s) => s.ui.previewArticle);
   const activeModal = useAppSelector((s) => s.ui.activeModal);
   const showInvite = activeModal === "invite";
-
-  // shareUrl is transient per-article — stays local
-  const [shareUrl, setShareUrl] = useState<string | undefined>();
 
   const { data: meResponse, isLoading: isLoadingMe } = useGetMeQuery(undefined, {
     skip: useMockApi,
@@ -96,7 +93,6 @@ export function AuthorApp() {
 
   const goBack = useCallback(() => {
     dispatch(goBackAction());
-    setShareUrl(undefined);
   }, [dispatch]);
 
   const handleLogin = () => {
@@ -293,7 +289,6 @@ export function AuthorApp() {
             }}
             onArticleSettings={(id) => {
               dispatch(selectArticleAction(id));
-              setShareUrl(undefined);
               dispatch(setView("settings"));
             }}
             onNewArticle={() => void handleNewArticle()}
@@ -316,7 +311,6 @@ export function AuthorApp() {
             }}
             onSettings={(id) => {
               dispatch(selectArticleAction(id));
-              setShareUrl(undefined);
               dispatch(setView("settings"));
             }}
             onReview={(id) => handleSelectArticle(id)}
@@ -380,7 +374,6 @@ export function AuthorApp() {
         >
           <ArticleSettings
             article={selectedArticle}
-            shareUrl={shareUrl}
             onSave={async (updates) => {
               await updateArticle({ id: selectedArticle.id, ...updates });
               goBack();
@@ -389,12 +382,6 @@ export function AuthorApp() {
             onDelete={async () => {
               await deleteArticle(selectedArticle.id);
               goBack();
-            }}
-            onGenerateLink={async () => {
-              const result = await generateShareToken(
-                selectedArticle.id
-              ).unwrap();
-              setShareUrl(result.url);
             }}
           />
         </MacWindow>
@@ -426,13 +413,11 @@ export function AuthorApp() {
       {showInvite && (
         <InviteDialog
           onClose={() => dispatch(closeModal())}
-          shareUrl={shareUrl}
           onGenerateShareLink={async () => {
             if (!activeArticleId) {
               throw new Error("No active article selected");
             }
             const result = await generateShareToken(activeArticleId).unwrap();
-            setShareUrl(result.url);
             return result.url;
           }}
           onInvite={async (email, note) => {

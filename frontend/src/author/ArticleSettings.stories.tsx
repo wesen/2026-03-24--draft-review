@@ -22,16 +22,14 @@ export const Default: Story = {
     article: articles[0],
     onSave: (updates) => alert(`Saved: ${JSON.stringify(updates)}`),
     onBack: () => alert("Back"),
-    onGenerateLink: () => alert("Generate link"),
-    shareUrl: "/r/share-1-abc123",
+    onDelete: () => alert("Delete"),
   },
 };
 
-export const NoLink: Story = {
+export const NoDelete: Story = {
   args: {
     article: articles[2],
     onSave: () => {},
     onBack: () => alert("Back"),
-    onGenerateLink: () => alert("Generate link"),
   },
 };

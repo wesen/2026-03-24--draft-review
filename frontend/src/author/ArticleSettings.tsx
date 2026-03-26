@@ -9,11 +9,8 @@ interface ArticleSettingsProps {
   onSave: (updates: Partial<Article>) => void;
   onBack: () => void;
   onDelete?: () => void;
-  onGenerateLink?: () => void;
-  shareUrl?: string;
 }
 
-type AccessMode = "invite_link" | "link" | "password";
 type ArticleStatus = "draft" | "in_review" | "complete" | "archived";
 
 const STATUS_OPTIONS: { value: ArticleStatus; label: string }[] = [
@@ -28,17 +25,11 @@ export function ArticleSettings({
   onSave,
   onBack,
   onDelete,
-  onGenerateLink,
-  shareUrl,
 }: ArticleSettingsProps) {
   const [title, setTitle] = useState(article.title);
   const [intro, setIntro] = useState(article.intro || "");
   const [version, setVersion] = useState(article.version || "");
   const [status, setStatus] = useState<ArticleStatus>(article.status);
-  const [accessMode, setAccessMode] = useState<AccessMode>("invite_link");
-  const [seeReactions, setSeeReactions] = useState(true);
-  const [seeNames, setSeeNames] = useState(false);
-  const [showAuthorNote, setShowAuthorNote] = useState(true);
   const [enabledReactions, setEnabledReactions] = useState<
     Record<string, boolean>
   >(
@@ -46,16 +37,7 @@ export function ArticleSettings({
   );
   const [requireNote, setRequireNote] = useState(false);
   const [allowAnon, setAllowAnon] = useState(true);
-  const [copied, setCopied] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
-  const handleCopy = () => {
-    if (shareUrl) {
-      navigator.clipboard.writeText(window.location.origin + shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
 
   const handleSave = () => {
     onSave({ title, intro, version, status });
@@ -91,83 +73,6 @@ export function ArticleSettings({
           onChange={(e) => setVersion(e.target.value)}
           placeholder='e.g. "Draft 1", "Revision 2"'
         />
-
-        {/* SHARING */}
-        <div className="dr-settings__section-header">SHARING</div>
-
-        <label className="dr-settings__label">Review Link</label>
-        <div className="dr-settings__link-row">
-          <input
-            className="dr-input dr-settings__link-input"
-            value={
-              shareUrl
-                ? `${window.location.origin}${shareUrl}`
-                : "No link generated yet"
-            }
-            readOnly
-          />
-          <MacButton small onClick={handleCopy} disabled={!shareUrl}>
-            {copied ? "Copied!" : "Copy"}
-          </MacButton>
-          <MacButton small onClick={onGenerateLink}>
-            {shareUrl ? "Reset" : "Generate"}
-          </MacButton>
-        </div>
-
-        <label className="dr-settings__label">
-          Access
-          <span className="dr-settings__coming-soon">coming soon</span>
-        </label>
-        <div className="dr-settings__radio-group">
-          {(
-            [
-              { value: "invite_link", label: "Unique reader links (no login)" },
-              { value: "link", label: "Anyone with link (no login)" },
-              { value: "password", label: "Password protected" },
-            ] as { value: AccessMode; label: string }[]
-          ).map((opt) => (
-            <label key={opt.value} className="dr-settings__radio">
-              <input
-                type="radio"
-                name="access"
-                checked={accessMode === opt.value}
-                onChange={() => setAccessMode(opt.value)}
-              />
-              {opt.label}
-            </label>
-          ))}
-        </div>
-
-        <label className="dr-settings__label">
-          Reader visibility
-          <span className="dr-settings__coming-soon">coming soon</span>
-        </label>
-        <div className="dr-settings__checkbox-group">
-          <label className="dr-settings__checkbox">
-            <input
-              type="checkbox"
-              checked={seeReactions}
-              onChange={(e) => setSeeReactions(e.target.checked)}
-            />
-            Readers can see each other's reactions
-          </label>
-          <label className="dr-settings__checkbox">
-            <input
-              type="checkbox"
-              checked={seeNames}
-              onChange={(e) => setSeeNames(e.target.checked)}
-            />
-            Readers can see each other's names
-          </label>
-          <label className="dr-settings__checkbox">
-            <input
-              type="checkbox"
-              checked={showAuthorNote}
-              onChange={(e) => setShowAuthorNote(e.target.checked)}
-            />
-            Show author note on welcome screen
-          </label>
-        </div>
 
         {/* FEEDBACK */}
         <div className="dr-settings__section-header">FEEDBACK</div>

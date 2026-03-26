@@ -34,17 +34,6 @@
   margin-top: 14px;
 }
 
-/* Link row */
-.dr-settings__link-row {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.dr-settings__link-input {
-  flex: 1;
-  font-size: var(--dr-font-size-base);
-}
 
 /* Radio group */
 .dr-settings__radio-group {

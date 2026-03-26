@@ -9,14 +9,12 @@ interface InviteResult {
 
 interface InviteDialogProps {
   onClose: () => void;
-  shareUrl?: string;
   onGenerateShareLink?: () => Promise<string> | string;
   onInvite?: (email: string, note: string) => Promise<InviteResult> | InviteResult;
 }
 
 export function InviteDialog({
   onClose,
-  shareUrl,
   onGenerateShareLink,
   onInvite,
 }: InviteDialogProps) {
@@ -27,7 +25,7 @@ export function InviteDialog({
   const [inviteResult, setInviteResult] = useState<InviteResult | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [isGeneratingShareLink, setIsGeneratingShareLink] = useState(false);
-  const [currentShareUrl, setCurrentShareUrl] = useState(shareUrl ?? "");
+  const [currentShareUrl, setCurrentShareUrl] = useState("");
   const [shareCopied, setShareCopied] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
