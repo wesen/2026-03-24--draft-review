@@ -44,7 +44,7 @@ export function MenuBar({ menus, rightStatus }: MenuBarProps) {
 
   return (
     <div className="dr-menubar">
-      <div className="dr-menubar__logo">{"\uF8FF"}</div>
+      <div className="dr-menubar__logo">{"\u2318"}</div>
       {menus.map((menu) => (
         <div
           key={menu.label}

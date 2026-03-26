@@ -61,11 +61,11 @@
 
   /* Spacing */
   --dr-space-xs: 4px;
-  --dr-space-sm: 6px;
-  --dr-space-md: 10px;
-  --dr-space-lg: 16px;
-  --dr-space-xl: 24px;
-  --dr-space-2xl: 32px;
+  --dr-space-sm: 8px;
+  --dr-space-md: 12px;
+  --dr-space-lg: 18px;
+  --dr-space-xl: 28px;
+  --dr-space-2xl: 40px;
 
   /* Component sizes */
   --dr-titlebar-height: 28px;
