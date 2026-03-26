@@ -2,12 +2,14 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 interface ReaderState {
   started: boolean;
+  sessionId: string | null;
   currentSectionId: string | null;
   readSectionIds: string[];
 }
 
 const initialState: ReaderState = {
   started: false,
+  sessionId: null,
   currentSectionId: null,
   readSectionIds: [],
 };
@@ -19,6 +21,9 @@ export const readerSlice = createSlice({
     startReading(state, action: PayloadAction<string>) {
       state.started = true;
       state.currentSectionId = action.payload;
+    },
+    setSessionId(state, action: PayloadAction<string | null>) {
+      state.sessionId = action.payload;
     },
     goToSection(state, action: PayloadAction<string>) {
       state.currentSectionId = action.payload;
@@ -34,5 +39,5 @@ export const readerSlice = createSlice({
   },
 });
 
-export const { startReading, goToSection, markSectionRead, resetReader } =
+export const { startReading, setSessionId, goToSection, markSectionRead, resetReader } =
   readerSlice.actions;

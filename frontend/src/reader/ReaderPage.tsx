@@ -8,6 +8,14 @@ import {
   useSubmitReviewSummaryMutation,
   useUpdateReviewProgressMutation,
 } from "../api/readerApi";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import {
+  startReading,
+  setSessionId as setSessionIdAction,
+  goToSection,
+  markSectionRead,
+  resetReader,
+} from "../store/readerSlice";
 import { WelcomeSplash } from "./WelcomeSplash";
 import { ReaderToolbar } from "./ReaderToolbar";
 import { SectionView } from "./SectionView";
@@ -38,19 +46,31 @@ export function ReaderPage({
   readOnly = false,
   onBackToEditor,
 }: ReaderPageProps) {
-  const [started, setStarted] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [currentSectionId, setCurrentSectionId] = useState(
-    article.sections[0]?.id
-  );
-  const [readSectionIds, setReadSectionIds] = useState<string[]>([]);
+  const dispatch = useAppDispatch();
+
+  // Redux state
+  const started = useAppSelector((s) => s.reader.started);
+  const sessionId = useAppSelector((s) => s.reader.sessionId);
+  const currentSectionId =
+    useAppSelector((s) => s.reader.currentSectionId) ?? article.sections[0]?.id;
+  const readSectionIds = useAppSelector((s) => s.reader.readSectionIds);
+
+  // Local state (optimistic reactions + dialog toggle)
   const [reactions, setReactions] = useState<Reaction[]>(initialReactions);
   const [showDone, setShowDone] = useState(false);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const [startReview] = useStartReviewMutation();
   const [updateReviewProgress] = useUpdateReviewProgressMutation();
   const [addReviewReaction] = useAddReviewReactionMutation();
   const [submitReviewSummary] = useSubmitReviewSummaryMutation();
+
+  // Reset reader state on unmount
+  useEffect(() => {
+    return () => {
+      dispatch(resetReader());
+    };
+  }, [dispatch]);
 
   const sectionIndex = article.sections.findIndex(
     (s) => s.id === currentSectionId
@@ -59,10 +79,13 @@ export function ReaderPage({
   const isFirst = sectionIndex === 0;
   const isLast = sectionIndex === article.sections.length - 1;
 
-  const goTo = useCallback((id: string) => {
-    setCurrentSectionId(id);
-    if (scrollRef.current) scrollRef.current.scrollTop = 0;
-  }, []);
+  const goTo = useCallback(
+    (id: string) => {
+      dispatch(goToSection(id));
+      if (scrollRef.current) scrollRef.current.scrollTop = 0;
+    },
+    [dispatch]
+  );
 
   const persistProgress = useCallback(
     async (sectionId: string) => {
@@ -92,14 +115,10 @@ export function ReaderPage({
 
   const markRead = useCallback(
     (sectionId: string) => {
-      setReadSectionIds((prev) =>
-        prev.includes(sectionId)
-          ? prev
-          : [...prev, sectionId]
-      );
+      dispatch(markSectionRead(sectionId));
       void persistProgress(sectionId);
     },
-    [persistProgress]
+    [dispatch, persistProgress]
   );
 
   const goNext = useCallback(() => {
@@ -202,13 +221,12 @@ export function ReaderPage({
           if (reviewToken && !sessionId) {
             try {
               const result = await startReview({ token: reviewToken }).unwrap();
-              setSessionId(result.session.id);
+              dispatch(setSessionIdAction(result.session.id));
             } catch (error) {
               console.error("Failed to start review session", error);
             }
           }
-          setStarted(true);
-          setCurrentSectionId(article.sections[0]?.id);
+          dispatch(startReading(article.sections[0]?.id));
         }}
       />
     );
