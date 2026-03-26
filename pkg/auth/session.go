@@ -32,7 +32,14 @@ type SessionClaims struct {
 type SessionStore interface {
 	CreateAuthorSession(ctx context.Context, userID uuid.UUID, tokenHash string, expiresAt time.Time) (*Session, error)
 	FindAuthorSessionByTokenHash(ctx context.Context, tokenHash string) (*ResolvedSession, error)
+	TouchAuthorSession(ctx context.Context, sessionID uuid.UUID, touchedAt time.Time, renewedExpiresAt *time.Time) (*Session, error)
 	RevokeAuthorSessionByTokenHash(ctx context.Context, tokenHash string) error
+}
+
+type ActiveSession struct {
+	Resolved *ResolvedSession
+	Claims   SessionClaims
+	Renewed  bool
 }
 
 type SessionManager struct {
@@ -113,6 +120,14 @@ func (m *SessionManager) WriteSession(ctx context.Context, w http.ResponseWriter
 }
 
 func (m *SessionManager) ReadSession(ctx context.Context, r *http.Request) (*SessionClaims, error) {
+	active, err := m.ReadSessionState(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	return &active.Claims, nil
+}
+
+func (m *SessionManager) ReadSessionState(ctx context.Context, r *http.Request) (*ActiveSession, error) {
 	if r == nil {
 		return nil, ErrNoSession
 	}
@@ -136,14 +151,25 @@ func (m *SessionManager) ReadSession(ctx context.Context, r *http.Request) (*Ses
 	if resolved == nil {
 		return nil, ErrNoSession
 	}
+	now := m.now()
 	if resolved.Session.RevokedAt != nil {
 		return nil, errors.New("session has been revoked")
 	}
-	if !resolved.Session.ExpiresAt.IsZero() && m.now().After(resolved.Session.ExpiresAt.UTC()) {
+	if !resolved.Session.ExpiresAt.IsZero() && now.After(resolved.Session.ExpiresAt.UTC()) {
 		return nil, errors.New("session has expired")
 	}
 
-	return &SessionClaims{
+	sessionID, err := uuid.Parse(strings.TrimSpace(resolved.Session.ID))
+	if err != nil {
+		return nil, err
+	}
+	touchedSession, err := m.store.TouchAuthorSession(ctx, sessionID, now, nil)
+	if err != nil {
+		return nil, err
+	}
+	resolved.Session = *touchedSession
+
+	claims := SessionClaims{
 		Issuer:            resolved.User.AuthIssuer,
 		Subject:           resolved.User.AuthSubject,
 		Email:             resolved.User.Email,
@@ -152,6 +178,12 @@ func (m *SessionManager) ReadSession(ctx context.Context, r *http.Request) (*Ses
 		DisplayName:       resolved.User.Name,
 		IssuedAt:          resolved.Session.CreatedAt.UTC(),
 		ExpiresAt:         resolved.Session.ExpiresAt.UTC(),
+	}
+
+	return &ActiveSession{
+		Resolved: resolved,
+		Claims:   claims,
+		Renewed:  false,
 	}, nil
 }
 

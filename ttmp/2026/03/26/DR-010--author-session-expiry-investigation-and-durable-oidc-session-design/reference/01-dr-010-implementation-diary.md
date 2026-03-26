@@ -11,16 +11,22 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
-    - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/session.go
-    - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/oidc.go
-    - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/postgres.go
-    - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http.go
+    - Path: pkg/auth/oidc.go
+    - Path: pkg/auth/postgres.go
+    - Path: pkg/auth/session.go
+      Note: Touches author_sessions on each authenticated read
+    - Path: pkg/auth/session_test.go
+      Note: Verifies session reads update activity timestamps
+    - Path: pkg/db/migrations/0006_author_session_activity.sql
+      Note: Introduces last_used_at activity metadata for opaque author sessions
+    - Path: pkg/server/http.go
 ExternalSources: []
 Summary: Detailed step-by-step diary for the server-side session implementation work.
 LastUpdated: 2026-03-26T15:50:00-04:00
 WhatFor: Keep a running implementation diary for the medium-term opaque session migration.
 WhenToUse: Use while reviewing the DR-010 implementation history and validation steps.
 ---
+
 
 # DR-010 implementation diary
 
@@ -141,6 +147,65 @@ Why this mattered:
   literally and needed to reflect the new opaque-session model
 - operators need to know about `DRAFT_REVIEW_AUTH_SESSION_TTL`
 - local developers need the updated `serve --auth-session-ttl 12h` example
+
+### 2026-03-26 18:55 EDT
+
+Started the first hardening follow-up after the initial opaque-session deploy.
+I deliberately kept this as a narrow activity-tracking slice instead of mixing it
+with sliding renewal, because both features touch `pkg/auth/session.go` and would
+be harder to review if they landed together.
+
+Files changed in this slice:
+
+- `pkg/db/migrations/0006_author_session_activity.sql`
+- `pkg/auth/types.go`
+- `pkg/auth/postgres.go`
+- `pkg/auth/session.go`
+- `pkg/auth/session_test.go`
+- `pkg/server/http_test.go`
+
+What changed:
+
+- added a schema migration that introduces `author_sessions.last_used_at`, backfills
+  it from `created_at`, and indexes `(user_id, last_used_at)` for future session
+  inspection and idle-timeout work
+- extended the auth repository to scan and update `last_used_at` whenever an opaque
+  author session is loaded and accepted
+- added a `TouchAuthorSession(...)` repository method and wired the session manager
+  to call it on every authenticated session read
+- updated unit tests and handler tests so fake session stores now implement the
+  new touch method and assert that a successful session read updates activity state
+
+Why I split it this way:
+
+- `last_used_at` is useful on its own for observability and future idle policies
+- sliding renewal needs response-writer-aware cookie refresh behavior, which is a
+  separate behavioral change and should get its own commit
+
+Validation run:
+
+```bash
+gofmt -w pkg/auth/config.go pkg/auth/postgres.go pkg/auth/session.go pkg/auth/session_test.go pkg/auth/types.go pkg/server/http_test.go
+go test ./pkg/auth ./pkg/server
+```
+
+Result:
+
+- both package test suites passed after the touch-on-read wiring was added
+
+What was tricky:
+
+- I had already started changing the session manager API for sliding renewal before
+  this step. I backed those renewal-specific pieces out temporarily so the first
+  follow-up commit would stay focused on activity tracking and not drag response
+  cookie semantics into the same diff.
+
+What to watch in review:
+
+- `TouchAuthorSession(...)` now happens on every authenticated request, so reviewers
+  should confirm this write pattern is acceptable for the expected author traffic
+- the migration backfills existing rows and makes `last_used_at` non-null, so schema
+  reviewers should confirm that aligns with any external DB inspection scripts
 
 ### Next diary entries
 

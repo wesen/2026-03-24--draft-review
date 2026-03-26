@@ -14,12 +14,13 @@ type User struct {
 }
 
 type Session struct {
-	ID        string     `json:"id"`
-	UserID    string     `json:"userId"`
-	TokenHash string     `json:"-"`
-	ExpiresAt time.Time  `json:"expiresAt"`
-	CreatedAt time.Time  `json:"createdAt"`
-	RevokedAt *time.Time `json:"revokedAt,omitempty"`
+	ID         string     `json:"id"`
+	UserID     string     `json:"userId"`
+	TokenHash  string     `json:"-"`
+	ExpiresAt  time.Time  `json:"expiresAt"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	LastUsedAt time.Time  `json:"lastUsedAt"`
+	RevokedAt  *time.Time `json:"revokedAt,omitempty"`
 }
 
 type ResolvedSession struct {

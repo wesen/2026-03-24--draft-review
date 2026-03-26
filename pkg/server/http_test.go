@@ -29,11 +29,12 @@ func (f *fakeSessionStore) CreateAuthorSession(ctx context.Context, userID uuid.
 		f.session = &draftauth.ResolvedSession{}
 	}
 	f.session.Session = draftauth.Session{
-		ID:        uuid.NewString(),
-		UserID:    userID.String(),
-		TokenHash: tokenHash,
-		ExpiresAt: expiresAt.UTC(),
-		CreatedAt: time.Now().UTC(),
+		ID:         uuid.NewString(),
+		UserID:     userID.String(),
+		TokenHash:  tokenHash,
+		ExpiresAt:  expiresAt.UTC(),
+		CreatedAt:  time.Now().UTC(),
+		LastUsedAt: time.Now().UTC(),
 	}
 	return &f.session.Session, nil
 }
@@ -43,6 +44,17 @@ func (f *fakeSessionStore) FindAuthorSessionByTokenHash(ctx context.Context, tok
 		return nil, draftauth.ErrNotFound
 	}
 	return f.session, nil
+}
+
+func (f *fakeSessionStore) TouchAuthorSession(ctx context.Context, sessionID uuid.UUID, touchedAt time.Time, renewedExpiresAt *time.Time) (*draftauth.Session, error) {
+	if f.session == nil || f.session.Session.ID != sessionID.String() {
+		return nil, draftauth.ErrNotFound
+	}
+	f.session.Session.LastUsedAt = touchedAt.UTC()
+	if renewedExpiresAt != nil {
+		f.session.Session.ExpiresAt = renewedExpiresAt.UTC()
+	}
+	return &f.session.Session, nil
 }
 
 func (f *fakeSessionStore) RevokeAuthorSessionByTokenHash(ctx context.Context, tokenHash string) error {

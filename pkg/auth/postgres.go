@@ -155,7 +155,7 @@ func (r *PostgresRepository) CreateAuthorSession(ctx context.Context, userID uui
 	row := r.pool.QueryRow(ctx, `
 insert into author_sessions(id, user_id, token_hash, expires_at)
 values($1, $2, $3, $4)
-returning id, user_id, token_hash, expires_at, created_at, revoked_at
+returning id, user_id, token_hash, expires_at, created_at, last_used_at, revoked_at
 `, uuid.New(), userID, tokenHash, expiresAt)
 
 	if err := row.Scan(
@@ -164,6 +164,7 @@ returning id, user_id, token_hash, expires_at, created_at, revoked_at
 		&session.TokenHash,
 		&session.ExpiresAt,
 		&session.CreatedAt,
+		&session.LastUsedAt,
 		&revokedAt,
 	); err != nil {
 		return nil, errors.Wrap(err, "failed to create author session")
@@ -188,6 +189,7 @@ select
     s.token_hash,
     s.expires_at,
     s.created_at,
+    s.last_used_at,
     s.revoked_at,
     u.id,
     u.auth_subject,
@@ -213,6 +215,7 @@ where s.token_hash = $1
 		&resolved.Session.TokenHash,
 		&resolved.Session.ExpiresAt,
 		&resolved.Session.CreatedAt,
+		&resolved.Session.LastUsedAt,
 		&sessionRevokedAt,
 		&resolved.User.ID,
 		&authSubject,
@@ -234,6 +237,47 @@ where s.token_hash = $1
 	}
 	assignNullableUserFields(&resolved.User, authSubject, authIssuer, emailVerifiedAt)
 	return resolved, nil
+}
+
+func (r *PostgresRepository) TouchAuthorSession(ctx context.Context, sessionID uuid.UUID, touchedAt time.Time, renewedExpiresAt *time.Time) (*Session, error) {
+	if r == nil || r.pool == nil {
+		return nil, errors.New("postgres pool is not configured")
+	}
+
+	session := &Session{}
+	var revokedAt sql.NullTime
+	var renewedAt any = nil
+	if renewedExpiresAt != nil {
+		renewedAt = renewedExpiresAt.UTC()
+	}
+	row := r.pool.QueryRow(ctx, `
+update author_sessions
+set last_used_at = $2,
+    expires_at = coalesce($3, expires_at)
+where id = $1
+returning id, user_id, token_hash, expires_at, created_at, last_used_at, revoked_at
+`, sessionID, touchedAt.UTC(), renewedAt)
+
+	if err := row.Scan(
+		&session.ID,
+		&session.UserID,
+		&session.TokenHash,
+		&session.ExpiresAt,
+		&session.CreatedAt,
+		&session.LastUsedAt,
+		&revokedAt,
+	); err != nil {
+		if strings.Contains(err.Error(), "no rows") {
+			return nil, ErrNotFound
+		}
+		return nil, errors.Wrap(err, "failed to touch author session")
+	}
+	if revokedAt.Valid {
+		value := revokedAt.Time.UTC()
+		session.RevokedAt = &value
+	}
+
+	return session, nil
 }
 
 func (r *PostgresRepository) RevokeAuthorSessionByTokenHash(ctx context.Context, tokenHash string) error {

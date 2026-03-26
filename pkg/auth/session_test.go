@@ -14,15 +14,17 @@ type fakeSessionStore struct {
 	createdSession *Session
 	resolved       *ResolvedSession
 	revokedHash    string
+	touchedAt      time.Time
 }
 
 func (f *fakeSessionStore) CreateAuthorSession(ctx context.Context, userID uuid.UUID, tokenHash string, expiresAt time.Time) (*Session, error) {
 	f.createdSession = &Session{
-		ID:        uuid.NewString(),
-		UserID:    userID.String(),
-		TokenHash: tokenHash,
-		ExpiresAt: expiresAt.UTC(),
-		CreatedAt: time.Now().UTC(),
+		ID:         uuid.NewString(),
+		UserID:     userID.String(),
+		TokenHash:  tokenHash,
+		ExpiresAt:  expiresAt.UTC(),
+		CreatedAt:  time.Now().UTC(),
+		LastUsedAt: time.Now().UTC(),
 	}
 	return f.createdSession, nil
 }
@@ -35,6 +37,18 @@ func (f *fakeSessionStore) FindAuthorSessionByTokenHash(ctx context.Context, tok
 		return nil, ErrNotFound
 	}
 	return f.resolved, nil
+}
+
+func (f *fakeSessionStore) TouchAuthorSession(ctx context.Context, sessionID uuid.UUID, touchedAt time.Time, renewedExpiresAt *time.Time) (*Session, error) {
+	if f.resolved == nil || f.resolved.Session.ID != sessionID.String() {
+		return nil, ErrNotFound
+	}
+	f.touchedAt = touchedAt.UTC()
+	f.resolved.Session.LastUsedAt = touchedAt.UTC()
+	if renewedExpiresAt != nil {
+		f.resolved.Session.ExpiresAt = renewedExpiresAt.UTC()
+	}
+	return &f.resolved.Session, nil
 }
 
 func (f *fakeSessionStore) RevokeAuthorSessionByTokenHash(ctx context.Context, tokenHash string) error {
@@ -101,6 +115,12 @@ func TestSessionManagerRoundTrip(t *testing.T) {
 	}
 	if !claims.ExpiresAt.Equal(store.createdSession.ExpiresAt) {
 		t.Fatalf("expected expiry %s, got %s", store.createdSession.ExpiresAt, claims.ExpiresAt)
+	}
+	if store.touchedAt.IsZero() {
+		t.Fatal("expected session read to touch last_used_at")
+	}
+	if !store.resolved.Session.LastUsedAt.Equal(store.touchedAt) {
+		t.Fatalf("expected last_used_at %s, got %s", store.touchedAt, store.resolved.Session.LastUsedAt)
 	}
 }
 
