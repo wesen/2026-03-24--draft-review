@@ -66,11 +66,16 @@ go run ./cmd/draft-review serve \
   --dsn 'postgres://draft_review:draft_review@127.0.0.1:15432/draft_review?sslmode=disable' \
   --auth-mode oidc \
   --auth-session-secret local-session-secret \
+  --auth-session-ttl 12h \
   --oidc-issuer-url http://127.0.0.1:18080/realms/draft-review-dev \
   --oidc-client-id draft-review-web \
   --oidc-client-secret draft-review-web-secret \
   --oidc-redirect-url http://127.0.0.1:8080/auth/callback
 ```
+
+In OIDC mode, the app now uses an opaque browser session token backed by the
+`author_sessions` table. `--auth-session-ttl` controls the Draft Review session
+lifetime separately from the upstream Keycloak token lifetime.
 
 Or use the local helper targets:
 

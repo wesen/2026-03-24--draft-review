@@ -124,6 +124,24 @@ What was intentionally deferred:
 - long-term refresh-token storage and renewal remain in DR-011
 - richer session metadata like `last_used_at` is not part of this medium-term slice
 
+### 2026-03-26 16:20 EDT
+
+Aligned the documentation with the code that landed in the first implementation
+commit.
+
+Files updated in this follow-up slice:
+
+- `README.md`
+- `docs/deployments/draft-review-coolify.md`
+- `ttmp/.../DR-010/design-doc/01-author-session-expiry-investigation-and-durable-oidc-session-design-guide.md`
+
+Why this mattered:
+
+- the original DR-010 guide still described the pre-implementation recommendation too
+  literally and needed to reflect the new opaque-session model
+- operators need to know about `DRAFT_REVIEW_AUTH_SESSION_TTL`
+- local developers need the updated `serve --auth-session-ttl 12h` example
+
 ### Next diary entries
 
 Add entries after each implementation slice, including:

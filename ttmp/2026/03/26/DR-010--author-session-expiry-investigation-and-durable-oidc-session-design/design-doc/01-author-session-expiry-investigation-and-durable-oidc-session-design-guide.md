@@ -42,11 +42,11 @@ object. A provider proves who the user is. The application decides how long it w
 to trust the user's local browser session after successful login. Right now Draft
 Review collapses those two concerns together.
 
-The recommended fix is to keep Keycloak as the identity provider but stop using the
-raw OIDC token expiry as the application cookie expiry. Instead, Draft Review should
-define its own session TTL, write cookies against that policy, keep explicit logout
-behavior intact, and verify that the hosted session signing secret remains stable
-across deploys.
+The recommended medium-term fix is to keep Keycloak as the identity provider but move
+Draft Review to an opaque server-side session model. In that model, the browser only
+holds a random session token, the backend stores the real session record in the
+existing `author_sessions` table, and the app uses its own session TTL instead of the
+raw OIDC token expiry.
 
 ## Problem Statement
 
@@ -118,7 +118,7 @@ The login callback is handled in:
 
 - [oidc.go](/home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/oidc.go)
 
-Conceptually, the current code does this:
+Conceptually, the old code path did this:
 
 ```text
 receive auth code
@@ -137,21 +137,22 @@ provider token expiry == application session expiry
 
 That assumption is the likely source of the quick logout behavior.
 
-### 3. Session cookie manager
+### 3. Session manager
 
 Cookie writing and reading are handled in:
 
 - [session.go](/home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/session.go)
 
-The important behavior is:
+The current medium-term implementation now does this instead:
 
-- `WriteSession` takes `claims.ExpiresAt`
-- it computes `MaxAge` from that timestamp
-- it writes `Expires` and `MaxAge` on the cookie
-- `ReadSession` rejects the session once that time is reached
+- `WriteSession` generates an opaque random token
+- it stores only a hash of that token in `author_sessions`
+- it writes the raw token into the browser cookie
+- `ReadSession` hashes the incoming cookie, loads the session row, joins the linked
+  user, and reconstructs request-time identity claims from Postgres
 
-So once the copied expiry arrives, the browser session is over from Draft Review's
-perspective, regardless of whether the broader Keycloak login might still be alive.
+That is the core architectural change in DR-010. The browser no longer carries the
+full identity payload.
 
 ### 4. API routes that expose the symptom
 
@@ -186,9 +187,10 @@ Important environment variables:
 - `DRAFT_REVIEW_OIDC_CLIENT_SECRET`
 - `DRAFT_REVIEW_OIDC_REDIRECT_URL`
 
-If `DRAFT_REVIEW_AUTH_SESSION_SECRET` changes, all existing session cookies become
-invalid immediately. That would cause logout across a deploy or restart even if the
-TTL problem were fixed.
+`DRAFT_REVIEW_AUTH_SESSION_SECRET` is still part of the session-token hashing path in
+the medium-term implementation. If it changes, existing server-side session cookies
+will no longer match their stored hashes. That would still cause logout across a
+deploy or restart.
 
 ## Current and Recommended Flows
 
@@ -218,15 +220,16 @@ Diagram:
               +----------------------------------------+
 ```
 
-### Recommended flow
+### Recommended medium-term flow
 
 ```text
 browser -> /auth/login
         -> Keycloak login page
         -> /auth/callback
         -> verify token
-        -> create Draft Review app session using app TTL
-        -> write cookie using app TTL
+        -> ensure local user exists
+        -> create Draft Review server-side session using app TTL
+        -> write opaque cookie token
 ```
 
 Diagram:
@@ -235,35 +238,37 @@ Diagram:
 Keycloak login success
         |
         v
-Draft Review creates app session policy
+Draft Review creates app session row
         |
-        +--> browser cookie expiry based on app TTL
-        |
-        +--> optional future revalidation / refresh flow
+        +--> browser receives opaque token
+        +--> backend keeps real session state in Postgres
 ```
 
 The important change is that Draft Review becomes responsible for its own browser
-session duration.
+session duration and session lookup, while still delegating login to Keycloak.
 
 ## Proposed Solution
 
-The recommended near-term design is to give Draft Review an application-defined
-session policy.
+The recommended medium-term design is an opaque server-side session model with an
+application-defined TTL.
 
 ### Proposed behavior
 
 - keep Keycloak for login and logout
 - verify OIDC tokens exactly as today
-- stop copying `token.Expiry` into the app cookie
-- introduce an app session TTL, for example `12h`
-- optionally add sliding renewal later
+- stop copying `token.Expiry` into the cookie payload because there is no cookie
+  payload anymore
+- create or update the local user during callback
+- create a row in `author_sessions`
+- use an app session TTL, for example `12h`
 - verify the hosted session secret is stable across restarts
 
 ### Why this solves the user-facing issue
 
-If Keycloak currently issues short-lived access tokens, the current code makes the
-app feel like it has short-lived logins. Once the app defines its own session TTL, a
-successful login results in a stable author session suitable for an editing workflow.
+If Keycloak currently issues short-lived access tokens, the old code made the app
+feel like it had short-lived logins. Once the app creates its own server-side session
+row with an app-defined TTL, a successful login results in a stable author session
+suitable for an editing workflow.
 
 ### Minimal viable settings
 
@@ -407,51 +412,45 @@ Recommended environment shape:
 
 The intern should parse these once and choose defaults that are easy to reason about.
 
-### Step 3: Change OIDC callback session creation
+### Step 3: Change OIDC callback session creation and create a server-side session
 
 Update:
 
 - [oidc.go](/home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/oidc.go)
 
-Current conceptual code:
+Old conceptual code:
 
 ```go
 expiry := token.Expiry
 sessionClaims.ExpiresAt = expiry.UTC()
 ```
 
-Recommended conceptual code:
+Medium-term conceptual code:
 
 ```go
-issuedAt := now()
-sessionClaims.IssuedAt = issuedAt
-sessionClaims.ExpiresAt = issuedAt.Add(settings.SessionTTL)
+user := authService.EnsureAuthenticatedUser(identity)
+sessionManager.WriteSession(ctx, w, r, user)
 ```
 
 Important note:
 
 Do not remove token verification. The app must still verify the Keycloak callback.
-Only the local cookie lifetime should change.
+Only the local session creation model should change.
 
-### Step 4: Optionally add sliding renewal
+### Step 4: Read identity from the session table on each request
 
-If the product wants inactivity-based sessions:
-
-- when an authenticated request arrives
-- if the cookie is nearing expiry
-- rewrite it with a fresh `ExpiresAt`
+The handler path should:
 
 Pseudocode:
 
 ```text
-claims = readSession()
-if slidingSessionsEnabled and claims.expiresSoon():
-    claims.ExpiresAt = now + sessionTTL
-    writeSession(claims)
+rawToken = cookie value
+tokenHash = sessionManager.hash(rawToken)
+resolved = repository.findSessionByTokenHash(tokenHash)
+claims = buildSessionClaims(resolved.user, resolved.session)
 ```
 
-This should not rewrite the cookie on every single request unless that behavior is
-deliberately chosen.
+This gives the backend full control over revocation and expiry checks.
 
 ### Step 5: Keep logout intact
 
@@ -463,6 +462,7 @@ Retain the existing logout shape in:
 Requirements:
 
 - local cookie is cleared
+- backing session row is revoked
 - provider logout redirect still succeeds
 - post-logout callback remains valid
 
@@ -485,10 +485,10 @@ Relevant files:
 
 Test cases to add:
 
-- callback uses app TTL instead of provider token expiry
-- expired cookies are rejected correctly
-- sliding renewal extends nearing-expiry sessions if enabled
+- server-side session creation writes the expected cookie and database record
+- unknown or revoked session tokens are rejected correctly
 - logout still clears the cookie
+- `/api/me` resolves identity from the server-side session lookup
 
 ### Step 8: Update deployment documentation
 
@@ -554,7 +554,7 @@ secret stable.
 ## Open Questions
 
 - What exact app TTL is acceptable for authoring UX and security?
-- Should the first fix be absolute TTL only, or absolute TTL plus sliding renewal?
+- Should the medium-term implementation stop at absolute TTL, or later add sliding renewal before refresh-token work?
 - Should `/api/me` expose both app session expiry and original provider token expiry
   for easier debugging?
 - Is the hosted Coolify session secret already confirmed stable across deploys?

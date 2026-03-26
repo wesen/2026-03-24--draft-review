@@ -16,3 +16,6 @@
   the existing `author_sessions` table, OIDC callback-driven local user + session
   creation, server-side session lookup for `/api/me` and author routes, and logout
   revocation of the backing session row
+- Updated the repo runbook, hosted deployment notes, and DR-010 design guide so they
+  now describe the opaque server-side session model and the new `auth-session-ttl`
+  setting instead of the old stateless cookie recommendation

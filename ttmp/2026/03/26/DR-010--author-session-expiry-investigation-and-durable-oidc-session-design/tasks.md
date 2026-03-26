@@ -20,5 +20,5 @@
 - [x] Update logout to revoke or invalidate the server-side session and clear the browser cookie
 - [x] Add and update tests for callback login, cookie/session reading, `/api/me`, and logout
 - [x] Verify that existing dev auth mode behavior still works
-- [ ] Update DR-010 docs, diary, and changelog as each slice lands
-- [ ] Run `go test ./cmd/... ./pkg/...` and `docmgr doctor --ticket DR-010 --stale-after 30`
+- [x] Update DR-010 docs, diary, and changelog as each slice lands
+- [x] Run `go test ./cmd/... ./pkg/...` and `docmgr doctor --ticket DR-010 --stale-after 30`
