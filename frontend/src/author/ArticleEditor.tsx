@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import type { Article, Section } from "../types";
 import { MacButton } from "../chrome/MacButton";
 import "./ArticleEditor.css";
@@ -21,8 +21,16 @@ export function ArticleEditor({
     article.sections[0]?.id || ""
   );
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const activeSection = article.sections.find((s) => s.id === activeSectionId);
+
+  // Serialize for dirty comparison — stable reference for initial state
+  const initialJson = useMemo(
+    () => JSON.stringify({ s: initialArticle.sections }),
+    [initialArticle]
+  );
 
   const parseParagraphs = useCallback((text: string) => {
     const paragraphs = text
@@ -57,6 +65,15 @@ export function ArticleEditor({
     setContentDraft(activeSection?.paragraphs.join("\n\n") || "");
   }, [activeSection]);
 
+  // Auto-grow textarea
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = Math.max(el.scrollHeight, 200) + "px";
+    }
+  }, [contentDraft]);
+
   const buildArticleWithCommittedDraft = useCallback(
     (source: Article) => {
       if (!activeSectionId) {
@@ -78,6 +95,11 @@ export function ArticleEditor({
   const commitContentDraft = useCallback(() => {
     setArticle((prev) => buildArticleWithCommittedDraft(prev));
   }, [buildArticleWithCommittedDraft]);
+
+  // Dirty state: compare current article (with uncommitted draft) against initial
+  const currentWithDraft = buildArticleWithCommittedDraft(article);
+  const isDirty =
+    JSON.stringify({ s: currentWithDraft.sections }) !== initialJson;
 
   const addSection = () => {
     const newSection: Section = {
@@ -178,7 +200,17 @@ export function ArticleEditor({
           </MacButton>
         </div>
         <div className="dr-editor__sidebar-footer">
-          <MacButton fullWidth small onClick={onBack}>
+          <MacButton
+            fullWidth
+            small
+            onClick={() => {
+              if (isDirty) {
+                setShowUnsavedConfirm(true);
+              } else {
+                onBack();
+              }
+            }}
+          >
             {"\u2190"} Back
           </MacButton>
         </div>
@@ -199,11 +231,11 @@ export function ArticleEditor({
 
             <label className="dr-editor__label">Content</label>
             <textarea
+              ref={textareaRef}
               className="dr-textarea dr-editor__content-input"
               value={contentDraft}
               onBlur={commitContentDraft}
               onChange={(e) => setContentDraft(e.target.value)}
-              rows={16}
             />
             <div className="dr-editor__hint">
               Paragraph breaks (blank lines) become separate reactable
@@ -211,6 +243,11 @@ export function ArticleEditor({
             </div>
 
             <div className="dr-editor__actions">
+              {isDirty && (
+                <span className="dr-editor__dirty-indicator">
+                  Unsaved changes
+                </span>
+              )}
               {onPreview && (
                 <MacButton
                   onClick={() => {
@@ -243,12 +280,12 @@ export function ArticleEditor({
 
       {/* Delete confirmation */}
       {showDeleteConfirm && (
-        <div className="dr-editor__confirm-overlay">
-          <div className="dr-editor__confirm-dialog">
+        <div className="dr-editor__confirm-overlay" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="dr-editor__confirm-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dr-editor__confirm-title">Delete Section?</div>
             <div className="dr-editor__confirm-body">
-              Are you sure you want to delete "{activeSection?.title}"? This
-              cannot be undone.
+              Are you sure you want to delete &ldquo;{activeSection?.title}&rdquo;?
+              This cannot be undone.
             </div>
             <div className="dr-editor__confirm-actions">
               <MacButton onClick={() => setShowDeleteConfirm(false)}>
@@ -256,6 +293,33 @@ export function ArticleEditor({
               </MacButton>
               <MacButton primary onClick={deleteSection}>
                 Delete
+              </MacButton>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unsaved changes confirmation */}
+      {showUnsavedConfirm && (
+        <div className="dr-editor__confirm-overlay" onClick={() => setShowUnsavedConfirm(false)}>
+          <div className="dr-editor__confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="dr-editor__confirm-title">Unsaved Changes</div>
+            <div className="dr-editor__confirm-body">
+              You have unsaved changes. Save before leaving?
+            </div>
+            <div className="dr-editor__confirm-actions">
+              <MacButton onClick={() => { setShowUnsavedConfirm(false); onBack(); }}>
+                Discard
+              </MacButton>
+              <MacButton
+                primary
+                onClick={() => {
+                  const nextArticle = buildArticleWithCommittedDraft(article);
+                  setArticle(nextArticle);
+                  onSave(nextArticle);
+                }}
+              >
+                Save
               </MacButton>
             </div>
           </div>

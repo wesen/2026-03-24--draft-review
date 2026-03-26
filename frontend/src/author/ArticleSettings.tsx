@@ -8,6 +8,7 @@ interface ArticleSettingsProps {
   article: Article;
   onSave: (updates: Partial<Article>) => void;
   onBack: () => void;
+  onDelete?: () => void;
   onGenerateLink?: () => void;
   shareUrl?: string;
 }
@@ -26,9 +27,13 @@ export function ArticleSettings({
   article,
   onSave,
   onBack,
+  onDelete,
   onGenerateLink,
   shareUrl,
 }: ArticleSettingsProps) {
+  const [title, setTitle] = useState(article.title);
+  const [intro, setIntro] = useState(article.intro || "");
+  const [version, setVersion] = useState(article.version || "");
   const [status, setStatus] = useState<ArticleStatus>(article.status);
   const [accessMode, setAccessMode] = useState<AccessMode>("invite_link");
   const [seeReactions, setSeeReactions] = useState(true);
@@ -42,6 +47,7 @@ export function ArticleSettings({
   const [requireNote, setRequireNote] = useState(false);
   const [allowAnon, setAllowAnon] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleCopy = () => {
     if (shareUrl) {
@@ -52,12 +58,40 @@ export function ArticleSettings({
   };
 
   const handleSave = () => {
-    onSave({ status });
+    onSave({ title, intro, version, status });
   };
 
   return (
     <div className="dr-settings">
       <div className="dr-settings__inner">
+        {/* ARTICLE DETAILS */}
+        <div className="dr-settings__section-header">ARTICLE DETAILS</div>
+
+        <label className="dr-settings__label">Title</label>
+        <input
+          className="dr-input"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Article title"
+        />
+
+        <label className="dr-settings__label">Author Intro</label>
+        <textarea
+          className="dr-textarea"
+          value={intro}
+          onChange={(e) => setIntro(e.target.value)}
+          placeholder="A note for readers on the welcome screen"
+          rows={3}
+        />
+
+        <label className="dr-settings__label">Version Label</label>
+        <input
+          className="dr-input"
+          value={version}
+          onChange={(e) => setVersion(e.target.value)}
+          placeholder='e.g. "Draft 1", "Revision 2"'
+        />
+
         {/* SHARING */}
         <div className="dr-settings__section-header">SHARING</div>
 
@@ -196,6 +230,16 @@ export function ArticleSettings({
           ))}
         </div>
 
+        {/* DELETE */}
+        {onDelete && (
+          <>
+            <div className="dr-settings__section-header">DELETE</div>
+            <MacButton onClick={() => setShowDeleteConfirm(true)}>
+              Delete Article
+            </MacButton>
+          </>
+        )}
+
         {/* Actions */}
         <div className="dr-settings__actions">
           <MacButton onClick={onBack}>{"\u2190"} Back</MacButton>
@@ -204,6 +248,28 @@ export function ArticleSettings({
           </MacButton>
         </div>
       </div>
+
+      {/* Delete confirmation dialog */}
+      {showDeleteConfirm && (
+        <div className="dr-settings__confirm-overlay" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="dr-settings__confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="dr-settings__confirm-title">Delete Article?</div>
+            <div className="dr-settings__confirm-body">
+              Are you sure you want to delete &ldquo;{article.title}&rdquo;? This
+              cannot be undone. All sections, readers, and reactions will be
+              permanently removed.
+            </div>
+            <div className="dr-settings__confirm-actions">
+              <MacButton onClick={() => setShowDeleteConfirm(false)}>
+                Cancel
+              </MacButton>
+              <MacButton primary onClick={onDelete}>
+                Delete
+              </MacButton>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

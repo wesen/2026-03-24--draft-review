@@ -16,6 +16,7 @@ import {
   useGetReactionsQuery,
   useCreateArticleMutation,
   useUpdateArticleMutation,
+  useDeleteArticleMutation,
   useGenerateShareTokenMutation,
   useInviteReaderMutation,
 } from "../api/articleApi";
@@ -55,6 +56,7 @@ export function AuthorApp() {
   });
   const [createArticle] = useCreateArticleMutation();
   const [updateArticle] = useUpdateArticleMutation();
+  const [deleteArticle] = useDeleteArticleMutation();
   const [generateShareToken] = useGenerateShareTokenMutation();
   const [inviteReader] = useInviteReaderMutation();
 
@@ -382,6 +384,10 @@ export function AuthorApp() {
               goBack();
             }}
             onBack={goBack}
+            onDelete={async () => {
+              await deleteArticle(selectedArticle.id);
+              goBack();
+            }}
             onGenerateLink={async () => {
               const result = await generateShareToken(
                 selectedArticle.id

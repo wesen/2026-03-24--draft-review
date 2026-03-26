@@ -32,6 +32,14 @@ export const handlers = [
     return HttpResponse.json(updated);
   }),
 
+  // Delete article
+  http.delete("/api/articles/:id", ({ params }) => {
+    const index = articles.findIndex((a) => a.id === params.id);
+    if (index === -1) return new HttpResponse(null, { status: 404 });
+    articles.splice(index, 1);
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   // Generate share token
   http.post("/api/articles/:id/share-token", ({ params }) => {
     const token = generateShareToken(params.id as string);

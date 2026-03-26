@@ -74,6 +74,13 @@ export const articleApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Reader"],
     }),
+    deleteArticle: build.mutation<void, string>({
+      query: (id) => ({
+        url: `/articles/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Article"],
+    }),
     addReaction: build.mutation<
       Reaction,
       {
@@ -105,5 +112,6 @@ export const {
   useGetReadersQuery,
   useGetReactionsQuery,
   useInviteReaderMutation,
+  useDeleteArticleMutation,
   useAddReactionMutation,
 } = articleApi;

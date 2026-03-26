@@ -114,3 +114,41 @@
   padding-top: 16px;
   border-top: var(--dr-border-width) solid var(--dr-border-color);
 }
+
+/* Delete confirmation overlay */
+.dr-settings__confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.dr-settings__confirm-dialog {
+  background: var(--dr-surface);
+  border: var(--dr-border-width) solid var(--dr-border-color);
+  box-shadow: var(--dr-shadow-dialog);
+  padding: 20px 24px;
+  max-width: 380px;
+  width: 90%;
+}
+
+.dr-settings__confirm-title {
+  font-family: var(--dr-font-title);
+  font-size: var(--dr-font-size-lg);
+  margin-bottom: 8px;
+}
+
+.dr-settings__confirm-body {
+  font-size: var(--dr-font-size-base);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.dr-settings__confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
