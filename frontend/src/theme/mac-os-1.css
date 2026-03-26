@@ -15,13 +15,13 @@
   --dr-font-title: "Chicago_12", "ChicagoFLF", "Geneva", monospace;
   --dr-font-body: "Geneva", "Monaco", monospace;
   --dr-font-prose: "Georgia", serif;
-  --dr-font-size-xs: 9px;
-  --dr-font-size-sm: 10px;
-  --dr-font-size-base: 11px;
-  --dr-font-size-md: 12px;
-  --dr-font-size-lg: 14px;
-  --dr-font-size-xl: 18px;
-  --dr-font-size-2xl: 20px;
+  --dr-font-size-xs: 11px;
+  --dr-font-size-sm: 12px;
+  --dr-font-size-base: 14px;
+  --dr-font-size-md: 15px;
+  --dr-font-size-lg: 17px;
+  --dr-font-size-xl: 21px;
+  --dr-font-size-2xl: 26px;
 
   /* Borders */
   --dr-border-width: 2px;
@@ -68,9 +68,9 @@
   --dr-space-2xl: 32px;
 
   /* Component sizes */
-  --dr-titlebar-height: 22px;
-  --dr-menubar-height: 20px;
-  --dr-close-box-size: 12px;
+  --dr-titlebar-height: 28px;
+  --dr-menubar-height: 26px;
+  --dr-close-box-size: 14px;
 }
 
 /* Desktop background */

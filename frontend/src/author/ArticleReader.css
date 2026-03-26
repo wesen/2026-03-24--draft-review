@@ -84,7 +84,7 @@
 
 .dr-article-reader__heading {
   font-family: var(--dr-font-title);
-  font-size: 16px;
+  font-size: 20px;
   margin: 0 0 4px;
   letter-spacing: -0.3px;
 }
@@ -99,8 +99,8 @@
 
 .dr-article-reader__paragraph {
   line-height: 1.8;
-  font-size: 13px;
-  max-width: 540px;
+  font-size: 17px;
+  max-width: 620px;
   margin: 0;
 }
 
@@ -145,7 +145,7 @@
   padding: 0 3px;
   background: var(--dr-on-surface);
   color: var(--dr-surface);
-  font-size: 8px;
+  font-size: 10px;
   font-weight: bold;
   font-family: monospace;
 }

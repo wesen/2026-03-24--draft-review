@@ -1,5 +1,5 @@
 .dr-section-view {
-  max-width: 540px;
+  max-width: 640px;
   margin: 0 auto;
   padding: 20px 24px 60px;
   line-height: 1.75;
@@ -55,7 +55,7 @@
 /* Title — lighter weight, no bottom border */
 .dr-section-view__title {
   font-family: var(--dr-font-prose);
-  font-size: 16px;
+  font-size: 20px;
   font-weight: normal;
   margin: 0;
 }

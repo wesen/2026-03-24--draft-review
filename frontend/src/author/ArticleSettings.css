@@ -96,7 +96,7 @@
 .dr-settings__coming-soon {
   display: inline-block;
   font-family: var(--dr-font-title);
-  font-size: 8px;
+  font-size: 10px;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: var(--dr-muted);

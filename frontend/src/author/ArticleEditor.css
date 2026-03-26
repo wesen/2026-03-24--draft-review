@@ -48,7 +48,7 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  font-size: 8px;
+  font-size: 10px;
   line-height: 1;
   flex-shrink: 0;
 }
@@ -129,7 +129,7 @@
 
 .dr-editor__content-input {
   font-family: var(--dr-font-body);
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1.8;
   min-height: 300px;
 }

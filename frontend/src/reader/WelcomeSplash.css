@@ -8,7 +8,7 @@
 }
 
 .dr-welcome__inner {
-  max-width: 420px;
+  max-width: 500px;
   text-align: center;
   font-family: var(--dr-font-body);
   font-size: var(--dr-font-size-md);

@@ -2,14 +2,14 @@
 
 .dr-prose {
   font-family: var(--dr-font-prose);
-  font-size: 13px;
+  font-size: 17px;
   line-height: 1.75;
   color: var(--dr-on-surface);
 }
 
 /* Headings */
 .dr-prose h1 {
-  font-size: 20px;
+  font-size: 26px;
   font-weight: bold;
   margin: 0 0 12px;
   border-bottom: 2px solid var(--dr-on-surface);
@@ -17,13 +17,13 @@
 }
 
 .dr-prose h2 {
-  font-size: 16px;
+  font-size: 22px;
   font-weight: bold;
   margin: 18px 0 8px;
 }
 
 .dr-prose h3 {
-  font-size: 14px;
+  font-size: 18px;
   font-weight: bold;
   margin: 14px 0 6px;
 }
@@ -59,7 +59,7 @@
 
 .dr-prose code {
   font-family: monospace;
-  font-size: 11px;
+  font-size: 14px;
   background: #f0f0f0;
   border: 1px solid #ddd;
   padding: 1px 4px;
@@ -73,7 +73,7 @@
   overflow-x: auto;
   margin: 10px 0;
   font-family: monospace;
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1.5;
 }
 
@@ -115,7 +115,7 @@
   width: 100%;
   border-collapse: collapse;
   margin: 10px 0;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .dr-prose th,
