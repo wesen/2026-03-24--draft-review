@@ -18,7 +18,7 @@ export function WelcomeSplash({ article, onStart }: WelcomeSplashProps) {
   return (
     <div className="dr-welcome">
       <div className="dr-welcome__inner">
-        <div className="dr-welcome__icon">📝</div>
+        <div className="dr-welcome__icon">{"\u270E"}</div>
         <div className="dr-welcome__title">{article.title}</div>
         <div className="dr-welcome__author">by {article.author}</div>
         <div className="dr-welcome__version">{article.version}</div>

@@ -36,7 +36,7 @@ export function Dashboard({
     return (
       <div className="dr-dashboard">
         <div className="dr-dashboard__empty-state">
-          <div style={{ fontSize: 32, marginBottom: 8 }}>{"\uD83D\uDCDD"}</div>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>{"\u270E"}</div>
           <div className="dr-dashboard__empty-title">No articles yet</div>
           <div className="dr-dashboard__empty-text">
             Create your first article to start collecting feedback.
@@ -145,7 +145,7 @@ export function Dashboard({
           <div className="dr-dashboard__panel-body">
             {articleReaders.length === 0 ? (
               <div className="dr-dashboard__empty">
-                <div style={{ fontSize: 28, marginBottom: 6 }}>{"\uD83D\uDCED"}</div>
+                <div style={{ fontSize: 28, marginBottom: 6 }}>{"\u2709"}</div>
                 No readers yet. Invite your first beta reader!
               </div>
             ) : (

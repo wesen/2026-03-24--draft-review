@@ -4,6 +4,12 @@
   box-sizing: border-box;
 }
 
+/* Enforce monochrome form controls to match Mac OS 1 aesthetic */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: black;
+}
+
 body {
   margin: 0;
   padding: 0;

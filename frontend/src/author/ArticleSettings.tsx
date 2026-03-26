@@ -80,7 +80,10 @@ export function ArticleSettings({
           </MacButton>
         </div>
 
-        <label className="dr-settings__label">Access</label>
+        <label className="dr-settings__label">
+          Access
+          <span className="dr-settings__coming-soon">coming soon</span>
+        </label>
         <div className="dr-settings__radio-group">
           {(
             [
@@ -101,7 +104,10 @@ export function ArticleSettings({
           ))}
         </div>
 
-        <label className="dr-settings__label">Reader visibility</label>
+        <label className="dr-settings__label">
+          Reader visibility
+          <span className="dr-settings__coming-soon">coming soon</span>
+        </label>
         <div className="dr-settings__checkbox-group">
           <label className="dr-settings__checkbox">
             <input
@@ -132,7 +138,10 @@ export function ArticleSettings({
         {/* FEEDBACK */}
         <div className="dr-settings__section-header">FEEDBACK</div>
 
-        <label className="dr-settings__label">Enabled reactions</label>
+        <label className="dr-settings__label">
+          Enabled reactions
+          <span className="dr-settings__coming-soon">coming soon</span>
+        </label>
         <div className="dr-settings__checkbox-group">
           {REACTION_TYPES.map((r) => (
             <label key={r.type} className="dr-settings__checkbox">
