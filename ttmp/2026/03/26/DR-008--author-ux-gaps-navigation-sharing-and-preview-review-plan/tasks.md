@@ -38,14 +38,15 @@
   - [x] Support `email`, `named`, and `anonymous` tracked link modes, with `preview` reserved for test workflows
   - [x] Update analytics and resolved reader display naming rules
   - [x] Update frontend types, article share-link state, and invite form submission payloads
-- [ ] Slice 5: Enable preview test reviews
-  - [ ] Decide whether preview reactions should persist to backend or remain local-only when previewing unsaved edits
-  - [ ] Add an explicit preview/test mode for reader sessions or local preview state
-  - [ ] Allow preview mode to submit reactions instead of disabling interaction entirely
-  - [ ] Distinguish preview/test data in author-facing displays if backend persistence is enabled
-  - [ ] Verify preview reviews do not corrupt normal production reader identity
-- [ ] Slice 6: Final verification and documentation refresh
-  - [ ] Run backend tests
-  - [ ] Run frontend build and relevant smoke checks
-  - [ ] Update DR-008 diary, changelog, and implementation notes after each slice
-  - [ ] Commit each major slice with a focused message
+- [x] Slice 5: Enable preview test reviews
+  - [x] Decide that preview reactions remain local-only while previewing unsaved editor drafts
+  - [x] Add an explicit preview mode banner separate from read-only mode
+  - [x] Allow preview mode to submit local reactions instead of disabling interaction entirely
+  - [x] Avoid backend persistence so preview feedback cannot corrupt normal production reader identity
+- [x] Slice 6: Final verification and documentation refresh
+  - [x] Run backend tests
+  - [x] Run frontend build and relevant smoke checks
+  - [x] Update DR-008 diary, changelog, and implementation notes after each slice
+  - [x] Commit each major slice with a focused message
+  - [x] Re-run `docmgr doctor`
+  - [x] Refresh the reMarkable bundle

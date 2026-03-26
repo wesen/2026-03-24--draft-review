@@ -11,3 +11,5 @@
 - Implemented Slice 1: backend article deletion route, service, repository support, focused HTTP coverage, and safer frontend delete mutation handling
 - Implemented Slice 2: route-driven author navigation for dashboard, review, edit, settings, preview, and share flows, plus a small Storybook typing fix needed to restore frontend build verification
 - Implemented Slices 3 and 4: persistent share-link visibility, invite identity modes (`email`, `named`, `anonymous`, `preview`), analytics/display-name updates, and a rewritten share dialog aligned with the real backend contract
+- Implemented Slice 5: preview mode now allows local test reactions instead of disabling interaction, while intentionally avoiding backend persistence for unsaved editor drafts
+- Completed Slice 6 validation with `go test ./cmd/... ./pkg/...`, `cd frontend && npm run build`, and `docmgr doctor --ticket DR-008 --stale-after 30`

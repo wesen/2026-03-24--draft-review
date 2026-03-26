@@ -363,3 +363,77 @@ Validation:
 Commit plan:
 
 - commit the share/invite model changes separately from the preview-review work because the preview decision still has one remaining product tradeoff around persisted vs local-only behavior for unsaved editor drafts
+
+### Slice 5: Preview Test Reviews
+
+Objective:
+
+- stop disabling preview interactions and choose an implementation that is safe for unsaved editor drafts
+
+Decision:
+
+- preview reactions are local-only for now
+
+Reasoning:
+
+- the editor preview can represent unsaved local draft content
+- persisting those reactions to the backend would attach feedback to a saved article/version that may not match the previewed text
+- local-only preview interactions satisfy the user request to test the reader experience without introducing misleading backend data
+
+Work performed:
+
+1. Updated `frontend/src/reader/ReaderPage.tsx`.
+   Changes:
+   - added `previewMode` as a separate concept from `readOnly`
+   - the preview banner now distinguishes:
+     - disabled read-only preview
+     - interactive local-only preview
+
+2. Updated `frontend/src/app/AuthorApp.tsx`.
+   Change:
+   - author preview now passes `previewMode` without `readOnly`
+
+Result:
+
+- preview sessions can now add reactions and use the normal local reaction flow
+- because there is no `reviewToken`, those reactions stay in the preview session only
+- the feature is useful for UX testing without polluting backend analytics
+
+Validation:
+
+- `cd frontend && npm run build`
+  Result:
+  - passed
+
+### Slice 6: Final Validation and Documentation Refresh
+
+Work performed:
+
+1. Ran the full Go package test sweep.
+   Command:
+   - `go test ./cmd/... ./pkg/...`
+   Result:
+   - passed
+
+2. Re-ran frontend production build validation.
+   Command:
+   - `cd frontend && npm run build`
+   Result:
+   - passed
+   - Vite still reports the existing large-bundle warning only
+
+3. Re-ran doc validation.
+   Command:
+   - `docmgr doctor --ticket DR-008 --stale-after 30`
+   Result:
+   - passed
+
+4. Refreshed the ticket documentation so the diary, tasks, and changelog reflect the code that actually landed.
+
+5. Refreshed the reMarkable bundle.
+   Command plan:
+   - `remarquee upload bundle --force ... --name "DR-008 Author UX Analysis Bundle" --remote-dir "/ai/2026/03/26/DR-008" --toc-depth 2`
+
+Commit plan:
+
+- commit the preview/local-test-review slice and final DR-008 updates together as the close-out commit for this execution pass

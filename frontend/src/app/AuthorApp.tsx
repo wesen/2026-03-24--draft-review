@@ -423,7 +423,7 @@ export function AuthorApp() {
               intro: previewSourceArticle.intro,
               sections: previewSourceArticle.sections,
             }}
-            readOnly
+            previewMode
             onBackToEditor={() => navigate(`/articles/${previewSourceArticle.id}/edit`)}
           />
         </MacWindow>

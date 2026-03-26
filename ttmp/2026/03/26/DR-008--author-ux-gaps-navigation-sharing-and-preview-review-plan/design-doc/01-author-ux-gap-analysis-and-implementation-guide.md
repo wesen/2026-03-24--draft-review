@@ -667,6 +667,12 @@ Recommendation:
 
 Choose Option A. The system already has real session logic. Extending it with preview-tagged sessions is cleaner than building a second fake path.
 
+Implementation note after execution:
+
+- For the current pass, the codebase intentionally chose a narrower version of preview reviews: preview reactions are now interactive but local-only.
+- Reason: editor preview can render unsaved draft content, so backend persistence would risk attaching feedback to the wrong saved article/version.
+- Revisit full persisted preview sessions only after the preview flow is explicitly tied to a saved snapshot or saved draft checkpoint.
+
 ## API Reference Proposal
 
 ### Existing endpoints
