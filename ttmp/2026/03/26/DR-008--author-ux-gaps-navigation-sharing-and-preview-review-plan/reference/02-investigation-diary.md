@@ -206,3 +206,59 @@ Commit plan:
 
 - stage the delete slice together with the ticket diary/task/changelog updates
 - commit before starting the routing refactor so the contract repair is isolated
+
+### Slice 2: Route-Driven Author Navigation
+
+Objective:
+
+- replace the author shell’s `uiSlice.view` navigation with real URL-based navigation so browser back/forward and refresh reflect the active screen
+
+Work performed:
+
+1. Reworked `frontend/src/app/AuthorApp.tsx` to derive the current screen from React Router path matches instead of Redux view strings.
+   New route shapes handled in the author shell:
+   - `/`
+   - `/articles`
+   - `/articles/:articleId`
+   - `/articles/:articleId/edit`
+   - `/articles/:articleId/settings`
+   - `/articles/:articleId/share`
+   - `/articles/:articleId/preview`
+
+2. Switched author navigation callbacks from Redux actions to `navigate(...)`.
+   Examples:
+   - selecting an article now navigates to `/articles/:id`
+   - creating an article now navigates to `/articles/:id/edit`
+   - preview now navigates to `/articles/:id/preview`
+   - share now navigates to `/articles/:id/share`
+
+3. Moved section focus from Redux into the URL query string.
+   Example:
+   - dashboard “review this section” links now encode `?section=...`
+
+4. Kept only the transient preview draft in Redux for now.
+   Reason:
+   - previewing unsaved edits still needs a temporary in-memory article object
+   - this is a smaller and safer bridge than keeping the full author screen identity in Redux
+
+5. Updated `frontend/src/author/Dashboard.tsx` so invite/share actions carry the target article id explicitly.
+
+6. Added a route-aware “article not found” fallback window in the author shell.
+
+7. During verification, the frontend build failed on an unrelated Storybook type issue in `frontend/src/chrome/MacWindow.stories.tsx`.
+   Problem:
+   - the story passed obsolete `w` and `h` args that no longer exist on `MacWindowProps`
+   Fix:
+   - removed the stale args so the frontend typecheck/build pipeline is green again
+
+Validation:
+
+- `cd frontend && npm run build`
+  Result:
+  - passed
+  - one existing Vite chunk-size warning remains, but it is only a warning
+
+Commit plan:
+
+- commit the route migration separately from the upcoming share/invite domain changes
+- keep the Storybook typing fix in the same commit because it was necessary to validate the frontend slice

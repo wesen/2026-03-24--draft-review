@@ -9,3 +9,4 @@
 - Validated the ticket with `docmgr doctor --ticket DR-008 --stale-after 30`
 - Uploaded the DR-008 bundle to reMarkable at `/ai/2026/03/26/DR-008`
 - Implemented Slice 1: backend article deletion route, service, repository support, focused HTTP coverage, and safer frontend delete mutation handling
+- Implemented Slice 2: route-driven author navigation for dashboard, review, edit, settings, preview, and share flows, plus a small Storybook typing fix needed to restore frontend build verification

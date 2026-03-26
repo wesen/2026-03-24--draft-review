@@ -1,4 +1,9 @@
 import { useCallback } from "react";
+import {
+  useMatch,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 import { MacWindow, MenuBar } from "../chrome";
 import { MacButton } from "../chrome/MacButton";
 import {
@@ -24,27 +29,47 @@ import { useGetMeQuery } from "../api/authApi";
 import { getBackendOrigin } from "../lib/backendOrigin";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
-  setView,
-  selectArticle as selectArticleAction,
-  setFocusSection,
   setPreviewArticle,
-  goBack as goBackAction,
-  openModal,
-  closeModal,
 } from "../store/uiSlice";
 
 export function AuthorApp() {
   const useMockApi = import.meta.env.VITE_USE_MSW === "1";
   const backendOrigin = getBackendOrigin();
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  // Redux state
-  const view = useAppSelector((s) => s.ui.view);
-  const selectedArticleId = useAppSelector((s) => s.ui.selectedArticleId);
-  const focusSection = useAppSelector((s) => s.ui.focusSectionId);
   const previewArticle = useAppSelector((s) => s.ui.previewArticle);
-  const activeModal = useAppSelector((s) => s.ui.activeModal);
-  const showInvite = activeModal === "invite";
+  const routeSectionId = searchParams.get("section");
+
+  const reviewMatch = useMatch("/articles/:articleId");
+  const editMatch = useMatch("/articles/:articleId/edit");
+  const settingsMatch = useMatch("/articles/:articleId/settings");
+  const shareMatch = useMatch("/articles/:articleId/share");
+  const previewMatch = useMatch("/articles/:articleId/preview");
+  const articlesMatch = useMatch("/articles");
+
+  const routeArticleId =
+    shareMatch?.params.articleId ||
+    previewMatch?.params.articleId ||
+    settingsMatch?.params.articleId ||
+    editMatch?.params.articleId ||
+    reviewMatch?.params.articleId ||
+    null;
+  const currentView =
+    shareMatch != null
+      ? "share"
+      : previewMatch != null
+        ? "reader-preview"
+        : settingsMatch != null
+          ? "settings"
+          : editMatch != null
+            ? "edit"
+            : reviewMatch != null
+              ? "article"
+              : articlesMatch != null
+                ? "articles"
+                : "dashboard";
 
   const { data: meResponse, isLoading: isLoadingMe } = useGetMeQuery(undefined, {
     skip: useMockApi,
@@ -65,9 +90,12 @@ export function AuthorApp() {
   const [generateShareToken] = useGenerateShareTokenMutation();
   const [inviteReader] = useInviteReaderMutation();
 
-  // Hydrate full Article from RTK Query cache
-  const selectedArticle = articles.find((a) => a.id === selectedArticleId) || null;
-  const activeArticleId = selectedArticleId || articles[0]?.id || "";
+  const selectedArticle = articles.find((a) => a.id === routeArticleId) || null;
+  const previewSourceArticle =
+    previewArticle && previewArticle.id === routeArticleId
+      ? previewArticle
+      : selectedArticle;
+  const activeArticleId = routeArticleId || articles[0]?.id || "";
 
   const {
     data: readers = [],
@@ -84,16 +112,21 @@ export function AuthorApp() {
 
   const handleSelectArticle = useCallback(
     (id: string, sectionId?: string) => {
-      dispatch(selectArticleAction(id));
-      dispatch(setFocusSection(sectionId ?? null));
-      dispatch(setView("article"));
+      const query = sectionId
+        ? `?section=${encodeURIComponent(sectionId)}`
+        : "";
+      navigate(`/articles/${id}${query}`);
     },
-    [dispatch]
+    [navigate]
   );
 
   const goBack = useCallback(() => {
-    dispatch(goBackAction());
-  }, [dispatch]);
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate("/");
+  }, [navigate]);
 
   const handleLogin = () => {
     window.location.assign(
@@ -113,10 +146,8 @@ export function AuthorApp() {
       author: me?.displayName || me?.preferredUsername || me?.email || "You",
       intro: "",
     }).unwrap();
-    dispatch(selectArticleAction(article.id));
-    dispatch(setFocusSection(null));
-    dispatch(setView("edit"));
-  }, [createArticle, dispatch, me?.displayName, me?.email, me?.preferredUsername]);
+    navigate(`/articles/${article.id}/edit`);
+  }, [createArticle, me?.displayName, me?.email, me?.preferredUsername, navigate]);
 
   const totalReactions = reactions.length;
 
@@ -139,8 +170,8 @@ export function AuthorApp() {
     {
       label: "View",
       items: [
-        { label: "Dashboard", action: () => dispatch(setView("dashboard")) },
-        { label: "Articles", action: () => dispatch(setView("articles")) },
+        { label: "Dashboard", action: () => navigate("/") },
+        { label: "Articles", action: () => navigate("/articles") },
       ],
     },
     {
@@ -276,52 +307,40 @@ export function AuthorApp() {
       />
 
       {/* Dashboard */}
-      {view === "dashboard" && (
+      {currentView === "dashboard" && (
         <MacWindow title={"Draft Review \u2014 Dashboard"} maximized zIndex={2}>
           <Dashboard
             articles={articles}
             readers={readers}
             reactions={reactions}
             onSelectArticle={handleSelectArticle}
-            onEditArticle={(id) => {
-              dispatch(selectArticleAction(id));
-              dispatch(setView("edit"));
-            }}
-            onArticleSettings={(id) => {
-              dispatch(selectArticleAction(id));
-              dispatch(setView("settings"));
-            }}
+            onEditArticle={(id) => navigate(`/articles/${id}/edit`)}
+            onArticleSettings={(id) => navigate(`/articles/${id}/settings`)}
             onNewArticle={() => void handleNewArticle()}
-            onViewArticles={() => dispatch(setView("articles"))}
-            onInvite={() => dispatch(openModal("invite"))}
+            onViewArticles={() => navigate("/articles")}
+            onInvite={(id) => navigate(`/articles/${id}/share`)}
           />
         </MacWindow>
       )}
 
       {/* Article Manager */}
-      {view === "articles" && (
+      {currentView === "articles" && (
         <MacWindow title="My Articles" maximized zIndex={2}>
           <ArticleManager
             articles={articles}
             readers={readers}
             reactions={reactions}
-            onEdit={(id) => {
-              dispatch(selectArticleAction(id));
-              dispatch(setView("edit"));
-            }}
-            onSettings={(id) => {
-              dispatch(selectArticleAction(id));
-              dispatch(setView("settings"));
-            }}
+            onEdit={(id) => navigate(`/articles/${id}/edit`)}
+            onSettings={(id) => navigate(`/articles/${id}/settings`)}
             onReview={(id) => handleSelectArticle(id)}
             onNewArticle={() => void handleNewArticle()}
-            onInvite={() => dispatch(openModal("invite"))}
+            onInvite={(id) => navigate(`/articles/${id}/share`)}
           />
         </MacWindow>
       )}
 
       {/* Article Review (author view) */}
-      {view === "article" && selectedArticle && (
+      {currentView === "article" && selectedArticle && (
         <MacWindow
           title={`Review: ${selectedArticle.title}`}
           maximized
@@ -332,14 +351,14 @@ export function AuthorApp() {
             reactions={reactions.filter(
               (r) => r.articleId === selectedArticle.id
             )}
-            focusSection={focusSection ?? undefined}
+            focusSection={routeSectionId ?? undefined}
             onBack={goBack}
           />
         </MacWindow>
       )}
 
       {/* Article Editor */}
-      {view === "edit" && selectedArticle && (
+      {currentView === "edit" && selectedArticle && (
         <MacWindow
           title={`Edit: ${selectedArticle.title}`}
           maximized
@@ -353,20 +372,20 @@ export function AuthorApp() {
                 title: updated.title,
                 sections: updated.sections,
                 intro: updated.intro,
-              });
-              goBack();
+              }).unwrap();
+              navigate(`/articles/${updated.id}`);
             }}
-            onBack={goBack}
+            onBack={() => navigate(`/articles/${selectedArticle.id}`)}
             onPreview={(a) => {
               dispatch(setPreviewArticle(a));
-              dispatch(setView("reader-preview"));
+              navigate(`/articles/${a.id}/preview`);
             }}
           />
         </MacWindow>
       )}
 
       {/* Article Settings */}
-      {view === "settings" && selectedArticle && (
+      {(currentView === "settings" || currentView === "share") && selectedArticle && (
         <MacWindow
           title={`Settings: ${selectedArticle.title}`}
           maximized
@@ -375,44 +394,50 @@ export function AuthorApp() {
           <ArticleSettings
             article={selectedArticle}
             onSave={async (updates) => {
-              await updateArticle({ id: selectedArticle.id, ...updates });
-              goBack();
+              await updateArticle({ id: selectedArticle.id, ...updates }).unwrap();
+              navigate(`/articles/${selectedArticle.id}`);
             }}
-            onBack={goBack}
+            onBack={() => navigate(`/articles/${selectedArticle.id}`)}
             onDelete={async () => {
               await deleteArticle(selectedArticle.id).unwrap();
-              goBack();
+              navigate("/");
             }}
           />
         </MacWindow>
       )}
 
       {/* Reader Preview */}
-      {view === "reader-preview" && previewArticle && (
+      {currentView === "reader-preview" && previewSourceArticle && (
         <MacWindow
-          title={`${previewArticle.title} \u2014 Reader View`}
+          title={`${previewSourceArticle.title} \u2014 Reader View`}
           maximized
           zIndex={3}
           onClose={goBack}
         >
           <ReaderPage
             article={{
-              id: previewArticle.id,
-              title: previewArticle.title,
-              author: previewArticle.author,
-              version: previewArticle.version,
-              intro: previewArticle.intro,
-              sections: previewArticle.sections,
+              id: previewSourceArticle.id,
+              title: previewSourceArticle.title,
+              author: previewSourceArticle.author,
+              version: previewSourceArticle.version,
+              intro: previewSourceArticle.intro,
+              sections: previewSourceArticle.sections,
             }}
             readOnly
-            onBackToEditor={() => dispatch(setView("edit"))}
+            onBackToEditor={() => navigate(`/articles/${previewSourceArticle.id}/edit`)}
           />
         </MacWindow>
       )}
 
-      {showInvite && (
+      {currentView === "share" && selectedArticle && (
         <InviteDialog
-          onClose={() => dispatch(closeModal())}
+          onClose={() => {
+            if (window.history.length > 1) {
+              navigate(-1);
+              return;
+            }
+            navigate(`/articles/${selectedArticle.id}/settings`);
+          }}
           onGenerateShareLink={async () => {
             if (!activeArticleId) {
               throw new Error("No active article selected");
@@ -435,6 +460,26 @@ export function AuthorApp() {
             };
           }}
         />
+      )}
+
+      {routeArticleId && !selectedArticle && !isLoadingArticles && (
+        <MacWindow title="Article Not Found" maximized zIndex={3}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              flexDirection: "column",
+              gap: 12,
+              fontFamily: "var(--dr-font-body)",
+              fontSize: "var(--dr-font-size-md)",
+            }}
+          >
+            <div>The requested article could not be found.</div>
+            <MacButton onClick={() => navigate("/")}>Return to Dashboard</MacButton>
+          </div>
+        </MacWindow>
       )}
     </div>
   );

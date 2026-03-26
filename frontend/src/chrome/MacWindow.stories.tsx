@@ -23,8 +23,6 @@ export const Default: Story = {
         Window content goes here. This window is draggable!
       </div>
     ),
-    w: 400,
-    h: 300,
   },
 };
 
@@ -33,8 +31,6 @@ export const WithClose: Story = {
     title: "Closeable Window",
     onClose: () => alert("close"),
     children: <div style={{ padding: 16 }}>Click the close box in the title bar.</div>,
-    w: 350,
-    h: 200,
   },
 };
 

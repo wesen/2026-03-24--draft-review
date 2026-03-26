@@ -14,7 +14,7 @@ interface DashboardProps {
   onArticleSettings: (id: string) => void;
   onNewArticle: () => void;
   onViewArticles: () => void;
-  onInvite: () => void;
+  onInvite: (id: string) => void;
 }
 
 export function Dashboard({
@@ -133,7 +133,7 @@ export function Dashboard({
                   <span
                     className="dr-dashboard__action-icon"
                     title="Invite Reader"
-                    onClick={(e) => { e.stopPropagation(); onInvite(); }}
+                    onClick={(e) => { e.stopPropagation(); onInvite(a.id); }}
                   >
                     {"\u2709"}
                   </span>

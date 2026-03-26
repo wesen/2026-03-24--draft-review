@@ -21,12 +21,12 @@
   - [x] Register `DELETE /api/articles/{id}` in `pkg/server/http.go`
   - [x] Add focused HTTP coverage for delete behavior
   - [x] Verify the frontend delete trigger now unwraps success instead of navigating away on failure
-- [ ] Slice 2: Migrate author navigation to URL routes
-  - [ ] Define author route map for dashboard, articles, review, edit, settings, preview
-  - [ ] Replace `uiSlice.view`-driven screen selection with React Router state in `AuthorApp`
-  - [ ] Keep only truly local UI state in Redux
-  - [ ] Make browser back/forward and reload preserve the current article screen
-  - [ ] Add route-aware frontend tests or smoke coverage
+- [x] Slice 2: Migrate author navigation to URL routes
+  - [x] Define author route map for dashboard, articles, review, edit, settings, preview, and share
+  - [x] Replace `uiSlice.view`-driven screen selection with React Router state in `AuthorApp`
+  - [x] Keep preview drafts as transient Redux state while route ownership moves to the URL
+  - [x] Make browser back/forward and reload preserve the current article screen
+  - [x] Add route-aware frontend smoke coverage via production build validation
 - [ ] Slice 3: Repair and simplify the share link modal
   - [ ] Show the reusable article link immediately when the modal opens
   - [ ] Stop labeling email as optional unless that is actually true for the selected link type
