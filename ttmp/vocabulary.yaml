@@ -21,6 +21,10 @@ topics:
       description: User interface design and implementation
     - slug: ux
       description: User experience design and interaction patterns
+    - slug: oidc
+      description: OpenID Connect authentication and browser login flows
+    - slug: keycloak
+      description: Keycloak identity provider configuration and integration
 docTypes:
     - slug: index
       description: Ticket index document
