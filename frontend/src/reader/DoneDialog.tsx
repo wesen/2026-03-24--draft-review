@@ -1,5 +1,4 @@
 import { REACTION_TYPES } from "../theme/tokens";
-import { TitleBar } from "../chrome/TitleBar";
 import { MacButton } from "../chrome/MacButton";
 import "./DoneDialog.css";
 
@@ -10,9 +9,8 @@ interface DoneDialogProps {
 
 export function DoneDialog({ stats, onClose }: DoneDialogProps) {
   return (
-    <div className="dr-done-overlay">
-      <div className="dr-done-dialog">
-        <TitleBar title="Review Complete" onClose={onClose} />
+    <div className="dr-done-overlay" onClick={onClose}>
+      <div className="dr-done-dialog" onClick={(e) => e.stopPropagation()}>
         <div className="dr-done-dialog__body">
           <div className="dr-done-dialog__emoji">🎉</div>
           <div className="dr-done-dialog__heading">Thank you for reading!</div>
