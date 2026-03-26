@@ -46,7 +46,11 @@ export function AuthorApp() {
   const me = meResponse?.data;
   const authReady = useMockApi || Boolean(me?.authenticated);
 
-  const { data: articles = [] } = useGetArticlesQuery(undefined, {
+  const {
+    data: articles = [],
+    isLoading: isLoadingArticles,
+    error: articlesError,
+  } = useGetArticlesQuery(undefined, {
     skip: !authReady,
   });
   const [createArticle] = useCreateArticleMutation();
@@ -55,10 +59,16 @@ export function AuthorApp() {
   const [inviteReader] = useInviteReaderMutation();
 
   const activeArticleId = selectedArticle?.id || articles[0]?.id || "";
-  const { data: readers = [] } = useGetReadersQuery(activeArticleId, {
+  const {
+    data: readers = [],
+    isLoading: isLoadingReaders,
+  } = useGetReadersQuery(activeArticleId, {
     skip: !authReady || !activeArticleId,
   });
-  const { data: reactions = [] } = useGetReactionsQuery(activeArticleId, {
+  const {
+    data: reactions = [],
+    isLoading: isLoadingReactions,
+  } = useGetReactionsQuery(activeArticleId, {
     skip: !authReady || !activeArticleId,
   });
 
@@ -203,12 +213,65 @@ export function AuthorApp() {
     );
   }
 
+  if (isLoadingArticles) {
+    return (
+      <div className="dr-desktop">
+        <MenuBar menus={menus} rightStatus="Loading..." />
+        <MacWindow title="Draft Review" maximized>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              fontFamily: "var(--dr-font-body)",
+              fontSize: "var(--dr-font-size-md)",
+            }}
+          >
+            Loading articles...
+          </div>
+        </MacWindow>
+      </div>
+    );
+  }
+
+  if (articlesError) {
+    return (
+      <div className="dr-desktop">
+        <MenuBar menus={menus} rightStatus="Error" />
+        <MacWindow title="Draft Review — Error" maximized>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              flexDirection: "column",
+              gap: 12,
+              fontFamily: "var(--dr-font-body)",
+              fontSize: "var(--dr-font-size-md)",
+            }}
+          >
+            <div>Failed to load articles. Check your connection and try again.</div>
+            <MacButton onClick={() => window.location.reload()}>
+              Retry
+            </MacButton>
+          </div>
+        </MacWindow>
+      </div>
+    );
+  }
+
+  const dataLoading = isLoadingReaders || isLoadingReactions;
+
   return (
     <div className="dr-desktop">
       <MenuBar
         menus={menus}
-        rightStatus={`${totalReactions} reaction${totalReactions !== 1 ? "s" : ""}${
-          me?.displayName ? ` · ${me.displayName}` : ""
+        rightStatus={`${
+          dataLoading ? "Loading\u2026 · " : ""
+        }${totalReactions} reaction${totalReactions !== 1 ? "s" : ""}${
+          me?.displayName ? ` \u00B7 ${me.displayName}` : ""
         }`}
       />
 

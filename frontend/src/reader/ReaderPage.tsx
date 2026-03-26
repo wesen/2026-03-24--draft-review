@@ -96,14 +96,14 @@ export function ReaderPage({
     [persistProgress]
   );
 
-  const goNext = () => {
+  const goNext = useCallback(() => {
     markRead(currentSectionId);
     if (!isLast) goTo(article.sections[sectionIndex + 1].id);
-  };
+  }, [currentSectionId, isLast, sectionIndex, article.sections, markRead, goTo]);
 
-  const goPrev = () => {
+  const goPrev = useCallback(() => {
     if (!isFirst) goTo(article.sections[sectionIndex - 1].id);
-  };
+  }, [isFirst, sectionIndex, article.sections, goTo]);
 
   const finish = async () => {
     markRead(currentSectionId);
@@ -180,7 +180,7 @@ export function ReaderPage({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  });
+  }, [started, isFirst, isLast, goNext, goPrev]);
 
   // Stats for done dialog
   const stats: Record<string, number> = {};

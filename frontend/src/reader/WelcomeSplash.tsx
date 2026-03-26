@@ -41,9 +41,10 @@ export function WelcomeSplash({ article, onStart }: WelcomeSplashProps) {
             ))}
           </div>
           <div className="dr-welcome__howto-hint">
-            Hover any paragraph and click <strong>+</strong> to react. A short
-            note explaining <em>why</em> is even more helpful. Don't worry about
-            typos or grammar — focus on what's useful, confusing, or slow.
+            Hover any paragraph and click a <strong>reaction chip</strong> to
+            react. A short note explaining <em>why</em> is even more helpful.
+            Don't worry about typos or grammar — focus on what's useful,
+            confusing, or slow.
           </div>
         </div>
 

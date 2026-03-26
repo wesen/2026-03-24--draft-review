@@ -251,6 +251,21 @@ export function Dashboard({
                 const section = selected.sections.find(
                   (s) => s.id === r.sectionId
                 );
+                // Resolve paragraph text for excerpt
+                let paraExcerpt = "";
+                if (section && r.paragraphId) {
+                  const match = r.paragraphId.match(/-p(\d+)$/);
+                  if (match) {
+                    const pIdx = parseInt(match[1], 10);
+                    const pText = section.paragraphs[pIdx];
+                    if (pText) {
+                      const plain = pText.replace(/[#*_`>\[\]()]/g, "").trim();
+                      paraExcerpt = plain.length > 60
+                        ? plain.slice(0, 60).trimEnd() + "\u2026"
+                        : plain;
+                    }
+                  }
+                }
                 return (
                   <div key={i} className="dr-dashboard__feedback-item">
                     <span className="dr-dashboard__feedback-icon">
@@ -261,6 +276,11 @@ export function Dashboard({
                         <strong>{r.readerName}</strong> on{" "}
                         <em>{section?.title}</em>
                       </div>
+                      {paraExcerpt && (
+                        <div className="dr-dashboard__feedback-para">
+                          &para; &ldquo;{paraExcerpt}&rdquo;
+                        </div>
+                      )}
                       <div className="dr-dashboard__feedback-text">
                         {r.text}
                       </div>

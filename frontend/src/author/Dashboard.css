@@ -291,6 +291,16 @@
   margin-bottom: 2px;
 }
 
+.dr-dashboard__feedback-para {
+  font-size: var(--dr-font-size-sm);
+  color: var(--dr-subtle);
+  font-style: italic;
+  padding-left: 8px;
+  border-left: 2px solid var(--dr-border);
+  margin: 2px 0;
+  line-height: 1.4;
+}
+
 .dr-dashboard__feedback-text {
   font-size: var(--dr-font-size-base);
 }
