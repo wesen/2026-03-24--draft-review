@@ -455,6 +455,26 @@ where id = $1
 	return r.GetArticle(ctx, ownerUserID, articleID.String())
 }
 
+func (r *PostgresRepository) DeleteArticle(ctx context.Context, ownerUserID, id string) error {
+	if r == nil || r.pool == nil {
+		return ErrNotFound
+	}
+
+	commandTag, err := r.pool.Exec(ctx, `
+delete from articles
+where id = $1
+  and owner_user_id = $2
+`, id, ownerUserID)
+	if err != nil {
+		return errors.Wrap(err, "failed to delete article")
+	}
+	if commandTag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
+
 func (r *PostgresRepository) listSectionsForVersion(ctx context.Context, versionID uuid.UUID) ([]Section, error) {
 	rows, err := r.pool.Query(ctx, `
 select id, title, body_plaintext

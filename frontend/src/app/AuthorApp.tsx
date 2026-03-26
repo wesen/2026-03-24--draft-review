@@ -380,7 +380,7 @@ export function AuthorApp() {
             }}
             onBack={goBack}
             onDelete={async () => {
-              await deleteArticle(selectedArticle.id);
+              await deleteArticle(selectedArticle.id).unwrap();
               goBack();
             }}
           />

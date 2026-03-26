@@ -196,6 +196,7 @@ func NewHandler(options HandlerOptions) http.Handler {
 	mux.HandleFunc("POST /api/articles", h.handleCreateArticle)
 	mux.HandleFunc("GET /api/articles/{id}", h.handleArticle)
 	mux.HandleFunc("PATCH /api/articles/{id}", h.handleUpdateArticle)
+	mux.HandleFunc("DELETE /api/articles/{id}", h.handleDeleteArticle)
 	mux.HandleFunc("POST /api/articles/{id}/versions", h.handleCreateArticleVersion)
 	mux.HandleFunc("POST /api/articles/{id}/share-token", h.handleResetShareToken)
 	mux.HandleFunc("POST /api/articles/{id}/invite", h.handleInviteReader)
@@ -402,6 +403,31 @@ func (h *appHandler) handleCreateArticleVersion(w http.ResponseWriter, r *http.R
 	}
 
 	writeJSON(w, http.StatusCreated, result)
+}
+
+func (h *appHandler) handleDeleteArticle(w http.ResponseWriter, r *http.Request) {
+	if h.articleService == nil {
+		writeError(w, http.StatusServiceUnavailable, "article service is not configured")
+		return
+	}
+
+	author, ok := h.requireCurrentAuthor(w, r)
+	if !ok {
+		return
+	}
+
+	err := h.articleService.DeleteArticle(r.Context(), author, r.PathValue("id"))
+	if err != nil {
+		switch {
+		case errors.Is(err, articles.ErrNotFound):
+			http.NotFound(w, r)
+		default:
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *appHandler) handleResetShareToken(w http.ResponseWriter, r *http.Request) {

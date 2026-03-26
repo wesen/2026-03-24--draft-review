@@ -210,6 +210,8 @@ func (f *fakeAuthRepo) UpdateAuthenticatedUser(ctx context.Context, userID uuid.
 
 type fakeArticleRepo struct {
 	lastOwnerUserID string
+	deleteArticleID string
+	deleteErr       error
 }
 
 func (f *fakeArticleRepo) ListArticles(ctx context.Context, ownerUserID string) ([]articles.Article, error) {
@@ -235,6 +237,12 @@ func (f *fakeArticleRepo) UpdateArticle(ctx context.Context, ownerUserID, id str
 func (f *fakeArticleRepo) CreateVersion(ctx context.Context, ownerUserID, id string, input articles.CreateVersionInput) (*articles.Article, error) {
 	f.lastOwnerUserID = ownerUserID
 	return &articles.Article{ID: id, Title: "Owned Article", Version: input.Label}, nil
+}
+
+func (f *fakeArticleRepo) DeleteArticle(ctx context.Context, ownerUserID, id string) error {
+	f.lastOwnerUserID = ownerUserID
+	f.deleteArticleID = id
+	return f.deleteErr
 }
 
 type fakeReviewLinkRepo struct {
@@ -366,6 +374,47 @@ func TestHandleArticlesUsesAuthenticatedAuthor(t *testing.T) {
 
 	if articleRepo.lastOwnerUserID != "11111111-1111-1111-1111-111111111111" {
 		t.Fatalf("expected article owner id to come from ensured auth user, got %q", articleRepo.lastOwnerUserID)
+	}
+}
+
+func TestHandleDeleteArticleUsesAuthenticatedAuthor(t *testing.T) {
+	t.Parallel()
+
+	authRepo := &fakeAuthRepo{
+		findErr: draftauth.ErrNotFound,
+		createUser: &draftauth.User{
+			ID:    "11111111-1111-1111-1111-111111111111",
+			Email: "local-author@draft-review.local",
+			Name:  "Development Author",
+		},
+	}
+	articleRepo := &fakeArticleRepo{}
+
+	handler := NewHandler(HandlerOptions{
+		Version:   "test",
+		StartedAt: time.Now().UTC(),
+		AuthSettings: &draftauth.Settings{
+			Mode:      draftauth.AuthModeDev,
+			DevUserID: "local-author",
+		},
+		AuthService:    draftauth.NewService(authRepo),
+		ArticleService: articles.NewService(articleRepo),
+	})
+
+	request := httptest.NewRequest(http.MethodDelete, "/api/articles/article-123", nil)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d", recorder.Code)
+	}
+
+	if articleRepo.lastOwnerUserID != "11111111-1111-1111-1111-111111111111" {
+		t.Fatalf("expected article owner id to come from ensured auth user, got %q", articleRepo.lastOwnerUserID)
+	}
+	if articleRepo.deleteArticleID != "article-123" {
+		t.Fatalf("expected delete to target article-123, got %q", articleRepo.deleteArticleID)
 	}
 }
 

@@ -13,6 +13,7 @@ type Repository interface {
 	CreateArticle(ctx context.Context, ownerUserID string, input CreateArticleInput) (*Article, error)
 	UpdateArticle(ctx context.Context, ownerUserID, id string, input UpdateArticleInput) (*Article, error)
 	CreateVersion(ctx context.Context, ownerUserID, id string, input CreateVersionInput) (*Article, error)
+	DeleteArticle(ctx context.Context, ownerUserID, id string) error
 }
 
 type Service struct {
@@ -147,6 +148,22 @@ func (s *Service) CreateVersion(ctx context.Context, owner *draftauth.User, id s
 	}
 
 	return s.repo.CreateVersion(ctx, owner.ID, id, input)
+}
+
+func (s *Service) DeleteArticle(ctx context.Context, owner *draftauth.User, id string) error {
+	if s == nil || s.repo == nil {
+		return ErrNotFound
+	}
+	if owner == nil || strings.TrimSpace(owner.ID) == "" {
+		return ErrNotFound
+	}
+
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return ErrNotFound
+	}
+
+	return s.repo.DeleteArticle(ctx, owner.ID, id)
 }
 
 func defaultIfBlank(value, fallback string) string {
