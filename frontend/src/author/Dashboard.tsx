@@ -3,7 +3,6 @@ import type { Article, Section, Reaction, Reader } from "../types";
 import { REACTION_TYPES } from "../theme/tokens";
 import { MacButton } from "../chrome/MacButton";
 import { ProgressBar } from "../primitives/ProgressBar";
-import { StatCard } from "../primitives/StatCard";
 import "./Dashboard.css";
 
 interface DashboardProps {
@@ -123,16 +122,15 @@ export function Dashboard({
         <span className="dr-dashboard__version-badge">{selected.version}</span>
       </div>
 
-      {/* Stats row */}
-      <div className="dr-dashboard__stats">
-        <StatCard icon={"\u25C9"} value={articleReaders.length} label="Readers" />
-        <StatCard icon={"\u2726"} value={totalReactions} label="Reactions" />
-        <StatCard icon={"\u00A7"} value={selected.sections.length} label="Sections" />
-        <StatCard
-          icon={"\u25B8"}
-          value={articleReaders.length ? `${avgProgress}%` : "\u2014"}
-          label="Avg Progress"
-        />
+      {/* Stats bar */}
+      <div className="dr-dashboard__stat-bar">
+        <span>{"\u25C9"} {articleReaders.length} readers</span>
+        <span>{"\u2726"} {totalReactions} reactions</span>
+        <span>{"\u00A7"} {selected.sections.length} sections</span>
+        <span>
+          {"\u25B8"} {articleReaders.length ? `${avgProgress}%` : "\u2014"} avg
+          progress
+        </span>
       </div>
 
       {/* Main grid: readers + reactions chart */}

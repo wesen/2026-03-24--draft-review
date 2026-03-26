@@ -198,6 +198,7 @@ export function ArticleReader({
 
         {/* Reactions panel */}
         <div className="dr-article-reader__reactions-panel">
+          <div className="dr-article-reader__reactions-header">Reactions</div>
           <div className="dr-article-reader__filter-tabs">
             <div
               onClick={() => {
@@ -219,6 +220,7 @@ export function ArticleReader({
               return (
                 <div
                   key={rt.type}
+                  title={`${rt.label} (${c})`}
                   onClick={() =>
                     setReactionFilter(
                       reactionFilter === rt.type ? null : rt.type
@@ -230,7 +232,7 @@ export function ArticleReader({
                       : ""
                   }`}
                 >
-                  {rt.icon} {rt.label} ({c})
+                  {rt.icon} {c}
                 </div>
               );
             })}

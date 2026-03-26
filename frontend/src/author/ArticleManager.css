@@ -67,6 +67,11 @@
   padding: 12px 14px;
   margin-bottom: 10px;
   background: var(--dr-surface);
+  transition: background 0.1s;
+}
+
+.dr-manager__card:hover {
+  background: var(--dr-hover-bg);
 }
 
 .dr-manager__card-header {

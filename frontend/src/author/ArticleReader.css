@@ -34,11 +34,20 @@
   padding: 8px 10px;
   cursor: pointer;
   border-bottom: 1px dotted var(--dr-border);
+  transition: background 0.1s;
+}
+
+.dr-article-reader__section-item:hover {
+  background: var(--dr-hover-bg);
 }
 
 .dr-article-reader__section-item--active {
   background: var(--dr-on-surface);
   color: var(--dr-surface);
+}
+
+.dr-article-reader__section-item--active:hover {
+  background: var(--dr-on-surface);
 }
 
 .dr-article-reader__section-title {
@@ -59,18 +68,18 @@
   border-top: 1px solid var(--dr-on-surface);
 }
 
-/* Main */
+/* Main — side-by-side: text left, reactions right */
 .dr-article-reader__main {
   flex: 1;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
 }
 
 .dr-article-reader__text {
   flex: 1;
   padding: 20px 28px;
   overflow: auto;
-  border-bottom: var(--dr-border-width) solid var(--dr-border-color);
+  border-right: var(--dr-border-width) solid var(--dr-border-color);
 }
 
 .dr-article-reader__heading {
@@ -141,18 +150,27 @@
   font-family: monospace;
 }
 
-/* Reactions panel */
+/* Reactions panel — fixed-width right column */
 .dr-article-reader__reactions-panel {
-  min-height: 150px;
-  max-height: 50%;
+  width: 340px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
-  flex-grow: 1;
+}
+
+.dr-article-reader__reactions-header {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--dr-on-surface);
+  font-family: var(--dr-font-title);
+  font-size: var(--dr-font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--dr-subtle);
 }
 
 .dr-article-reader__filter-tabs {
   display: flex;
+  flex-wrap: wrap;
   border-bottom: 1px solid var(--dr-on-surface);
   font-family: var(--dr-font-title);
   font-size: var(--dr-font-size-sm);
@@ -160,7 +178,7 @@
 }
 
 .dr-article-reader__filter-tab {
-  padding: 5px 12px;
+  padding: 5px 10px;
   cursor: pointer;
   border-right: 1px solid var(--dr-on-surface);
   white-space: nowrap;
@@ -256,11 +274,14 @@
 }
 
 .dr-article-reader__para-excerpt {
-  font-size: var(--dr-font-size-sm);
+  font-size: var(--dr-font-size-xs);
   color: var(--dr-subtle);
   font-style: italic;
-  padding: 4px 10px;
+  padding: 2px 8px;
   border-left: 2px solid var(--dr-border);
   margin-bottom: 4px;
   line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
