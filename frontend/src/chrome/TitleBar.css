@@ -1,13 +1,13 @@
 .dr-titlebar {
   background: var(--dr-surface);
   border-bottom: 2px solid var(--dr-border-color);
-  padding: 0 8px;
+  padding: 0 10px;
   display: flex;
   align-items: center;
   height: var(--dr-titlebar-height);
   user-select: none;
   flex-shrink: 0;
-  gap: 6px;
+  gap: 8px;
   cursor: move;
 }
 
@@ -42,4 +42,5 @@
   white-space: nowrap;
   overflow: hidden;
   letter-spacing: 0.03em;
+  padding: 0 4px;
 }

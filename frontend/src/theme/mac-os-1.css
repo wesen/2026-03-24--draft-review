@@ -68,9 +68,9 @@
   --dr-space-2xl: 40px;
 
   /* Component sizes */
-  --dr-titlebar-height: 28px;
-  --dr-menubar-height: 26px;
-  --dr-close-box-size: 14px;
+  --dr-titlebar-height: 30px;
+  --dr-menubar-height: 28px;
+  --dr-close-box-size: 16px;
 }
 
 /* Desktop background */

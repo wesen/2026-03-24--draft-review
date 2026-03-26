@@ -277,7 +277,7 @@ export function AuthorApp() {
 
       {/* Dashboard */}
       {view === "dashboard" && (
-        <MacWindow title="Draft Review \u2014 Dashboard" maximized zIndex={2}>
+        <MacWindow title={"Draft Review \u2014 Dashboard"} maximized zIndex={2}>
           <Dashboard
             articles={articles}
             readers={readers}
