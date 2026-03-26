@@ -237,7 +237,7 @@ func TestHandleMeOIDCAuthenticatedViaOpaqueSession(t *testing.T) {
 	t.Parallel()
 
 	store := &fakeSessionStore{}
-	manager, err := draftauth.NewSessionManager("test_session", "super-secret", "http://127.0.0.1:8080/auth/callback", 12*time.Hour, store)
+	manager, err := draftauth.NewSessionManager("test_session", "super-secret", "http://127.0.0.1:8080/auth/callback", 12*time.Hour, false, 0, store)
 	if err != nil {
 		t.Fatalf("NewSessionManager returned error: %v", err)
 	}
@@ -288,6 +288,54 @@ func TestHandleMeOIDCAuthenticatedViaOpaqueSession(t *testing.T) {
 	}
 	if response.Data.Email != "alice@example.com" {
 		t.Fatalf("expected email alice@example.com, got %q", response.Data.Email)
+	}
+}
+
+func TestHandleMeOIDCRenewsCookieNearExpiry(t *testing.T) {
+	t.Parallel()
+
+	store := &fakeSessionStore{}
+	manager, err := draftauth.NewSessionManager("test_session", "super-secret", "http://127.0.0.1:8080/auth/callback", 12*time.Hour, true, time.Hour, store)
+	if err != nil {
+		t.Fatalf("NewSessionManager returned error: %v", err)
+	}
+
+	user := &draftauth.User{
+		ID:          "11111111-1111-1111-1111-111111111111",
+		AuthIssuer:  "https://auth.example.com/realms/draft-review",
+		AuthSubject: "user-123",
+		Email:       "alice@example.com",
+		Name:        "Alice",
+	}
+
+	writeRequest := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:8080/", nil)
+	writeRecorder := httptest.NewRecorder()
+	if err := manager.WriteSession(context.Background(), writeRecorder, writeRequest, user); err != nil {
+		t.Fatalf("WriteSession returned error: %v", err)
+	}
+	store.session.User = *user
+	store.session.Session.ExpiresAt = time.Now().UTC().Add(30 * time.Minute)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/me", nil)
+	for _, cookie := range writeRecorder.Result().Cookies() {
+		request.AddCookie(cookie)
+	}
+	recorder := httptest.NewRecorder()
+
+	handler := NewHandler(HandlerOptions{
+		Version:        "test",
+		StartedAt:      time.Now().UTC(),
+		AuthSettings:   &draftauth.Settings{Mode: draftauth.AuthModeOIDC},
+		SessionManager: manager,
+	})
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", recorder.Code)
+	}
+	if setCookie := recorder.Header().Get("Set-Cookie"); setCookie == "" {
+		t.Fatal("expected handleMe to renew the session cookie")
 	}
 }
 

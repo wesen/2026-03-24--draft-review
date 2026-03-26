@@ -115,6 +115,8 @@ func NewHTTPServer(ctx context.Context, options Options) (*http.Server, error) {
 			authSettings.SessionSecret,
 			authSettings.OIDCRedirectURL,
 			authSettings.SessionTTLValue,
+			authSettings.SessionSlidingRenewal,
+			authSettings.SessionRenewBeforeValue,
 			authRepo,
 		)
 		if err != nil {
@@ -270,7 +272,7 @@ func (h *appHandler) handleInfo(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (h *appHandler) handleMe(w http.ResponseWriter, r *http.Request) {
-	user, ok := h.currentUser(r)
+	user, ok := h.currentUser(w, r)
 	if !ok {
 		writeJSON(w, http.StatusOK, apiEnvelope{Data: draftauth.UserInfo{
 			Authenticated: false,
@@ -845,8 +847,8 @@ func decodeJSONBody(r *http.Request, target any) error {
 	return nil
 }
 
-func (h *appHandler) currentUser(r *http.Request) (*draftauth.UserInfo, bool) {
-	claims, ok := h.currentClaims(r)
+func (h *appHandler) currentUser(w http.ResponseWriter, r *http.Request) (*draftauth.UserInfo, bool) {
+	claims, ok := h.currentClaims(w, r)
 	if !ok {
 		return nil, false
 	}
@@ -856,7 +858,7 @@ func (h *appHandler) currentUser(r *http.Request) (*draftauth.UserInfo, bool) {
 }
 
 func (h *appHandler) requireCurrentAuthor(w http.ResponseWriter, r *http.Request) (*draftauth.User, bool) {
-	identity, ok := h.currentIdentity(r)
+	identity, ok := h.currentIdentity(w, r)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "authentication required")
 		return nil, false
@@ -875,8 +877,8 @@ func (h *appHandler) requireCurrentAuthor(w http.ResponseWriter, r *http.Request
 	return user, true
 }
 
-func (h *appHandler) currentIdentity(r *http.Request) (draftauth.AuthenticatedIdentity, bool) {
-	claims, ok := h.currentClaims(r)
+func (h *appHandler) currentIdentity(w http.ResponseWriter, r *http.Request) (draftauth.AuthenticatedIdentity, bool) {
+	claims, ok := h.currentClaims(w, r)
 	if !ok {
 		return draftauth.AuthenticatedIdentity{}, false
 	}
@@ -890,7 +892,7 @@ func (h *appHandler) currentIdentity(r *http.Request) (draftauth.AuthenticatedId
 	}, true
 }
 
-func (h *appHandler) currentClaims(r *http.Request) (*draftauth.SessionClaims, bool) {
+func (h *appHandler) currentClaims(w http.ResponseWriter, r *http.Request) (*draftauth.SessionClaims, bool) {
 	switch h.authSettings.Mode {
 	case draftauth.AuthModeDev:
 		return &draftauth.SessionClaims{
@@ -907,7 +909,7 @@ func (h *appHandler) currentClaims(r *http.Request) (*draftauth.SessionClaims, b
 		if h.sessionManager == nil {
 			return nil, false
 		}
-		claims, err := h.sessionManager.ReadSession(r.Context(), r)
+		claims, err := h.sessionManager.ReadSession(r.Context(), w, r)
 		if err != nil {
 			return nil, false
 		}

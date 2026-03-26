@@ -30,3 +30,14 @@ Added author-session activity tracking with last_used_at persistence and touch-o
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/session.go — Touches server-side sessions on authenticated reads
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/db/migrations/0006_author_session_activity.sql — Adds last_used_at to persisted author sessions
 
+
+## 2026-03-26
+
+Added sliding opaque-session renewal with configurable threshold and cookie refresh on active authenticated requests.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/config.go — Adds session renewal settings and validation
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/session.go — Renews session expiry and reissues cookies near expiry
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http.go — Passes response writer through auth resolution so renewal can refresh cookies
+

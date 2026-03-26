@@ -19,17 +19,20 @@ const (
 )
 
 type Settings struct {
-	Mode              string   `glazed:"auth-mode"`
-	DevUserID         string   `glazed:"auth-dev-user-id"`
-	SessionCookieName string   `glazed:"auth-session-cookie-name"`
-	SessionSecret     string   `glazed:"auth-session-secret"`
-	SessionTTL        string   `glazed:"auth-session-ttl"`
-	OIDCIssuerURL     string   `glazed:"oidc-issuer-url"`
-	OIDCClientID      string   `glazed:"oidc-client-id"`
-	OIDCClientSecret  string   `glazed:"oidc-client-secret"`
-	OIDCRedirectURL   string   `glazed:"oidc-redirect-url"`
-	OIDCScopes        []string `glazed:"oidc-scopes"`
-	SessionTTLValue   time.Duration
+	Mode                    string   `glazed:"auth-mode"`
+	DevUserID               string   `glazed:"auth-dev-user-id"`
+	SessionCookieName       string   `glazed:"auth-session-cookie-name"`
+	SessionSecret           string   `glazed:"auth-session-secret"`
+	SessionTTL              string   `glazed:"auth-session-ttl"`
+	SessionSlidingRenewal   bool     `glazed:"auth-session-sliding-renewal"`
+	SessionRenewBefore      string   `glazed:"auth-session-renew-before"`
+	OIDCIssuerURL           string   `glazed:"oidc-issuer-url"`
+	OIDCClientID            string   `glazed:"oidc-client-id"`
+	OIDCClientSecret        string   `glazed:"oidc-client-secret"`
+	OIDCRedirectURL         string   `glazed:"oidc-redirect-url"`
+	OIDCScopes              []string `glazed:"oidc-scopes"`
+	SessionTTLValue         time.Duration
+	SessionRenewBeforeValue time.Duration
 }
 
 type UserInfo struct {
@@ -81,6 +84,18 @@ func NewSection() (schema.Section, error) {
 				fields.TypeString,
 				fields.WithHelp("Application-managed browser session TTL used for opaque author sessions"),
 				fields.WithDefault(envOr("DRAFT_REVIEW_AUTH_SESSION_TTL", "12h")),
+			),
+			fields.New(
+				"auth-session-sliding-renewal",
+				fields.TypeBool,
+				fields.WithHelp("Whether authenticated browser sessions should renew before expiry while the user is active"),
+				fields.WithDefault(envOrBool("DRAFT_REVIEW_AUTH_SESSION_SLIDING_RENEWAL", true)),
+			),
+			fields.New(
+				"auth-session-renew-before",
+				fields.TypeString,
+				fields.WithHelp("Renew the session when the remaining lifetime is at or below this threshold"),
+				fields.WithDefault(envOr("DRAFT_REVIEW_AUTH_SESSION_RENEW_BEFORE", "1h")),
 			),
 			fields.New(
 				"oidc-issuer-url",
@@ -148,6 +163,18 @@ func LoadSettingsFromParsedValues(parsedValues *values.Values) (*Settings, error
 		return nil, errors.New("auth-session-ttl must be greater than zero")
 	}
 	settings.SessionTTLValue = sessionTTL
+	settings.SessionRenewBefore = strings.TrimSpace(settings.SessionRenewBefore)
+	if settings.SessionRenewBefore == "" {
+		settings.SessionRenewBefore = "1h"
+	}
+	sessionRenewBefore, err := time.ParseDuration(settings.SessionRenewBefore)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid auth-session-renew-before")
+	}
+	if sessionRenewBefore < 0 {
+		return nil, errors.New("auth-session-renew-before must not be negative")
+	}
+	settings.SessionRenewBeforeValue = sessionRenewBefore
 	settings.OIDCIssuerURL = strings.TrimSpace(settings.OIDCIssuerURL)
 	settings.OIDCClientID = strings.TrimSpace(settings.OIDCClientID)
 	settings.OIDCClientSecret = strings.TrimSpace(settings.OIDCClientSecret)
@@ -189,6 +216,20 @@ func envOr(key, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+func envOrBool(key string, fallback bool) bool {
+	value := strings.TrimSpace(strings.ToLower(os.Getenv(key)))
+	switch value {
+	case "1", "true", "yes", "on":
+		return true
+	case "0", "false", "no", "off":
+		return false
+	case "":
+		return fallback
+	default:
+		return fallback
+	}
 }
 
 func compact(values []string) []string {

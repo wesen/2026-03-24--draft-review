@@ -58,7 +58,7 @@ func (f *fakeSessionStore) RevokeAuthorSessionByTokenHash(ctx context.Context, t
 
 func TestSessionManagerRoundTrip(t *testing.T) {
 	store := &fakeSessionStore{}
-	manager, err := NewSessionManager("test_session", "super-secret", "http://127.0.0.1:8080/auth/callback", 12*time.Hour, store)
+	manager, err := NewSessionManager("test_session", "super-secret", "http://127.0.0.1:8080/auth/callback", 12*time.Hour, false, 0, store)
 	if err != nil {
 		t.Fatalf("NewSessionManager returned error: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestSessionManagerRoundTrip(t *testing.T) {
 		User:    *user,
 	}
 
-	claims, err := manager.ReadSession(context.Background(), request)
+	claims, err := manager.ReadSession(context.Background(), nil, request)
 	if err != nil {
 		t.Fatalf("ReadSession returned error: %v", err)
 	}
@@ -126,7 +126,7 @@ func TestSessionManagerRoundTrip(t *testing.T) {
 
 func TestSessionManagerRejectsUnknownToken(t *testing.T) {
 	store := &fakeSessionStore{}
-	manager, err := NewSessionManager("test_session", "super-secret", "http://127.0.0.1:8080/auth/callback", 12*time.Hour, store)
+	manager, err := NewSessionManager("test_session", "super-secret", "http://127.0.0.1:8080/auth/callback", 12*time.Hour, false, 0, store)
 	if err != nil {
 		t.Fatalf("NewSessionManager returned error: %v", err)
 	}
@@ -134,14 +134,14 @@ func TestSessionManagerRejectsUnknownToken(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:8080/", nil)
 	request.AddCookie(&http.Cookie{Name: "test_session", Value: "unknown-token"})
 
-	if _, err := manager.ReadSession(context.Background(), request); err == nil {
+	if _, err := manager.ReadSession(context.Background(), nil, request); err == nil {
 		t.Fatal("expected ReadSession to reject unknown token")
 	}
 }
 
 func TestSessionManagerClearSessionRevokesServerSession(t *testing.T) {
 	store := &fakeSessionStore{}
-	manager, err := NewSessionManager("test_session", "super-secret", "http://127.0.0.1:8080/auth/callback", 12*time.Hour, store)
+	manager, err := NewSessionManager("test_session", "super-secret", "http://127.0.0.1:8080/auth/callback", 12*time.Hour, false, 0, store)
 	if err != nil {
 		t.Fatalf("NewSessionManager returned error: %v", err)
 	}
@@ -154,6 +154,67 @@ func TestSessionManagerClearSessionRevokesServerSession(t *testing.T) {
 
 	if store.revokedHash == "" {
 		t.Fatal("expected server-side session to be revoked")
+	}
+}
+
+func TestSessionManagerRenewsActiveSessionNearExpiry(t *testing.T) {
+	store := &fakeSessionStore{}
+	manager, err := NewSessionManager("test_session", "super-secret", "http://127.0.0.1:8080/auth/callback", 12*time.Hour, true, time.Hour, store)
+	if err != nil {
+		t.Fatalf("NewSessionManager returned error: %v", err)
+	}
+	now := time.Date(2026, 3, 26, 12, 0, 0, 0, time.UTC)
+	manager.now = func() time.Time {
+		return now
+	}
+	manager.newToken = func() (string, error) {
+		return "opaque-token-456", nil
+	}
+
+	user := &User{
+		ID:          "11111111-1111-1111-1111-111111111111",
+		AuthIssuer:  "https://auth.example.com/realms/draft-review",
+		AuthSubject: "user-123",
+		Email:       "alice@example.com",
+		Name:        "Alice",
+	}
+
+	writeRequest := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:8080/", nil)
+	writeRecorder := httptest.NewRecorder()
+	if err := manager.WriteSession(context.Background(), writeRecorder, writeRequest, user); err != nil {
+		t.Fatalf("WriteSession returned error: %v", err)
+	}
+
+	store.resolved = &ResolvedSession{
+		Session: *store.createdSession,
+		User:    *user,
+	}
+	store.resolved.Session.ExpiresAt = now.Add(45 * time.Minute)
+
+	request := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:8080/api/me", nil)
+	for _, cookie := range writeRecorder.Result().Cookies() {
+		request.AddCookie(cookie)
+	}
+	recorder := httptest.NewRecorder()
+
+	active, err := manager.ReadSessionState(context.Background(), recorder, request)
+	if err != nil {
+		t.Fatalf("ReadSessionState returned error: %v", err)
+	}
+
+	if !active.Renewed {
+		t.Fatal("expected session renewal")
+	}
+	expectedExpiry := now.Add(12 * time.Hour)
+	if !store.resolved.Session.ExpiresAt.Equal(expectedExpiry) {
+		t.Fatalf("expected renewed expiry %s, got %s", expectedExpiry, store.resolved.Session.ExpiresAt)
+	}
+	cookies := recorder.Result().Cookies()
+	if len(cookies) == 0 {
+		t.Fatal("expected renewed cookie to be issued")
+	}
+	if !cookies[0].Expires.Equal(expectedExpiry) {
+		t.Fatalf("expected renewed cookie expiry %s, got %s", expectedExpiry, cookies[0].Expires)
 	}
 }
 

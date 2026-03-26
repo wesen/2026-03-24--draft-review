@@ -43,16 +43,18 @@ type ActiveSession struct {
 }
 
 type SessionManager struct {
-	cookieName  string
-	secret      []byte
-	redirectURL string
-	sessionTTL  time.Duration
-	store       SessionStore
-	now         func() time.Time
-	newToken    func() (string, error)
+	cookieName     string
+	secret         []byte
+	redirectURL    string
+	sessionTTL     time.Duration
+	renewBefore    time.Duration
+	slidingRenewal bool
+	store          SessionStore
+	now            func() time.Time
+	newToken       func() (string, error)
 }
 
-func NewSessionManager(cookieName, secret, redirectURL string, sessionTTL time.Duration, store SessionStore) (*SessionManager, error) {
+func NewSessionManager(cookieName, secret, redirectURL string, sessionTTL time.Duration, slidingRenewal bool, renewBefore time.Duration, store SessionStore) (*SessionManager, error) {
 	cookieName = strings.TrimSpace(cookieName)
 	if cookieName == "" {
 		cookieName = DefaultSessionCookieName
@@ -64,18 +66,23 @@ func NewSessionManager(cookieName, secret, redirectURL string, sessionTTL time.D
 	if sessionTTL <= 0 {
 		return nil, errors.New("session ttl is required")
 	}
+	if renewBefore < 0 {
+		return nil, errors.New("session renew-before must not be negative")
+	}
 	if store == nil {
 		return nil, errors.New("session store is required")
 	}
 
 	return &SessionManager{
-		cookieName:  cookieName,
-		secret:      []byte(secret),
-		redirectURL: strings.TrimSpace(redirectURL),
-		sessionTTL:  sessionTTL,
-		store:       store,
-		now:         func() time.Time { return time.Now().UTC() },
-		newToken:    randomToken,
+		cookieName:     cookieName,
+		secret:         []byte(secret),
+		redirectURL:    strings.TrimSpace(redirectURL),
+		sessionTTL:     sessionTTL,
+		renewBefore:    renewBefore,
+		slidingRenewal: slidingRenewal,
+		store:          store,
+		now:            func() time.Time { return time.Now().UTC() },
+		newToken:       randomToken,
 	}, nil
 }
 
@@ -119,15 +126,15 @@ func (m *SessionManager) WriteSession(ctx context.Context, w http.ResponseWriter
 	return nil
 }
 
-func (m *SessionManager) ReadSession(ctx context.Context, r *http.Request) (*SessionClaims, error) {
-	active, err := m.ReadSessionState(ctx, r)
+func (m *SessionManager) ReadSession(ctx context.Context, w http.ResponseWriter, r *http.Request) (*SessionClaims, error) {
+	active, err := m.ReadSessionState(ctx, w, r)
 	if err != nil {
 		return nil, err
 	}
 	return &active.Claims, nil
 }
 
-func (m *SessionManager) ReadSessionState(ctx context.Context, r *http.Request) (*ActiveSession, error) {
+func (m *SessionManager) ReadSessionState(ctx context.Context, w http.ResponseWriter, r *http.Request) (*ActiveSession, error) {
 	if r == nil {
 		return nil, ErrNoSession
 	}
@@ -159,15 +166,42 @@ func (m *SessionManager) ReadSessionState(ctx context.Context, r *http.Request) 
 		return nil, errors.New("session has expired")
 	}
 
+	var renewedExpiresAt *time.Time
+	renewed := false
+	if m.slidingRenewal && m.renewBefore > 0 && !resolved.Session.ExpiresAt.IsZero() {
+		remaining := resolved.Session.ExpiresAt.UTC().Sub(now)
+		if remaining <= m.renewBefore {
+			value := now.Add(m.sessionTTL).UTC()
+			renewedExpiresAt = &value
+			renewed = true
+		}
+	}
+
 	sessionID, err := uuid.Parse(strings.TrimSpace(resolved.Session.ID))
 	if err != nil {
 		return nil, err
 	}
-	touchedSession, err := m.store.TouchAuthorSession(ctx, sessionID, now, nil)
+	touchedSession, err := m.store.TouchAuthorSession(ctx, sessionID, now, renewedExpiresAt)
 	if err != nil {
 		return nil, err
 	}
 	resolved.Session = *touchedSession
+	if renewed && w != nil {
+		maxAge := int(resolved.Session.ExpiresAt.UTC().Sub(now).Seconds())
+		if maxAge < 0 {
+			maxAge = 0
+		}
+		http.SetCookie(w, &http.Cookie{
+			Name:     m.cookieName,
+			Value:    rawToken,
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   shouldUseSecureCookies(r, m.redirectURL),
+			SameSite: http.SameSiteLaxMode,
+			Expires:  resolved.Session.ExpiresAt.UTC(),
+			MaxAge:   maxAge,
+		})
+	}
 
 	claims := SessionClaims{
 		Issuer:            resolved.User.AuthIssuer,
@@ -183,7 +217,7 @@ func (m *SessionManager) ReadSessionState(ctx context.Context, r *http.Request) 
 	return &ActiveSession{
 		Resolved: resolved,
 		Claims:   claims,
-		Renewed:  false,
+		Renewed:  renewed,
 	}, nil
 }
 

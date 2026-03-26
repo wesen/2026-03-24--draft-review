@@ -11,6 +11,8 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: pkg/auth/config.go
+      Note: Configures sliding renewal enablement and threshold
     - Path: pkg/auth/oidc.go
     - Path: pkg/auth/postgres.go
     - Path: pkg/auth/session.go
@@ -20,12 +22,16 @@ RelatedFiles:
     - Path: pkg/db/migrations/0006_author_session_activity.sql
       Note: Introduces last_used_at activity metadata for opaque author sessions
     - Path: pkg/server/http.go
+      Note: Threads response writers through session reads so renewal can set cookies
+    - Path: pkg/server/http_test.go
+      Note: Verifies /api/me reissues cookies for nearly expired sessions
 ExternalSources: []
 Summary: Detailed step-by-step diary for the server-side session implementation work.
 LastUpdated: 2026-03-26T15:50:00-04:00
 WhatFor: Keep a running implementation diary for the medium-term opaque session migration.
 WhenToUse: Use while reviewing the DR-010 implementation history and validation steps.
 ---
+
 
 
 # DR-010 implementation diary
@@ -206,6 +212,61 @@ What to watch in review:
   should confirm this write pattern is acceptable for the expected author traffic
 - the migration backfills existing rows and makes `last_used_at` non-null, so schema
   reviewers should confirm that aligns with any external DB inspection scripts
+
+### 2026-03-26 19:20 EDT
+
+Implemented the second follow-up slice: sliding renewal for active opaque author
+sessions. This is the first place where request handling needed to change, because
+renewal is not only a database write; the browser cookie also has to be reissued
+with the new expiry.
+
+Files changed in this slice:
+
+- `pkg/auth/config.go`
+- `pkg/auth/session.go`
+- `pkg/auth/session_test.go`
+- `pkg/server/http.go`
+- `pkg/server/http_test.go`
+
+What changed:
+
+- added `auth-session-sliding-renewal` and `auth-session-renew-before` settings,
+  including environment-backed defaults and validation
+- extended `SessionManager` so reads can renew a session when the remaining lifetime
+  is below the configured threshold
+- changed the HTTP auth resolution path to pass the `http.ResponseWriter` through
+  session reads, which lets the auth layer set a refreshed cookie on `/api/me` and
+  any authenticated author endpoint
+- added tests that verify the pure auth renewal path and the handler-level `/api/me`
+  renewal path
+
+Validation run:
+
+```bash
+gofmt -w pkg/auth/config.go pkg/auth/session.go pkg/auth/session_test.go pkg/server/http.go pkg/server/http_test.go
+go test ./cmd/... ./pkg/...
+```
+
+Result:
+
+- the full Go suite passed after the renewal wiring landed
+
+What was tricky:
+
+- `last_used_at` and renewal both naturally wanted to modify the session manager
+  read path. I split them into separate commits by first landing touch-on-read with
+  no cookie changes, then layering the response-writer-aware renewal logic on top.
+- renewal only makes sense if the server can both update the DB row and refresh the
+  browser cookie in the same request, so the auth helper signatures in
+  `pkg/server/http.go` had to change together with the session manager API
+
+What to watch in review:
+
+- renewal currently happens on any authenticated request when the remaining TTL is
+  at or below the threshold, so reviewers should confirm the default `1h` threshold
+  is appropriate relative to the default `12h` session TTL
+- the backend now emits `Set-Cookie` from ordinary authenticated API reads, which is
+  intentional but worth noticing in any frontend caching or proxy review
 
 ### Next diary entries
 
