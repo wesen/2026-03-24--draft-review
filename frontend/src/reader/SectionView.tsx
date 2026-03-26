@@ -10,6 +10,7 @@ interface SectionViewProps {
   reactions: Reaction[];
   onReact: (paragraphId: string, type: ReactionType, text: string) => void;
   onRemoveReaction: (reaction: Reaction) => void;
+  readOnly?: boolean;
 }
 
 export function SectionView({
@@ -19,6 +20,7 @@ export function SectionView({
   reactions,
   onReact,
   onRemoveReaction,
+  readOnly = false,
 }: SectionViewProps) {
   const sectionReactions = reactions.filter(
     (r) => r.sectionId === section.id
@@ -46,6 +48,7 @@ export function SectionView({
             onReact(`${section.id}-p${pi}`, type, reactionText)
           }
           onRemoveReaction={onRemoveReaction}
+          readOnly={readOnly}
         />
       ))}
 

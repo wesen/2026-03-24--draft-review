@@ -30,3 +30,24 @@
   color: var(--dr-muted);
   font-family: monospace;
 }
+
+/* Preview mode banner */
+.dr-reader-page__preview-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 6px 16px;
+  background: var(--dr-hatch-pattern);
+  color: var(--dr-surface);
+  font-family: var(--dr-font-body);
+  font-size: var(--dr-font-size-sm);
+  font-weight: bold;
+  border-bottom: 2px solid var(--dr-on-surface);
+}
+
+.dr-reader-page__preview-banner span {
+  background: var(--dr-on-surface);
+  color: var(--dr-surface);
+  padding: 2px 8px;
+}

@@ -11,6 +11,7 @@ interface ParagraphProps {
   reactions: Reaction[];
   onReact: (type: ReactionType, text: string) => void;
   onRemoveReaction: (reaction: Reaction) => void;
+  readOnly?: boolean;
 }
 
 export function Paragraph({
@@ -19,6 +20,7 @@ export function Paragraph({
   reactions,
   onReact,
   onRemoveReaction,
+  readOnly = false,
 }: ParagraphProps) {
   const [activeType, setActiveType] = useState<ReactionType | null>(null);
   const [comment, setComment] = useState("");
@@ -54,7 +56,7 @@ export function Paragraph({
 
   return (
     <div
-      className={`dr-para ${myReactions.length > 0 ? "dr-para--commented" : ""} ${!showChips ? "dr-para--no-react" : ""}`}
+      className={`dr-para ${myReactions.length > 0 ? "dr-para--commented" : ""} ${!showChips ? "dr-para--no-react" : ""} ${readOnly ? "dr-para--readonly" : ""}`}
     >
       <Prose className="dr-para__text">{text}</Prose>
 

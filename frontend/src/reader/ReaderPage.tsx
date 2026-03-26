@@ -23,6 +23,10 @@ interface ReaderPageProps {
   /** Called when a reaction is removed */
   onReactionRemove?: (reaction: Reaction) => void;
   reviewToken?: string;
+  /** When true, reactions are disabled (preview mode) */
+  readOnly?: boolean;
+  /** Called when user clicks "Back to Editor" in preview mode */
+  onBackToEditor?: () => void;
 }
 
 export function ReaderPage({
@@ -31,6 +35,8 @@ export function ReaderPage({
   onReactionAdd,
   onReactionRemove,
   reviewToken,
+  readOnly = false,
+  onBackToEditor,
 }: ReaderPageProps) {
   const [started, setStarted] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -217,6 +223,17 @@ export function ReaderPage({
         onPickSection={goTo}
       />
 
+      {readOnly && (
+        <div className="dr-reader-page__preview-banner">
+          <span>Preview mode {"\u2014"} reactions are disabled</span>
+          {onBackToEditor && (
+            <MacButton small onClick={onBackToEditor}>
+              {"\u2190"} Back to Editor
+            </MacButton>
+          )}
+        </div>
+      )}
+
       <div className="dr-reader-page__content" ref={scrollRef}>
         {section && (
           <>
@@ -227,6 +244,7 @@ export function ReaderPage({
               reactions={reactions}
               onReact={handleReact}
               onRemoveReaction={handleRemoveReaction}
+              readOnly={readOnly}
             />
 
             <div className="dr-reader-page__nav">

@@ -169,16 +169,13 @@ export function ArticleEditor({
           <MacButton fullWidth onClick={addSection}>
             + Add Section
           </MacButton>
-          <div className="dr-editor__danger-zone">
-            <div className="dr-editor__danger-label">Danger Zone</div>
-            <MacButton
-              fullWidth
-              disabled={article.sections.length <= 1}
-              onClick={() => setShowDeleteConfirm(true)}
-            >
-              Delete Section
-            </MacButton>
-          </div>
+          <MacButton
+            fullWidth
+            disabled={article.sections.length <= 1}
+            onClick={() => setShowDeleteConfirm(true)}
+          >
+            Delete Section
+          </MacButton>
         </div>
         <div className="dr-editor__sidebar-footer">
           <MacButton fullWidth small onClick={onBack}>

@@ -48,7 +48,7 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  font-size: 10px;
+  font-size: 13px;
   line-height: 1;
   flex-shrink: 0;
 }
@@ -56,11 +56,14 @@
 .dr-editor__reorder-btn {
   cursor: pointer;
   opacity: 0.5;
-  padding: 1px 2px;
+  padding: 2px 4px;
+  transition: opacity 0.1s, background 0.1s;
 }
 
 .dr-editor__reorder-btn:hover {
   opacity: 1;
+  background: var(--dr-on-surface);
+  color: var(--dr-surface);
 }
 
 .dr-editor__section-label {
@@ -79,20 +82,6 @@
   gap: 8px;
 }
 
-.dr-editor__danger-zone {
-  border-top: 1px dotted var(--dr-subtle);
-  padding-top: 8px;
-}
-
-.dr-editor__danger-label {
-  font-family: var(--dr-font-title);
-  font-size: var(--dr-font-size-xs);
-  color: var(--dr-subtle);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 4px;
-  text-align: center;
-}
 
 .dr-editor__sidebar-footer {
   padding: 8px;

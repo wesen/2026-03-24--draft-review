@@ -124,3 +124,22 @@
 .dr-para__reactions {
   padding-top: 2px;
 }
+
+/* Read-only mode (preview) — chips visible but non-interactive */
+.dr-para--readonly .dr-para__actions {
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+.dr-para--readonly:hover .dr-para__actions {
+  opacity: 0.25;
+}
+
+.dr-para--readonly {
+  border-left-color: transparent !important;
+}
+
+.dr-para--readonly:hover {
+  border-left-color: transparent;
+  background: transparent;
+}

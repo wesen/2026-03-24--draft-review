@@ -113,7 +113,7 @@ export function Dashboard({
           Edit
         </MacButton>
         <MacButton small onClick={() => onArticleSettings(selected.id)}>
-          Share
+          Settings
         </MacButton>
         <MacButton small onClick={onInvite}>
           + Invite Reader

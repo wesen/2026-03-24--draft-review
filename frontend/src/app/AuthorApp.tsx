@@ -409,6 +409,8 @@ export function AuthorApp() {
               intro: selectedArticle.intro,
               sections: selectedArticle.sections,
             }}
+            readOnly
+            onBackToEditor={() => setView("edit")}
           />
         </MacWindow>
       )}
