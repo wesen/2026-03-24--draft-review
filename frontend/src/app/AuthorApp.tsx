@@ -22,23 +22,31 @@ import {
 } from "../api/articleApi";
 import { useGetMeQuery } from "../api/authApi";
 import { getBackendOrigin } from "../lib/backendOrigin";
-import type { Article } from "../types";
-
-type View =
-  | "dashboard"
-  | "articles"
-  | "article"
-  | "edit"
-  | "settings"
-  | "reader-preview";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import {
+  setView,
+  selectArticle as selectArticleAction,
+  setFocusSection,
+  setPreviewArticle,
+  goBack as goBackAction,
+  openModal,
+  closeModal,
+} from "../store/uiSlice";
 
 export function AuthorApp() {
   const useMockApi = import.meta.env.VITE_USE_MSW === "1";
   const backendOrigin = getBackendOrigin();
-  const [view, setView] = useState<View>("dashboard");
-  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
-  const [focusSection, setFocusSection] = useState<string | undefined>();
-  const [showInvite, setShowInvite] = useState(false);
+  const dispatch = useAppDispatch();
+
+  // Redux state
+  const view = useAppSelector((s) => s.ui.view);
+  const selectedArticleId = useAppSelector((s) => s.ui.selectedArticleId);
+  const focusSection = useAppSelector((s) => s.ui.focusSectionId);
+  const previewArticle = useAppSelector((s) => s.ui.previewArticle);
+  const activeModal = useAppSelector((s) => s.ui.activeModal);
+  const showInvite = activeModal === "invite";
+
+  // shareUrl is transient per-article — stays local
   const [shareUrl, setShareUrl] = useState<string | undefined>();
 
   const { data: meResponse, isLoading: isLoadingMe } = useGetMeQuery(undefined, {
@@ -60,7 +68,10 @@ export function AuthorApp() {
   const [generateShareToken] = useGenerateShareTokenMutation();
   const [inviteReader] = useInviteReaderMutation();
 
-  const activeArticleId = selectedArticle?.id || articles[0]?.id || "";
+  // Hydrate full Article from RTK Query cache
+  const selectedArticle = articles.find((a) => a.id === selectedArticleId) || null;
+  const activeArticleId = selectedArticleId || articles[0]?.id || "";
+
   const {
     data: readers = [],
     isLoading: isLoadingReaders,
@@ -74,28 +85,19 @@ export function AuthorApp() {
     skip: !authReady || !activeArticleId,
   });
 
-  const selectArticle = useCallback(
-    (id: string) => {
-      const a = articles.find((x) => x.id === id);
-      if (a) setSelectedArticle(a);
-    },
-    [articles]
-  );
-
   const handleSelectArticle = useCallback(
     (id: string, sectionId?: string) => {
-      selectArticle(id);
-      setFocusSection(sectionId);
-      setView("article");
+      dispatch(selectArticleAction(id));
+      dispatch(setFocusSection(sectionId ?? null));
+      dispatch(setView("article"));
     },
-    [selectArticle]
+    [dispatch]
   );
 
-  const goBack = () => {
-    setView("dashboard");
-    setSelectedArticle(null);
+  const goBack = useCallback(() => {
+    dispatch(goBackAction());
     setShareUrl(undefined);
-  };
+  }, [dispatch]);
 
   const handleLogin = () => {
     window.location.assign(
@@ -115,10 +117,10 @@ export function AuthorApp() {
       author: me?.displayName || me?.preferredUsername || me?.email || "You",
       intro: "",
     }).unwrap();
-    setSelectedArticle(article);
-    setFocusSection(undefined);
-    setView("edit");
-  }, [createArticle, me?.displayName, me?.email, me?.preferredUsername]);
+    dispatch(selectArticleAction(article.id));
+    dispatch(setFocusSection(null));
+    dispatch(setView("edit"));
+  }, [createArticle, dispatch, me?.displayName, me?.email, me?.preferredUsername]);
 
   const totalReactions = reactions.length;
 
@@ -141,8 +143,8 @@ export function AuthorApp() {
     {
       label: "View",
       items: [
-        { label: "Dashboard", action: () => setView("dashboard") },
-        { label: "Articles", action: () => setView("articles") },
+        { label: "Dashboard", action: () => dispatch(setView("dashboard")) },
+        { label: "Articles", action: () => dispatch(setView("articles")) },
       ],
     },
     {
@@ -241,7 +243,7 @@ export function AuthorApp() {
     return (
       <div className="dr-desktop">
         <MenuBar menus={menus} rightStatus="Error" />
-        <MacWindow title="Draft Review — Error" maximized>
+        <MacWindow title={"Draft Review \u2014 Error"} maximized>
           <div
             style={{
               display: "flex",
@@ -286,17 +288,17 @@ export function AuthorApp() {
             reactions={reactions}
             onSelectArticle={handleSelectArticle}
             onEditArticle={(id) => {
-              selectArticle(id);
-              setView("edit");
+              dispatch(selectArticleAction(id));
+              dispatch(setView("edit"));
             }}
             onArticleSettings={(id) => {
-              selectArticle(id);
+              dispatch(selectArticleAction(id));
               setShareUrl(undefined);
-              setView("settings");
+              dispatch(setView("settings"));
             }}
             onNewArticle={() => void handleNewArticle()}
-            onViewArticles={() => setView("articles")}
-            onInvite={() => setShowInvite(true)}
+            onViewArticles={() => dispatch(setView("articles"))}
+            onInvite={() => dispatch(openModal("invite"))}
           />
         </MacWindow>
       )}
@@ -309,17 +311,17 @@ export function AuthorApp() {
             readers={readers}
             reactions={reactions}
             onEdit={(id) => {
-              selectArticle(id);
-              setView("edit");
+              dispatch(selectArticleAction(id));
+              dispatch(setView("edit"));
             }}
             onSettings={(id) => {
-              selectArticle(id);
+              dispatch(selectArticleAction(id));
               setShareUrl(undefined);
-              setView("settings");
+              dispatch(setView("settings"));
             }}
             onReview={(id) => handleSelectArticle(id)}
             onNewArticle={() => void handleNewArticle()}
-            onInvite={() => setShowInvite(true)}
+            onInvite={() => dispatch(openModal("invite"))}
           />
         </MacWindow>
       )}
@@ -336,7 +338,7 @@ export function AuthorApp() {
             reactions={reactions.filter(
               (r) => r.articleId === selectedArticle.id
             )}
-            focusSection={focusSection}
+            focusSection={focusSection ?? undefined}
             onBack={goBack}
           />
         </MacWindow>
@@ -362,8 +364,8 @@ export function AuthorApp() {
             }}
             onBack={goBack}
             onPreview={(a) => {
-              setSelectedArticle(a);
-              setView("reader-preview");
+              dispatch(setPreviewArticle(a));
+              dispatch(setView("reader-preview"));
             }}
           />
         </MacWindow>
@@ -399,31 +401,31 @@ export function AuthorApp() {
       )}
 
       {/* Reader Preview */}
-      {view === "reader-preview" && selectedArticle && (
+      {view === "reader-preview" && previewArticle && (
         <MacWindow
-          title={`${selectedArticle.title} \u2014 Reader View`}
+          title={`${previewArticle.title} \u2014 Reader View`}
           maximized
           zIndex={3}
           onClose={goBack}
         >
           <ReaderPage
             article={{
-              id: selectedArticle.id,
-              title: selectedArticle.title,
-              author: selectedArticle.author,
-              version: selectedArticle.version,
-              intro: selectedArticle.intro,
-              sections: selectedArticle.sections,
+              id: previewArticle.id,
+              title: previewArticle.title,
+              author: previewArticle.author,
+              version: previewArticle.version,
+              intro: previewArticle.intro,
+              sections: previewArticle.sections,
             }}
             readOnly
-            onBackToEditor={() => setView("edit")}
+            onBackToEditor={() => dispatch(setView("edit"))}
           />
         </MacWindow>
       )}
 
       {showInvite && (
         <InviteDialog
-          onClose={() => setShowInvite(false)}
+          onClose={() => dispatch(closeModal())}
           shareUrl={shareUrl}
           onGenerateShareLink={async () => {
             if (!activeArticleId) {
