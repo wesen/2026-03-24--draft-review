@@ -41,3 +41,14 @@ Added sliding opaque-session renewal with configurable threshold and cookie refr
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/session.go — Renews session expiry and reissues cookies near expiry
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http.go — Passes response writer through auth resolution so renewal can refresh cookies
 
+
+## 2026-03-26
+
+Added /api/debug/session and updated DR-010 runbooks/design docs to cover session activity tracking, sliding renewal, and current-session inspection.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/README.md — Documents renewal settings and debug route
+- /home/manuel/code/wesen/2026-03-24--draft-review/docs/deployments/draft-review-coolify.md — Documents hosted renewal env vars and verification steps
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http.go — Adds the current-session inspection endpoint
+

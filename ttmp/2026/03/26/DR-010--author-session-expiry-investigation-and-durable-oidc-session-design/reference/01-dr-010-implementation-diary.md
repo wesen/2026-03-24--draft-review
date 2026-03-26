@@ -268,6 +268,58 @@ What to watch in review:
 - the backend now emits `Set-Cookie` from ordinary authenticated API reads, which is
   intentional but worth noticing in any frontend caching or proxy review
 
+### 2026-03-26 19:45 EDT
+
+Finished the third follow-up slice and then did the DR-010 documentation pass so the
+ticket matches the final medium-term implementation. The last code addition is a
+dedicated session inspection endpoint, which is easier to operate with than trying
+to infer everything from `/api/me`.
+
+Files changed in this slice:
+
+- `pkg/server/http.go`
+- `pkg/server/http_test.go`
+- `README.md`
+- `docs/deployments/draft-review-coolify.md`
+- `ttmp/.../DR-010/design-doc/01-author-session-expiry-investigation-and-durable-oidc-session-design-guide.md`
+
+What changed:
+
+- added `GET /api/debug/session`, which reports the current auth mode, session TTL,
+  sliding-renewal settings, and the active opaque session row when one exists
+- added a handler test that exercises the new debug endpoint in OIDC mode
+- updated the repository README and the Coolify deployment guide to document the new
+  renewal settings and the debug endpoint
+- updated the DR-010 design guide so it now describes the fully landed medium-term
+  model rather than the earlier “optional later” posture for activity tracking and
+  sliding renewal
+
+Validation run:
+
+```bash
+go test ./cmd/... ./pkg/...
+```
+
+Result:
+
+- the full Go suite remained green after the debug route landed
+
+What was tricky:
+
+- the clean implementation path was to introduce `currentSessionState(...)` in the
+  HTTP layer, so `/api/me` and `/api/debug/session` could share one read path without
+  duplicating OIDC session lookup logic
+- I kept the debug endpoint separate from `/api/me` because the frontend should not
+  accidentally become coupled to internals like `lastUsedAt` or `renewedThisRead`
+
+What to watch in review:
+
+- `GET /api/debug/session` is intentionally same-origin and user-visible; reviewers
+  should confirm the returned session metadata is acceptable for authenticated
+  self-inspection and for unauthenticated debugging
+- after the next deploy, hosted verification should include both `/api/me` and
+  `/api/debug/session` so session expiry and renewal are checked together
+
 ### Next diary entries
 
 Add entries after each implementation slice, including:

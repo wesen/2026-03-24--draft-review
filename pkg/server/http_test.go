@@ -339,6 +339,85 @@ func TestHandleMeOIDCRenewsCookieNearExpiry(t *testing.T) {
 	}
 }
 
+func TestHandleDebugSessionOIDCAuthenticated(t *testing.T) {
+	t.Parallel()
+
+	store := &fakeSessionStore{}
+	manager, err := draftauth.NewSessionManager("test_session", "super-secret", "http://127.0.0.1:8080/auth/callback", 12*time.Hour, true, time.Hour, store)
+	if err != nil {
+		t.Fatalf("NewSessionManager returned error: %v", err)
+	}
+
+	user := &draftauth.User{
+		ID:          "11111111-1111-1111-1111-111111111111",
+		AuthIssuer:  "https://auth.example.com/realms/draft-review",
+		AuthSubject: "user-123",
+		Email:       "alice@example.com",
+		Name:        "Alice",
+	}
+
+	writeRequest := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:8080/", nil)
+	writeRecorder := httptest.NewRecorder()
+	if err := manager.WriteSession(context.Background(), writeRecorder, writeRequest, user); err != nil {
+		t.Fatalf("WriteSession returned error: %v", err)
+	}
+	store.session.User = *user
+
+	request := httptest.NewRequest(http.MethodGet, "/api/debug/session", nil)
+	for _, cookie := range writeRecorder.Result().Cookies() {
+		request.AddCookie(cookie)
+	}
+	recorder := httptest.NewRecorder()
+
+	handler := NewHandler(HandlerOptions{
+		Version:   "test",
+		StartedAt: time.Now().UTC(),
+		AuthSettings: &draftauth.Settings{
+			Mode:                    draftauth.AuthModeOIDC,
+			SessionTTLValue:         12 * time.Hour,
+			SessionSlidingRenewal:   true,
+			SessionRenewBeforeValue: time.Hour,
+		},
+		SessionManager: manager,
+	})
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", recorder.Code)
+	}
+
+	var response struct {
+		Data struct {
+			Authenticated  bool               `json:"authenticated"`
+			AuthMode       string             `json:"authMode"`
+			SessionTTL     string             `json:"sessionTtl"`
+			SlidingRenewal bool               `json:"slidingRenewal"`
+			User           draftauth.UserInfo `json:"user"`
+			Session        draftauth.Session  `json:"session"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if !response.Data.Authenticated {
+		t.Fatal("expected authenticated debug session response")
+	}
+	if response.Data.AuthMode != draftauth.AuthModeOIDC {
+		t.Fatalf("expected auth mode oidc, got %q", response.Data.AuthMode)
+	}
+	if !response.Data.SlidingRenewal {
+		t.Fatal("expected sliding renewal to be reported")
+	}
+	if response.Data.Session.ID == "" {
+		t.Fatal("expected session metadata in debug response")
+	}
+	if response.Data.User.Email != "alice@example.com" {
+		t.Fatalf("expected alice@example.com, got %q", response.Data.User.Email)
+	}
+}
+
 type fakeAuthRepo struct {
 	foundUser  *draftauth.User
 	findErr    error

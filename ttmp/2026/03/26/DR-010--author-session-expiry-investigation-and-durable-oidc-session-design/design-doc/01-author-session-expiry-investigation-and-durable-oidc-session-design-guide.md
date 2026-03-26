@@ -11,19 +11,24 @@ DocType: design-doc
 Intent: long-term
 Owners: []
 RelatedFiles:
-    - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/oidc.go
-    - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/session.go
-    - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/auth/config.go
-    - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http.go
-    - /home/manuel/code/wesen/terraform/keycloak/apps/draft-review/envs/hosted/main.tf
-    - /home/manuel/code/wesen/terraform/keycloak/modules/realm-base/main.tf
-    - /home/manuel/code/wesen/2026-03-24--draft-review/docs/deployments/draft-review-coolify.md
+    - Path: ../../../../../../../terraform/keycloak/apps/draft-review/envs/hosted/main.tf
+    - Path: ../../../../../../../terraform/keycloak/modules/realm-base/main.tf
+    - Path: README.md
+      Note: Documents the new renewal settings and debug endpoint for local operators
+    - Path: docs/deployments/draft-review-coolify.md
+      Note: Documents hosted env vars and validation for session renewal and inspection
+    - Path: pkg/auth/config.go
+    - Path: pkg/auth/oidc.go
+    - Path: pkg/auth/session.go
+    - Path: pkg/server/http.go
+      Note: Shows the dedicated opaque-session debug route and current session state lookup
 ExternalSources: []
 Summary: Detailed investigation and implementation guide for the fast logout issue in Draft Review's Keycloak-backed browser auth flow.
 LastUpdated: 2026-03-26T13:35:00-04:00
 WhatFor: Explain why Draft Review logs authors out quickly today and provide a detailed implementation plan for a more durable browser session model.
 WhenToUse: Use when debugging short author sessions, changing Keycloak realm settings, or redesigning app-side auth persistence.
 ---
+
 
 # Author session expiry investigation and durable OIDC session design guide
 
@@ -261,6 +266,9 @@ application-defined TTL.
 - create or update the local user during callback
 - create a row in `author_sessions`
 - use an app session TTL, for example `12h`
+- record `author_sessions.last_used_at` on authenticated requests
+- optionally renew active sessions before expiry when they are close to timing out
+- expose a current-session inspection endpoint for debugging
 - verify the hosted session secret is stable across restarts
 
 ### Why this solves the user-facing issue
@@ -275,7 +283,8 @@ suitable for an editing workflow.
 Recommended first settings:
 
 - `auth-session-ttl = 12h`
-- optional later: `auth-session-sliding = true`
+- `auth-session-sliding-renewal = true`
+- `auth-session-renew-before = 1h`
 
 That is a pragmatic middle ground:
 
@@ -308,13 +317,13 @@ Rationale:
 - provider logout still matters for the broader browser session
 - this keeps sign-out behavior coherent
 
-### Decision 4: Keep `/api/me` as the main debugging surface
+### Decision 4: Add a dedicated session inspection surface instead of overloading `/api/me`
 
 Rationale:
 
-- it already exposes session metadata
-- it gives an immediate way to confirm effective expiry
-- it is simple for operators and developers to use
+- `/api/me` should stay product-facing and stable for the frontend
+- session debugging needs more detail than the normal user-info payload should expose
+- a dedicated route can show renewal state, `last_used_at`, and local session metadata
 
 ## Alternatives Considered
 
@@ -403,12 +412,14 @@ Extend:
 Recommended settings:
 
 - `auth-session-ttl`
-- optional `auth-session-sliding`
+- `auth-session-sliding-renewal`
+- `auth-session-renew-before`
 
 Recommended environment shape:
 
 - `DRAFT_REVIEW_AUTH_SESSION_TTL=12h`
-- `DRAFT_REVIEW_AUTH_SESSION_SLIDING=true`
+- `DRAFT_REVIEW_AUTH_SESSION_SLIDING_RENEWAL=true`
+- `DRAFT_REVIEW_AUTH_SESSION_RENEW_BEFORE=1h`
 
 The intern should parse these once and choose defaults that are easy to reason about.
 
@@ -489,6 +500,9 @@ Test cases to add:
 - unknown or revoked session tokens are rejected correctly
 - logout still clears the cookie
 - `/api/me` resolves identity from the server-side session lookup
+- reading a valid session updates `last_used_at`
+- active sessions close to expiry renew their cookie and DB expiry
+- `GET /api/debug/session` returns local session metadata for the current browser session
 
 ### Step 8: Update deployment documentation
 
@@ -499,8 +513,10 @@ Update:
 Document:
 
 - the new app TTL setting
+- the sliding renewal settings
 - the difference between app session TTL and Keycloak token lifetime
 - how to verify the active session deadline through `/api/me`
+- how to inspect the underlying opaque session through `GET /api/debug/session`
 
 ## API and Runtime Reference
 
@@ -509,6 +525,8 @@ Document:
 - `DRAFT_REVIEW_AUTH_MODE`
 - `DRAFT_REVIEW_AUTH_SESSION_SECRET`
 - `DRAFT_REVIEW_AUTH_SESSION_TTL`
+- `DRAFT_REVIEW_AUTH_SESSION_SLIDING_RENEWAL`
+- `DRAFT_REVIEW_AUTH_SESSION_RENEW_BEFORE`
 - `DRAFT_REVIEW_OIDC_ISSUER_URL`
 - `DRAFT_REVIEW_OIDC_CLIENT_ID`
 - `DRAFT_REVIEW_OIDC_CLIENT_SECRET`
@@ -518,6 +536,7 @@ Document:
 
 - `GET /auth/login`
 - `GET /auth/callback`
+- `GET /api/debug/session`
 - `GET /auth/logout`
 - `GET /auth/logout/callback`
 - `GET /api/me`

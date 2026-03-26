@@ -69,6 +69,17 @@ type apiEnvelope struct {
 	Data any `json:"data,omitempty"`
 }
 
+type debugSessionResponse struct {
+	Authenticated   bool                `json:"authenticated"`
+	AuthMode        string              `json:"authMode"`
+	SessionTTL      string              `json:"sessionTtl"`
+	SlidingRenewal  bool                `json:"slidingRenewal"`
+	RenewBefore     string              `json:"renewBefore"`
+	RenewedThisRead bool                `json:"renewedThisRead"`
+	User            *draftauth.UserInfo `json:"user,omitempty"`
+	Session         *draftauth.Session  `json:"session,omitempty"`
+}
+
 type appHandler struct {
 	version           string
 	startedAt         time.Time
@@ -207,6 +218,7 @@ func NewHandler(options HandlerOptions) http.Handler {
 	})
 	mux.HandleFunc("GET /api/info", h.handleInfo)
 	mux.HandleFunc("GET /api/me", h.handleMe)
+	mux.HandleFunc("GET /api/debug/session", h.handleDebugSession)
 	mux.HandleFunc("GET /api/articles", h.handleArticles)
 	mux.HandleFunc("POST /api/articles", h.handleCreateArticle)
 	mux.HandleFunc("GET /api/articles/{id}", h.handleArticle)
@@ -282,6 +294,41 @@ func (h *appHandler) handleMe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, apiEnvelope{Data: user})
+}
+
+func (h *appHandler) handleDebugSession(w http.ResponseWriter, r *http.Request) {
+	response := debugSessionResponse{
+		Authenticated:  false,
+		AuthMode:       h.authSettings.Mode,
+		SessionTTL:     h.authSettings.SessionTTLValue.String(),
+		SlidingRenewal: h.authSettings.SessionSlidingRenewal,
+		RenewBefore:    h.authSettings.SessionRenewBeforeValue.String(),
+	}
+
+	switch h.authSettings.Mode {
+	case draftauth.AuthModeDev:
+		user, ok := h.currentUser(w, r)
+		if ok {
+			response.Authenticated = true
+			response.User = user
+		}
+		writeJSON(w, http.StatusOK, apiEnvelope{Data: response})
+		return
+	case draftauth.AuthModeOIDC:
+		active, ok := h.currentSessionState(w, r)
+		if ok {
+			user := active.Claims.UserInfo(h.authSettings.Mode)
+			response.Authenticated = true
+			response.RenewedThisRead = active.Renewed
+			response.User = &user
+			response.Session = &active.Resolved.Session
+		}
+		writeJSON(w, http.StatusOK, apiEnvelope{Data: response})
+		return
+	default:
+		writeJSON(w, http.StatusOK, apiEnvelope{Data: response})
+		return
+	}
 }
 
 func (h *appHandler) handleArticles(w http.ResponseWriter, r *http.Request) {
@@ -906,15 +953,23 @@ func (h *appHandler) currentClaims(w http.ResponseWriter, r *http.Request) (*dra
 			ExpiresAt:         time.Now().UTC().Add(24 * time.Hour),
 		}, true
 	case draftauth.AuthModeOIDC:
-		if h.sessionManager == nil {
+		active, ok := h.currentSessionState(w, r)
+		if !ok {
 			return nil, false
 		}
-		claims, err := h.sessionManager.ReadSession(r.Context(), w, r)
-		if err != nil {
-			return nil, false
-		}
-		return claims, true
+		return &active.Claims, true
 	default:
 		return nil, false
 	}
+}
+
+func (h *appHandler) currentSessionState(w http.ResponseWriter, r *http.Request) (*draftauth.ActiveSession, bool) {
+	if h.sessionManager == nil {
+		return nil, false
+	}
+	active, err := h.sessionManager.ReadSessionState(r.Context(), w, r)
+	if err != nil {
+		return nil, false
+	}
+	return active, true
 }

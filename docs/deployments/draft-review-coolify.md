@@ -31,6 +31,8 @@ DRAFT_REVIEW_DSN=postgres://draft_review:<password>@<postgres-host>:5432/draft_r
 DRAFT_REVIEW_AUTH_MODE=oidc
 DRAFT_REVIEW_AUTH_SESSION_SECRET=<long-random-secret>
 DRAFT_REVIEW_AUTH_SESSION_TTL=12h
+DRAFT_REVIEW_AUTH_SESSION_SLIDING_RENEWAL=true
+DRAFT_REVIEW_AUTH_SESSION_RENEW_BEFORE=1h
 DRAFT_REVIEW_OIDC_ISSUER_URL=https://auth.scapegoat.dev/realms/draft-review
 DRAFT_REVIEW_OIDC_CLIENT_ID=draft-review-web
 DRAFT_REVIEW_OIDC_CLIENT_SECRET=<same secret used by Terraform>
@@ -41,6 +43,9 @@ The current hosted auth model uses an opaque browser cookie backed by the
 `author_sessions` table in Postgres. The browser does not carry the full identity
 payload anymore. `DRAFT_REVIEW_AUTH_SESSION_TTL` controls the app session lifetime,
 while Keycloak remains the identity provider used for login and logout.
+`DRAFT_REVIEW_AUTH_SESSION_SLIDING_RENEWAL=true` with
+`DRAFT_REVIEW_AUTH_SESSION_RENEW_BEFORE=1h` is the current recommended hosted
+baseline so active authors do not age out while they are still working.
 
 Current hosted DSN shape:
 
@@ -137,6 +142,8 @@ Then complete a real browser login and verify:
 - `/api/me` returns an authenticated OIDC identity after login
 - `/api/me` exposes a `sessionExpiresAt` derived from the app session TTL, not from a
   copied provider-token expiry
+- `/api/debug/session` returns the current opaque session row, including
+  `lastUsedAt`, renewal settings, and the local session expiry
 - `/auth/logout?return_to=%2Fapi%2Fme` reaches the Keycloak logout confirmation page and returns to unauthenticated `/api/me`
 - `/` returns the embedded frontend shell rather than `404`
 - `/` returns `Cache-Control: no-cache` so clients revalidate the HTML shell after deploys

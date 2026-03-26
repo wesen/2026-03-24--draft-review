@@ -27,6 +27,6 @@
 
 - [x] Add `last_used_at` tracking to `author_sessions` and update it on authenticated requests
 - [x] Add sliding session renewal with explicit config for enablement and renewal threshold
-- [ ] Add a current-session inspection endpoint for debugging the opaque auth session state
-- [ ] Extend auth and handler tests to cover the three follow-up features
-- [ ] Update DR-010 docs and diary with the deployed follow-up behavior
+- [x] Add a current-session inspection endpoint for debugging the opaque auth session state
+- [x] Extend auth and handler tests to cover the three follow-up features
+- [x] Update DR-010 docs and diary with the deployed follow-up behavior

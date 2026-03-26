@@ -67,6 +67,8 @@ go run ./cmd/draft-review serve \
   --auth-mode oidc \
   --auth-session-secret local-session-secret \
   --auth-session-ttl 12h \
+  --auth-session-sliding-renewal true \
+  --auth-session-renew-before 1h \
   --oidc-issuer-url http://127.0.0.1:18080/realms/draft-review-dev \
   --oidc-client-id draft-review-web \
   --oidc-client-secret draft-review-web-secret \
@@ -76,6 +78,8 @@ go run ./cmd/draft-review serve \
 In OIDC mode, the app now uses an opaque browser session token backed by the
 `author_sessions` table. `--auth-session-ttl` controls the Draft Review session
 lifetime separately from the upstream Keycloak token lifetime.
+`--auth-session-sliding-renewal` and `--auth-session-renew-before` control whether
+active sessions extend themselves before expiry.
 
 Or use the local helper targets:
 
@@ -142,6 +146,7 @@ The current backend exposes these routes:
 - `GET /healthz`
 - `GET /api/info`
 - `GET /api/me`
+- `GET /api/debug/session`
 - `GET /api/articles`
 - `POST /api/articles`
 - `GET /api/articles/{id}`
@@ -221,6 +226,7 @@ The live OIDC smoke path validated during implementation was:
 - The `serve` command can auto-run embedded migrations with `--auto-migrate`.
 - `auth-mode=dev` gives a synthetic local author identity through `/api/me`.
 - `auth-mode=oidc` expects a Keycloak-compatible issuer and signs its own HTTP-only browser session cookie after callback.
+- OIDC mode now records `author_sessions.last_used_at`, can renew active sessions before expiry, and exposes `GET /api/debug/session` for current-session inspection.
 - `seed dev` inserts a stable local author plus one sample article and its first version.
 - Author article routes now resolve the current browser identity into a local `users` row and scope article access by `owner_user_id`.
 - The frontend now targets the real Go backend by default; set `VITE_USE_MSW=1` only when you intentionally want the legacy mock layer.
