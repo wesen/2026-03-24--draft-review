@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { TitleBar } from "../chrome/TitleBar";
 import { MacButton } from "../chrome/MacButton";
 import "./InviteDialog.css";
 
@@ -94,9 +93,8 @@ export function InviteDialog({
   };
 
   return (
-    <div className="dr-invite-overlay">
-      <div className="dr-invite-dialog">
-        <TitleBar title="Invite Reader" onClose={onClose} />
+    <div className="dr-invite-overlay" onClick={onClose}>
+      <div className="dr-invite-dialog" onClick={(e) => e.stopPropagation()}>
         <div className="dr-invite-dialog__body">
           <p className="dr-invite-dialog__intro">
             Share a generic article link or create a reader-specific link tied
