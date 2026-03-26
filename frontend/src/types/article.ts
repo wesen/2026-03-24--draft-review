@@ -11,6 +11,7 @@ export interface Article {
   version: string;
   status: "draft" | "in_review" | "complete" | "archived";
   intro: string;
+  shareUrl?: string;
   sections: Section[];
   createdAt: string;
   updatedAt: string;

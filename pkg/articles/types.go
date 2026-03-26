@@ -41,6 +41,7 @@ type Article struct {
 	Version   string    `json:"version"`
 	Status    string    `json:"status"`
 	Intro     string    `json:"intro"`
+	ShareURL  string    `json:"shareUrl,omitempty"`
 	Sections  []Section `json:"sections"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`

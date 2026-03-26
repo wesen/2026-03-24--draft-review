@@ -431,6 +431,11 @@ export function AuthorApp() {
 
       {currentView === "share" && selectedArticle && (
         <InviteDialog
+          shareUrl={
+            selectedArticle.shareUrl
+              ? `${backendOrigin}${selectedArticle.shareUrl}`
+              : ""
+          }
           onClose={() => {
             if (window.history.length > 1) {
               navigate(-1);
@@ -443,19 +448,23 @@ export function AuthorApp() {
               throw new Error("No active article selected");
             }
             const result = await generateShareToken(activeArticleId).unwrap();
-            return result.url;
+            return `${backendOrigin}${result.url}`;
           }}
-          onInvite={async (email, note) => {
+          onInvite={async ({ identityMode, displayName, email, note }) => {
             if (!activeArticleId) {
               throw new Error("No active article selected");
             }
             const reader = await inviteReader({
               articleId: activeArticleId,
+              identityMode,
+              displayName,
               email,
               note,
             }).unwrap();
             return {
+              name: reader.name,
               email: reader.email,
+              identityMode: reader.identityMode || identityMode,
               inviteUrl: `${backendOrigin}/r/${reader.token}`,
             };
           }}

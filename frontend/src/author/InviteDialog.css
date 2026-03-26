@@ -67,6 +67,34 @@
   font-size: var(--dr-font-size-sm);
 }
 
+.dr-invite-dialog__hint--box {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: var(--dr-border-thin) solid var(--dr-border-light);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.dr-invite-dialog__mode-row {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0 6px;
+}
+
+.dr-invite-dialog__mode-btn {
+  appearance: none;
+  border: var(--dr-border-thin) solid var(--dr-border-color);
+  background: var(--dr-surface);
+  font-family: var(--dr-font-body);
+  font-size: var(--dr-font-size-sm);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.dr-invite-dialog__mode-btn--active {
+  background: var(--dr-border-color);
+  color: var(--dr-surface);
+}
+
 .dr-invite-dialog__actions {
   display: flex;
   justify-content: flex-end;

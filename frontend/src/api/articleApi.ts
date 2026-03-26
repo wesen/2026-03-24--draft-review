@@ -1,5 +1,5 @@
 import { baseApi } from "./baseApi";
-import type { Article, Reaction, Reader } from "../types";
+import type { Article, Reaction, Reader, InviteReaderDto } from "../types";
 
 export const articleApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
@@ -45,6 +45,10 @@ export const articleApi = baseApi.injectEndpoints({
         url: `/articles/${articleId}/share-token`,
         method: "POST",
       }),
+      invalidatesTags: (_result, _err, articleId) => [
+        { type: "Article", id: articleId },
+        "Article",
+      ],
     }),
     exportArticle: build.mutation<
       { articleId: string; message: string; status: string },
@@ -63,10 +67,7 @@ export const articleApi = baseApi.injectEndpoints({
       query: (articleId) => `/articles/${articleId}/reactions`,
       providesTags: ["Reaction"],
     }),
-    inviteReader: build.mutation<
-      Reader,
-      { articleId: string; email: string; note: string }
-    >({
+    inviteReader: build.mutation<Reader, InviteReaderDto>({
       query: ({ articleId, ...body }) => ({
         url: `/articles/${articleId}/invite`,
         method: "POST",

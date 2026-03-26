@@ -39,6 +39,47 @@ func TestCreateInviteRejectsInvalidEmail(t *testing.T) {
 	}
 }
 
+func TestCreateInviteAllowsNamedInviteWithoutEmail(t *testing.T) {
+	t.Parallel()
+
+	service := NewService(&fakeRepository{})
+	_, err := service.CreateInvite(context.Background(), "owner-1", "article-1", InviteInput{
+		IdentityMode: IdentityModeNamed,
+		DisplayName:  "Workshop Reader",
+	})
+	if err != nil {
+		t.Fatalf("expected named invite without email to succeed, got %v", err)
+	}
+}
+
+func TestCreateInviteAllowsAnonymousInviteWithoutEmail(t *testing.T) {
+	t.Parallel()
+
+	service := NewService(&fakeRepository{})
+	_, err := service.CreateInvite(context.Background(), "owner-1", "article-1", InviteInput{
+		IdentityMode: IdentityModeAnonymous,
+	})
+	if err != nil {
+		t.Fatalf("expected anonymous invite without email to succeed, got %v", err)
+	}
+}
+
+func TestCreateInviteRejectsAnonymousInviteWithEmail(t *testing.T) {
+	t.Parallel()
+
+	service := NewService(&fakeRepository{})
+	_, err := service.CreateInvite(context.Background(), "owner-1", "article-1", InviteInput{
+		IdentityMode: IdentityModeAnonymous,
+		Email:        "reader@example.com",
+	})
+	if err == nil {
+		t.Fatalf("expected anonymous invite with email to fail")
+	}
+	if !IsValidationError(err) {
+		t.Fatalf("expected validation error, got %T", err)
+	}
+}
+
 func TestDisplayNameFromEmail(t *testing.T) {
 	t.Parallel()
 
@@ -47,5 +88,16 @@ func TestDisplayNameFromEmail(t *testing.T) {
 	}
 	if got := AvatarFromName("Sarah K."); got != "SK" {
 		t.Fatalf("expected SK avatar, got %q", got)
+	}
+}
+
+func TestDisplayNameFromInvite(t *testing.T) {
+	t.Parallel()
+
+	if got := DisplayNameFromInvite("Workshop Reader", "", IdentityModeNamed); got != "Workshop Reader" {
+		t.Fatalf("expected explicit display name, got %q", got)
+	}
+	if got := DisplayNameFromInvite("", "", IdentityModeAnonymous); got != "Anonymous Reader" {
+		t.Fatalf("expected anonymous fallback, got %q", got)
 	}
 }

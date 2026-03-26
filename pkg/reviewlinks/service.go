@@ -46,14 +46,12 @@ func (s *Service) CreateInvite(ctx context.Context, ownerUserID, articleID strin
 		return nil, ErrNotFound
 	}
 
-	input.Email = strings.ToLower(strings.TrimSpace(input.Email))
-	input.Note = strings.TrimSpace(input.Note)
-
-	if _, err := mail.ParseAddress(input.Email); err != nil {
-		return nil, NewValidationError("email must be a valid email address")
+	normalized, err := NormalizeInviteInput(input)
+	if err != nil {
+		return nil, err
 	}
 
-	return s.repo.CreateInvite(ctx, ownerUserID, articleID, input)
+	return s.repo.CreateInvite(ctx, ownerUserID, articleID, normalized)
 }
 
 func (s *Service) ResolveToken(ctx context.Context, token string) (*ResolvedLink, error) {
@@ -103,6 +101,84 @@ func DisplayNameFromEmail(email string) string {
 	}
 
 	return parts[0] + " " + string(unicode.ToUpper(last[0])) + "."
+}
+
+func NormalizeInviteInput(input InviteInput) (InviteInput, error) {
+	input.IdentityMode = strings.ToLower(strings.TrimSpace(input.IdentityMode))
+	input.DisplayName = strings.TrimSpace(input.DisplayName)
+	input.Email = strings.ToLower(strings.TrimSpace(input.Email))
+	input.Note = strings.TrimSpace(input.Note)
+
+	if input.IdentityMode == "" {
+		switch {
+		case input.IsPreview:
+			input.IdentityMode = IdentityModePreview
+		case input.Email != "":
+			input.IdentityMode = IdentityModeEmail
+		case input.DisplayName != "":
+			input.IdentityMode = IdentityModeNamed
+		default:
+			input.IdentityMode = IdentityModeAnonymous
+		}
+	}
+
+	switch input.IdentityMode {
+	case IdentityModeEmail:
+		if input.Email == "" {
+			return input, NewValidationError("email is required for email invite links")
+		}
+		if _, err := mail.ParseAddress(input.Email); err != nil {
+			return input, NewValidationError("email must be a valid email address")
+		}
+	case IdentityModeNamed:
+		if input.DisplayName == "" {
+			return input, NewValidationError("displayName is required for named invite links")
+		}
+		if input.Email != "" {
+			if _, err := mail.ParseAddress(input.Email); err != nil {
+				return input, NewValidationError("email must be a valid email address")
+			}
+		}
+	case IdentityModeAnonymous:
+		if input.Email != "" || input.DisplayName != "" {
+			return input, NewValidationError("anonymous invite links cannot include email or displayName")
+		}
+	case IdentityModePreview:
+		if input.Email != "" {
+			if _, err := mail.ParseAddress(input.Email); err != nil {
+				return input, NewValidationError("email must be a valid email address")
+			}
+		}
+		if input.DisplayName == "" {
+			input.DisplayName = "Preview Reader"
+		}
+		input.IsPreview = true
+	default:
+		return input, NewValidationError("identityMode must be one of email, named, anonymous, preview")
+	}
+
+	return input, nil
+}
+
+func DisplayNameFromInvite(displayName, email, identityMode string) string {
+	displayName = strings.TrimSpace(displayName)
+	if displayName != "" {
+		return displayName
+	}
+
+	email = strings.TrimSpace(email)
+	if email != "" {
+		return DisplayNameFromEmail(email)
+	}
+
+	switch strings.TrimSpace(identityMode) {
+	case IdentityModeAnonymous:
+		return "Anonymous Reader"
+	case IdentityModePreview:
+		return "Preview Reader"
+	default:
+		return "Reader"
+	}
 }
 
 func AvatarFromName(name string) string {

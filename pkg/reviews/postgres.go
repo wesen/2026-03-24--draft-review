@@ -470,7 +470,7 @@ where id = $1
 }
 
 func resolveSessionReader(link *reviewlinks.ResolvedLink, input StartSessionInput) (string, string) {
-	name := strings.TrimSpace(link.Reader.Name)
+	name := reviewlinks.DisplayNameFromInvite(link.InviteDisplayName, link.ReaderEmail, link.IdentityMode)
 	email := strings.TrimSpace(link.ReaderEmail)
 
 	if input.ReaderName != "" && !input.Anonymous {
@@ -480,11 +480,13 @@ func resolveSessionReader(link *reviewlinks.ResolvedLink, input StartSessionInpu
 		switch {
 		case email != "":
 			name = reviewlinks.DisplayNameFromEmail(email)
+		case link.IdentityMode == reviewlinks.IdentityModeAnonymous:
+			name = "Anonymous"
 		default:
 			name = "Guest Reader"
 		}
 	}
-	if input.Anonymous {
+	if input.Anonymous || link.IdentityMode == reviewlinks.IdentityModeAnonymous {
 		name = "Anonymous"
 		email = ""
 	}

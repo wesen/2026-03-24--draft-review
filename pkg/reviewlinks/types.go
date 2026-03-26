@@ -30,19 +30,31 @@ type ShareLink struct {
 	URL   string `json:"url"`
 }
 
+const (
+	IdentityModeEmail     = "email"
+	IdentityModeNamed     = "named"
+	IdentityModeAnonymous = "anonymous"
+	IdentityModePreview   = "preview"
+)
+
 type InviteInput struct {
-	Email string `json:"email"`
-	Note  string `json:"note"`
+	IdentityMode string `json:"identityMode,omitempty"`
+	DisplayName  string `json:"displayName,omitempty"`
+	Email        string `json:"email,omitempty"`
+	Note         string `json:"note"`
+	IsPreview    bool   `json:"isPreview,omitempty"`
 }
 
 type Reader struct {
 	ID           string     `json:"id"`
 	Name         string     `json:"name"`
-	Email        string     `json:"email"`
+	Email        string     `json:"email,omitempty"`
 	Avatar       string     `json:"avatar"`
 	ArticleID    string     `json:"articleId"`
 	Progress     int        `json:"progress"`
 	Token        string     `json:"token"`
+	IdentityMode string     `json:"identityMode,omitempty"`
+	IsPreview    bool       `json:"isPreview,omitempty"`
 	InvitedAt    time.Time  `json:"invitedAt"`
 	LastActiveAt *time.Time `json:"lastActiveAt,omitempty"`
 }
@@ -74,6 +86,9 @@ type ResolvedLink struct {
 	InviteID              string         `json:"-"`
 	AccessMode            string         `json:"-"`
 	ReaderEmail           string         `json:"-"`
+	InviteDisplayName     string         `json:"-"`
+	IdentityMode          string         `json:"-"`
+	IsPreview             bool           `json:"-"`
 	AllowAnonymous        bool           `json:"-"`
 	RequireNote           bool           `json:"-"`
 	ReaderCanSeeReactions bool           `json:"-"`

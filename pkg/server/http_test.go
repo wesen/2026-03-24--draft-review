@@ -254,7 +254,8 @@ func (f *fakeReviewLinkRepo) ResetShareToken(ctx context.Context, ownerUserID, a
 }
 
 func (f *fakeReviewLinkRepo) CreateInvite(ctx context.Context, ownerUserID, articleID string, input reviewlinks.InviteInput) (*reviewlinks.Reader, error) {
-	return &reviewlinks.Reader{ID: "reader-1", Email: input.Email}, nil
+	name := reviewlinks.DisplayNameFromInvite(input.DisplayName, input.Email, input.IdentityMode)
+	return &reviewlinks.Reader{ID: "reader-1", Name: name, Email: input.Email, IdentityMode: input.IdentityMode}, nil
 }
 
 func (f *fakeReviewLinkRepo) ResolveToken(ctx context.Context, token string) (*reviewlinks.ResolvedLink, error) {

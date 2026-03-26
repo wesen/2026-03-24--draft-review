@@ -4,4 +4,4 @@ export type {
   ReactionType,
   AddReactionDto,
 } from "./reaction";
-export type { Reader, InviteReaderDto } from "./reader";
+export type { Reader, InviteReaderDto, InviteIdentityMode } from "./reader";

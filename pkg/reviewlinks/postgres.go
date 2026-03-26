@@ -2,6 +2,7 @@ package reviewlinks
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -79,11 +80,14 @@ insert into reader_invites (
     id,
     article_id,
     email,
+    display_name,
+    identity_mode,
+    is_preview,
     invite_token,
     invite_note
 )
-values ($1, $2, $3, $4, $5)
-`, inviteID, verifiedArticleID, input.Email, inviteToken, input.Note)
+values ($1, $2, nullif($3, ''), nullif($4, ''), $5, $6, $7, $8)
+`, inviteID, verifiedArticleID, input.Email, input.DisplayName, input.IdentityMode, input.IsPreview, inviteToken, input.Note)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create reader invite")
 	}
@@ -92,16 +96,18 @@ values ($1, $2, $3, $4, $5)
 		return nil, errors.Wrap(err, "failed to commit invite transaction")
 	}
 
-	name := DisplayNameFromEmail(input.Email)
+	name := DisplayNameFromInvite(input.DisplayName, input.Email, input.IdentityMode)
 	return &Reader{
-		ID:        inviteID.String(),
-		Name:      name,
-		Email:     input.Email,
-		Avatar:    AvatarFromName(name),
-		ArticleID: verifiedArticleID.String(),
-		Progress:  0,
-		Token:     inviteToken,
-		InvitedAt: time.Now().UTC(),
+		ID:           inviteID.String(),
+		Name:         name,
+		Email:        input.Email,
+		Avatar:       AvatarFromName(name),
+		ArticleID:    verifiedArticleID.String(),
+		Progress:     0,
+		Token:        inviteToken,
+		IdentityMode: input.IdentityMode,
+		IsPreview:    input.IsPreview,
+		InvitedAt:    time.Now().UTC(),
 	}, nil
 }
 
@@ -124,7 +130,10 @@ func (r *PostgresRepository) ResolveToken(ctx context.Context, token string) (*R
 func (r *PostgresRepository) resolveInviteToken(ctx context.Context, token string) (*ResolvedLink, error) {
 	type inviteRow struct {
 		InviteID              uuid.UUID
-		Email                 string
+		Email                 sql.NullString
+		DisplayName           sql.NullString
+		IdentityMode          string
+		IsPreview             bool
 		ArticleID             uuid.UUID
 		VersionID             uuid.UUID
 		Title                 string
@@ -141,11 +150,14 @@ func (r *PostgresRepository) resolveInviteToken(ctx context.Context, token strin
 
 	var row inviteRow
 	err := r.pool.QueryRow(ctx, `
-select
-    i.id,
-    i.email,
-    a.id,
-    a.current_version_id,
+	select
+	    i.id,
+	    i.email,
+	    i.display_name,
+	    i.identity_mode,
+	    i.is_preview,
+	    a.id,
+	    a.current_version_id,
     a.title,
     a.author_display_name,
     v.version_label,
@@ -164,6 +176,9 @@ where i.invite_token = $1
 `, token).Scan(
 		&row.InviteID,
 		&row.Email,
+		&row.DisplayName,
+		&row.IdentityMode,
+		&row.IsPreview,
 		&row.ArticleID,
 		&row.VersionID,
 		&row.Title,
@@ -189,14 +204,17 @@ where i.invite_token = $1
 		return nil, err
 	}
 
-	name := DisplayNameFromEmail(row.Email)
+	name := DisplayNameFromInvite(row.DisplayName.String, row.Email.String, row.IdentityMode)
 	return &ResolvedLink{
 		Token:                 token,
 		ArticleID:             row.ArticleID.String(),
 		ArticleVersionID:      row.VersionID.String(),
 		InviteID:              row.InviteID.String(),
 		AccessMode:            row.AccessMode,
-		ReaderEmail:           row.Email,
+		ReaderEmail:           row.Email.String,
+		InviteDisplayName:     row.DisplayName.String,
+		IdentityMode:          row.IdentityMode,
+		IsPreview:             row.IsPreview,
 		AllowAnonymous:        row.AllowAnonymous,
 		RequireNote:           row.RequireNote,
 		ReaderCanSeeReactions: row.ReaderCanSeeReactions,

@@ -36,15 +36,16 @@ func IsValidationError(err error) bool {
 }
 
 type articleRow struct {
-	ID        uuid.UUID
-	VersionID uuid.UUID
-	Title     string
-	Author    string
-	Version   string
-	Status    string
-	Intro     string
-	CreatedAt any
-	UpdatedAt any
+	ID         uuid.UUID
+	VersionID  uuid.UUID
+	Title      string
+	Author     string
+	Version    string
+	Status     string
+	Intro      string
+	ShareToken string
+	CreatedAt  any
+	UpdatedAt  any
 }
 
 func NewPostgresRepository(pool *pgxpool.Pool) *PostgresRepository {
@@ -65,6 +66,7 @@ select
     v.version_label,
     a.status,
     v.intro,
+    coalesce(a.share_token, ''),
     a.created_at,
     a.updated_at
 from articles a
@@ -89,6 +91,7 @@ order by a.updated_at desc
 			&row.Version,
 			&row.Status,
 			&row.Intro,
+			&row.ShareToken,
 			&article.CreatedAt,
 			&article.UpdatedAt,
 		); err != nil {
@@ -100,6 +103,9 @@ order by a.updated_at desc
 		article.Version = row.Version
 		article.Status = row.Status
 		article.Intro = row.Intro
+		if row.ShareToken != "" {
+			article.ShareURL = "/r/" + row.ShareToken
+		}
 
 		sections, err := r.listSectionsForVersion(ctx, row.VersionID)
 		if err != nil {
@@ -132,6 +138,7 @@ select
     v.version_label,
     a.status,
     v.intro,
+    coalesce(a.share_token, ''),
     a.created_at,
     a.updated_at
 from articles a
@@ -146,6 +153,7 @@ where a.id = $1
 		&row.Version,
 		&row.Status,
 		&row.Intro,
+		&row.ShareToken,
 		&article.CreatedAt,
 		&article.UpdatedAt,
 	)
@@ -159,6 +167,9 @@ where a.id = $1
 	article.Version = row.Version
 	article.Status = row.Status
 	article.Intro = row.Intro
+	if row.ShareToken != "" {
+		article.ShareURL = "/r/" + row.ShareToken
+	}
 
 	sections, err := r.listSectionsForVersion(ctx, row.VersionID)
 	if err != nil {

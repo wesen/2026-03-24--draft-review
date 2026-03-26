@@ -32,7 +32,10 @@ func (r *PostgresRepository) ListReaders(ctx context.Context, ownerUserID, artic
 	rows, err := r.pool.Query(ctx, `
 select
     i.id,
-    i.email,
+    coalesce(i.email, ''),
+    coalesce(i.display_name, ''),
+    i.identity_mode,
+    i.is_preview,
     i.article_id,
     i.invite_token,
     i.sent_at,
@@ -64,6 +67,9 @@ order by i.sent_at desc
 		var (
 			readerID          uuid.UUID
 			email             string
+			displayName       string
+			identityMode      string
+			isPreview         bool
 			resolvedArticleID uuid.UUID
 			token             string
 			invitedAt         time.Time
@@ -72,11 +78,11 @@ order by i.sent_at desc
 			lastActiveAt      sql.NullTime
 			isAnonymous       bool
 		)
-		if err := rows.Scan(&readerID, &email, &resolvedArticleID, &token, &invitedAt, &sessionName, &progress, &lastActiveAt, &isAnonymous); err != nil {
+		if err := rows.Scan(&readerID, &email, &displayName, &identityMode, &isPreview, &resolvedArticleID, &token, &invitedAt, &sessionName, &progress, &lastActiveAt, &isAnonymous); err != nil {
 			return nil, errors.Wrap(err, "failed to scan reader row")
 		}
 
-		name := reviewlinks.DisplayNameFromEmail(email)
+		name := reviewlinks.DisplayNameFromInvite(displayName, email, identityMode)
 		if sessionName != "" && !isAnonymous {
 			name = sessionName
 		}
@@ -89,6 +95,8 @@ order by i.sent_at desc
 			ArticleID:    resolvedArticleID.String(),
 			Progress:     progress,
 			Token:        token,
+			IdentityMode: identityMode,
+			IsPreview:    isPreview,
 			InvitedAt:    invitedAt,
 			LastActiveAt: nullTimePtr(lastActiveAt),
 		})
@@ -358,6 +366,7 @@ left join lateral (
 ) rc on true
 where a.owner_user_id = $1
   and i.revoked_at is null
+  and nullif(btrim(coalesce(i.email, '')), '') is not null
 order by lower(i.email), a.updated_at desc
 `, ownerUserID)
 	if err != nil {

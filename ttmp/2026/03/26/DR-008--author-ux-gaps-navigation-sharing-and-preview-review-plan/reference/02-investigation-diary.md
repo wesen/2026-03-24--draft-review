@@ -262,3 +262,104 @@ Commit plan:
 
 - commit the route migration separately from the upcoming share/invite domain changes
 - keep the Storybook typing fix in the same commit because it was necessary to validate the frontend slice
+
+### Slices 3 and 4: Share Modal Repair and Invite Identity Modes
+
+Objective:
+
+- fix the broken share dialog and make the backend honest about the different types of tracked reader links the product now wants to support
+
+Work performed:
+
+1. Expanded the database invite model.
+   Files:
+   - `pkg/db/migrations/0001_init.sql`
+   - `pkg/db/migrations/0005_reader_invite_identity_modes.sql`
+   Changes:
+   - `reader_invites.email` is now nullable
+   - added `display_name`
+   - added `identity_mode`
+   - added `is_preview`
+
+2. Added invite identity modes to the backend domain model in `pkg/reviewlinks/types.go`.
+   Modes introduced:
+   - `email`
+   - `named`
+   - `anonymous`
+   - `preview`
+
+3. Replaced the old “email required always” validation with mode-aware validation in `pkg/reviewlinks/service.go`.
+   Behavior now:
+   - `email` mode requires a valid email
+   - `named` mode requires a display name
+   - `anonymous` mode requires neither email nor display name
+   - `preview` mode reserves a tracked test-reader slot and defaults the display name when omitted
+
+4. Updated invite persistence and token resolution in `pkg/reviewlinks/postgres.go`.
+   Notes:
+   - invite rows now store display name, identity mode, and preview flag
+   - resolved reader identity uses a helper that can derive a stable display name from display name, email, or mode fallback
+
+5. Updated article loading to expose persistent reusable share links.
+   Files:
+   - `pkg/articles/types.go`
+   - `pkg/articles/postgres.go`
+   Result:
+   - author article payloads now include `shareUrl` when a share token already exists
+
+6. Updated analytics behavior for the richer invite model in `pkg/analytics/postgres.go`.
+   Notes:
+   - article reader lists now carry `identityMode` and `isPreview`
+   - display names come from display name, email, or identity-mode fallback
+   - the reader directory now ignores invite rows with no email, which is correct because it is a contact directory, not a universal reader ledger
+
+7. Updated session name resolution in `pkg/reviews/postgres.go`.
+   Important nuance:
+   - anonymous tracked invite links now resolve to anonymous session names
+   - generic article share links were intentionally left as generic session-based links rather than being collapsed into the anonymous invite mode
+
+8. Rewrote the frontend invite/share dialog.
+   Files:
+   - `frontend/src/author/InviteDialog.tsx`
+   - `frontend/src/author/InviteDialog.css`
+   - `frontend/src/author/InviteDialog.stories.tsx`
+   Changes:
+   - the reusable article link is shown immediately
+   - when there is no existing reusable link yet, the dialog auto-generates one on open
+   - tracked reader links now have explicit mode buttons for `Email`, `Named`, and `Anonymous`
+   - the form fields and submit button now match the selected mode instead of pretending email is optional at all times
+
+9. Updated frontend types and API contracts.
+   Files:
+   - `frontend/src/types/article.ts`
+   - `frontend/src/types/reader.ts`
+   - `frontend/src/types/index.ts`
+   - `frontend/src/api/articleApi.ts`
+   - `frontend/src/app/AuthorApp.tsx`
+   Changes:
+   - articles now expose `shareUrl`
+   - invite mutation payloads now include `identityMode`, optional `displayName`, and optional `email`
+   - share-token mutation now invalidates article cache so the reusable link refreshes cleanly
+
+10. Added and updated validation coverage.
+    Files:
+    - `pkg/reviewlinks/service_test.go`
+    - `pkg/server/http_test.go`
+    Tests covered:
+    - named invite without email succeeds
+    - anonymous invite without email succeeds
+    - anonymous invite with email fails
+    - display-name fallback helper behavior
+
+Validation:
+
+- `go test ./pkg/reviewlinks ./pkg/reviews ./pkg/analytics ./pkg/server ./pkg/articles`
+  Result:
+  - passed
+- `cd frontend && npm run build`
+  Result:
+  - passed
+
+Commit plan:
+
+- commit the share/invite model changes separately from the preview-review work because the preview decision still has one remaining product tradeoff around persisted vs local-only behavior for unsaved editor drafts

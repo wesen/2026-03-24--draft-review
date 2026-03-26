@@ -27,21 +27,22 @@
   - [x] Keep preview drafts as transient Redux state while route ownership moves to the URL
   - [x] Make browser back/forward and reload preserve the current article screen
   - [x] Add route-aware frontend smoke coverage via production build validation
-- [ ] Slice 3: Repair and simplify the share link modal
-  - [ ] Show the reusable article link immediately when the modal opens
-  - [ ] Stop labeling email as optional unless that is actually true for the selected link type
-  - [ ] Add clearer sections for reusable link vs tracked reader link
-  - [ ] Add success and error surfaces for link generation and invite creation
-- [ ] Slice 4: Extend tracked reader links beyond email-only invites
-  - [ ] Add a DB migration for invite identity metadata
-  - [ ] Extend `reviewlinks.InviteInput` and validation rules
-  - [ ] Support at least `email`, `named`, and `anonymous` tracked link modes
-  - [ ] Update analytics and resolved reader display naming rules
-  - [ ] Update frontend types and invite form submission payloads
-- [ ] Slice 5: Enable persisted preview test reviews
-  - [ ] Add an explicit preview/test mode for reader sessions
-  - [ ] Allow preview mode to start a synthetic tracked session and post reactions
-  - [ ] Distinguish preview/test data in author-facing reader and reaction displays
+- [x] Slice 3: Repair and simplify the share link modal
+  - [x] Show the reusable article link immediately when the modal opens
+  - [x] Stop labeling email as optional unless that is actually true for the selected link type
+  - [x] Add clearer sections for reusable link vs tracked reader link
+  - [x] Add success and error surfaces for link generation and invite creation
+- [x] Slice 4: Extend tracked reader links beyond email-only invites
+  - [x] Add a DB migration for invite identity metadata
+  - [x] Extend `reviewlinks.InviteInput` and validation rules
+  - [x] Support `email`, `named`, and `anonymous` tracked link modes, with `preview` reserved for test workflows
+  - [x] Update analytics and resolved reader display naming rules
+  - [x] Update frontend types, article share-link state, and invite form submission payloads
+- [ ] Slice 5: Enable preview test reviews
+  - [ ] Decide whether preview reactions should persist to backend or remain local-only when previewing unsaved edits
+  - [ ] Add an explicit preview/test mode for reader sessions or local preview state
+  - [ ] Allow preview mode to submit reactions instead of disabling interaction entirely
+  - [ ] Distinguish preview/test data in author-facing displays if backend persistence is enabled
   - [ ] Verify preview reviews do not corrupt normal production reader identity
 - [ ] Slice 6: Final verification and documentation refresh
   - [ ] Run backend tests

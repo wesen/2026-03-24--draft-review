@@ -111,8 +111,11 @@ create table if not exists article_reaction_types (
 create table if not exists reader_invites (
     id uuid primary key default gen_random_uuid(),
     article_id uuid not null references articles(id) on delete cascade,
-    email text not null,
+    email text,
     invite_token text not null unique,
+    display_name text,
+    identity_mode text not null default 'email',
+    is_preview boolean not null default false,
     invite_note text,
     sent_at timestamptz not null default now(),
     opened_at timestamptz,
