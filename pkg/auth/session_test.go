@@ -1,34 +1,78 @@
 package auth
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 )
 
+type fakeSessionStore struct {
+	createdSession *Session
+	resolved       *ResolvedSession
+	revokedHash    string
+}
+
+func (f *fakeSessionStore) CreateAuthorSession(ctx context.Context, userID uuid.UUID, tokenHash string, expiresAt time.Time) (*Session, error) {
+	f.createdSession = &Session{
+		ID:        uuid.NewString(),
+		UserID:    userID.String(),
+		TokenHash: tokenHash,
+		ExpiresAt: expiresAt.UTC(),
+		CreatedAt: time.Now().UTC(),
+	}
+	return f.createdSession, nil
+}
+
+func (f *fakeSessionStore) FindAuthorSessionByTokenHash(ctx context.Context, tokenHash string) (*ResolvedSession, error) {
+	if f.resolved == nil {
+		return nil, ErrNotFound
+	}
+	if f.resolved.Session.TokenHash != tokenHash {
+		return nil, ErrNotFound
+	}
+	return f.resolved, nil
+}
+
+func (f *fakeSessionStore) RevokeAuthorSessionByTokenHash(ctx context.Context, tokenHash string) error {
+	f.revokedHash = tokenHash
+	return nil
+}
+
 func TestSessionManagerRoundTrip(t *testing.T) {
-	manager, err := NewSessionManager("test_session", "super-secret", "http://127.0.0.1:8080/auth/callback")
+	store := &fakeSessionStore{}
+	manager, err := NewSessionManager("test_session", "super-secret", "http://127.0.0.1:8080/auth/callback", 12*time.Hour, store)
 	if err != nil {
 		t.Fatalf("NewSessionManager returned error: %v", err)
+	}
+	manager.now = func() time.Time {
+		return time.Date(2026, 3, 26, 12, 0, 0, 0, time.UTC)
+	}
+	manager.newToken = func() (string, error) {
+		return "opaque-token-123", nil
 	}
 
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:8080/", nil)
 
-	expectedExpiry := time.Now().UTC().Add(30 * time.Minute).Round(time.Second)
-	err = manager.WriteSession(recorder, request, SessionClaims{
-		Issuer:            "https://auth.example.com/realms/draft-review",
-		Subject:           "user-123",
-		Email:             "alice@example.com",
-		PreferredUsername: "alice",
-		DisplayName:       "Alice",
-		Scopes:            []string{"openid", "profile", "email"},
-		IssuedAt:          time.Now().UTC(),
-		ExpiresAt:         expectedExpiry,
-	})
-	if err != nil {
+	user := &User{
+		ID:              "11111111-1111-1111-1111-111111111111",
+		AuthIssuer:      "https://auth.example.com/realms/draft-review",
+		AuthSubject:     "user-123",
+		Email:           "alice@example.com",
+		Name:            "Alice",
+		EmailVerifiedAt: ptrTime(time.Date(2026, 3, 26, 11, 0, 0, 0, time.UTC)),
+	}
+
+	if err := manager.WriteSession(context.Background(), recorder, request, user); err != nil {
 		t.Fatalf("WriteSession returned error: %v", err)
+	}
+
+	if store.createdSession == nil {
+		t.Fatal("expected session to be created in store")
 	}
 
 	response := recorder.Result()
@@ -36,7 +80,12 @@ func TestSessionManagerRoundTrip(t *testing.T) {
 		request.AddCookie(cookie)
 	}
 
-	claims, err := manager.ReadSession(request)
+	store.resolved = &ResolvedSession{
+		Session: *store.createdSession,
+		User:    *user,
+	}
+
+	claims, err := manager.ReadSession(context.Background(), request)
 	if err != nil {
 		t.Fatalf("ReadSession returned error: %v", err)
 	}
@@ -47,21 +96,47 @@ func TestSessionManagerRoundTrip(t *testing.T) {
 	if claims.Email != "alice@example.com" {
 		t.Fatalf("expected email alice@example.com, got %q", claims.Email)
 	}
-	if !claims.ExpiresAt.Equal(expectedExpiry) {
-		t.Fatalf("expected expiry %s, got %s", expectedExpiry, claims.ExpiresAt)
+	if claims.PreferredUsername != "alice" {
+		t.Fatalf("expected preferred username alice, got %q", claims.PreferredUsername)
+	}
+	if !claims.ExpiresAt.Equal(store.createdSession.ExpiresAt) {
+		t.Fatalf("expected expiry %s, got %s", store.createdSession.ExpiresAt, claims.ExpiresAt)
 	}
 }
 
-func TestSessionManagerRejectsTampering(t *testing.T) {
-	manager, err := NewSessionManager("test_session", "super-secret", "http://127.0.0.1:8080/auth/callback")
+func TestSessionManagerRejectsUnknownToken(t *testing.T) {
+	store := &fakeSessionStore{}
+	manager, err := NewSessionManager("test_session", "super-secret", "http://127.0.0.1:8080/auth/callback", 12*time.Hour, store)
 	if err != nil {
 		t.Fatalf("NewSessionManager returned error: %v", err)
 	}
 
 	request := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:8080/", nil)
-	request.AddCookie(&http.Cookie{Name: "test_session", Value: "not-a-valid-token"})
+	request.AddCookie(&http.Cookie{Name: "test_session", Value: "unknown-token"})
 
-	if _, err := manager.ReadSession(request); err == nil {
-		t.Fatal("expected ReadSession to reject malformed token")
+	if _, err := manager.ReadSession(context.Background(), request); err == nil {
+		t.Fatal("expected ReadSession to reject unknown token")
 	}
+}
+
+func TestSessionManagerClearSessionRevokesServerSession(t *testing.T) {
+	store := &fakeSessionStore{}
+	manager, err := NewSessionManager("test_session", "super-secret", "http://127.0.0.1:8080/auth/callback", 12*time.Hour, store)
+	if err != nil {
+		t.Fatalf("NewSessionManager returned error: %v", err)
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:8080/", nil)
+	request.AddCookie(&http.Cookie{Name: "test_session", Value: "opaque-token-123"})
+	recorder := httptest.NewRecorder()
+
+	manager.ClearSession(context.Background(), recorder, request)
+
+	if store.revokedHash == "" {
+		t.Fatal("expected server-side session to be revoked")
+	}
+}
+
+func ptrTime(value time.Time) *time.Time {
+	return &value
 }

@@ -12,3 +12,7 @@
 - Added a DR-010 implementation diary and expanded DR-010 into concrete
   implementation tasks covering repository work, session manager replacement,
   callback changes, request auth resolution, logout, tests, and validation
+- Implemented the first DR-010 code slice: opaque author-session persistence using
+  the existing `author_sessions` table, OIDC callback-driven local user + session
+  creation, server-side session lookup for `/api/me` and author routes, and logout
+  revocation of the backing session row

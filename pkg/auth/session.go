@@ -1,16 +1,17 @@
 package auth
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 var ErrNoSession = errors.New("no session present")
@@ -28,17 +29,23 @@ type SessionClaims struct {
 	ExpiresAt         time.Time `json:"exp"`
 }
 
-type sessionEnvelope struct {
-	Claims SessionClaims `json:"claims"`
+type SessionStore interface {
+	CreateAuthorSession(ctx context.Context, userID uuid.UUID, tokenHash string, expiresAt time.Time) (*Session, error)
+	FindAuthorSessionByTokenHash(ctx context.Context, tokenHash string) (*ResolvedSession, error)
+	RevokeAuthorSessionByTokenHash(ctx context.Context, tokenHash string) error
 }
 
 type SessionManager struct {
 	cookieName  string
 	secret      []byte
 	redirectURL string
+	sessionTTL  time.Duration
+	store       SessionStore
+	now         func() time.Time
+	newToken    func() (string, error)
 }
 
-func NewSessionManager(cookieName, secret, redirectURL string) (*SessionManager, error) {
+func NewSessionManager(cookieName, secret, redirectURL string, sessionTTL time.Duration, store SessionStore) (*SessionManager, error) {
 	cookieName = strings.TrimSpace(cookieName)
 	if cookieName == "" {
 		cookieName = DefaultSessionCookieName
@@ -47,47 +54,65 @@ func NewSessionManager(cookieName, secret, redirectURL string) (*SessionManager,
 	if secret == "" {
 		return nil, errors.New("session secret is required")
 	}
+	if sessionTTL <= 0 {
+		return nil, errors.New("session ttl is required")
+	}
+	if store == nil {
+		return nil, errors.New("session store is required")
+	}
 
 	return &SessionManager{
 		cookieName:  cookieName,
 		secret:      []byte(secret),
 		redirectURL: strings.TrimSpace(redirectURL),
+		sessionTTL:  sessionTTL,
+		store:       store,
+		now:         func() time.Time { return time.Now().UTC() },
+		newToken:    randomToken,
 	}, nil
 }
 
-func (m *SessionManager) WriteSession(w http.ResponseWriter, r *http.Request, claims SessionClaims) error {
-	if claims.IssuedAt.IsZero() {
-		claims.IssuedAt = time.Now().UTC()
-	}
-	if claims.ExpiresAt.IsZero() {
-		claims.ExpiresAt = claims.IssuedAt.Add(24 * time.Hour)
+func (m *SessionManager) WriteSession(ctx context.Context, w http.ResponseWriter, r *http.Request, user *User) error {
+	if user == nil {
+		return errors.New("user is required")
 	}
 
-	token, err := m.encode(sessionEnvelope{Claims: claims})
+	userID, err := uuid.Parse(strings.TrimSpace(user.ID))
 	if err != nil {
 		return err
 	}
 
-	maxAge := int(time.Until(claims.ExpiresAt).Seconds())
+	rawToken, err := m.newToken()
+	if err != nil {
+		return err
+	}
+
+	expiresAt := m.now().Add(m.sessionTTL)
+	session, err := m.store.CreateAuthorSession(ctx, userID, m.tokenHash(rawToken), expiresAt)
+	if err != nil {
+		return err
+	}
+
+	maxAge := int(time.Until(session.ExpiresAt).Seconds())
 	if maxAge < 0 {
 		maxAge = 0
 	}
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     m.cookieName,
-		Value:    token,
+		Value:    rawToken,
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   shouldUseSecureCookies(r, m.redirectURL),
 		SameSite: http.SameSiteLaxMode,
-		Expires:  claims.ExpiresAt.UTC(),
+		Expires:  session.ExpiresAt.UTC(),
 		MaxAge:   maxAge,
 	})
 
 	return nil
 }
 
-func (m *SessionManager) ReadSession(r *http.Request) (*SessionClaims, error) {
+func (m *SessionManager) ReadSession(ctx context.Context, r *http.Request) (*SessionClaims, error) {
 	if r == nil {
 		return nil, ErrNoSession
 	}
@@ -96,22 +121,50 @@ func (m *SessionManager) ReadSession(r *http.Request) (*SessionClaims, error) {
 	if err != nil {
 		return nil, ErrNoSession
 	}
-	if strings.TrimSpace(cookie.Value) == "" {
+	rawToken := strings.TrimSpace(cookie.Value)
+	if rawToken == "" {
 		return nil, ErrNoSession
 	}
 
-	envelope, err := m.decode(cookie.Value)
+	resolved, err := m.store.FindAuthorSessionByTokenHash(ctx, m.tokenHash(rawToken))
 	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return nil, ErrNoSession
+		}
 		return nil, err
 	}
-	if !envelope.Claims.ExpiresAt.IsZero() && time.Now().UTC().After(envelope.Claims.ExpiresAt.UTC()) {
+	if resolved == nil {
+		return nil, ErrNoSession
+	}
+	if resolved.Session.RevokedAt != nil {
+		return nil, errors.New("session has been revoked")
+	}
+	if !resolved.Session.ExpiresAt.IsZero() && m.now().After(resolved.Session.ExpiresAt.UTC()) {
 		return nil, errors.New("session has expired")
 	}
 
-	return &envelope.Claims, nil
+	return &SessionClaims{
+		Issuer:            resolved.User.AuthIssuer,
+		Subject:           resolved.User.AuthSubject,
+		Email:             resolved.User.Email,
+		EmailVerified:     resolved.User.EmailVerifiedAt != nil,
+		PreferredUsername: derivePreferredUsername(resolved.User),
+		DisplayName:       resolved.User.Name,
+		IssuedAt:          resolved.Session.CreatedAt.UTC(),
+		ExpiresAt:         resolved.Session.ExpiresAt.UTC(),
+	}, nil
 }
 
-func (m *SessionManager) ClearSession(w http.ResponseWriter, r *http.Request) {
+func (m *SessionManager) ClearSession(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	if r != nil {
+		if cookie, err := r.Cookie(m.cookieName); err == nil {
+			rawToken := strings.TrimSpace(cookie.Value)
+			if rawToken != "" {
+				_ = m.store.RevokeAuthorSessionByTokenHash(ctx, m.tokenHash(rawToken))
+			}
+		}
+	}
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     m.cookieName,
 		Value:    "",
@@ -159,48 +212,19 @@ func shouldUseSecureCookies(r *http.Request, redirectURL string) bool {
 	return err == nil && strings.EqualFold(parsed.Scheme, "https")
 }
 
-func (m *SessionManager) encode(envelope sessionEnvelope) (string, error) {
-	payload, err := json.Marshal(envelope)
-	if err != nil {
-		return "", err
-	}
-
-	payloadEncoded := base64.RawURLEncoding.EncodeToString(payload)
-	signature := m.sign(payloadEncoded)
-	signatureEncoded := base64.RawURLEncoding.EncodeToString(signature)
-	return payloadEncoded + "." + signatureEncoded, nil
-}
-
-func (m *SessionManager) decode(raw string) (*sessionEnvelope, error) {
-	parts := strings.Split(raw, ".")
-	if len(parts) != 2 {
-		return nil, errors.New("invalid session token format")
-	}
-
-	expectedSignature := m.sign(parts[0])
-	signature, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
-		return nil, fmt.Errorf("invalid session signature encoding: %w", err)
-	}
-	if !hmac.Equal(signature, expectedSignature) {
-		return nil, errors.New("invalid session signature")
-	}
-
-	payload, err := base64.RawURLEncoding.DecodeString(parts[0])
-	if err != nil {
-		return nil, fmt.Errorf("invalid session payload encoding: %w", err)
-	}
-
-	var envelope sessionEnvelope
-	if err := json.Unmarshal(payload, &envelope); err != nil {
-		return nil, fmt.Errorf("invalid session payload: %w", err)
-	}
-
-	return &envelope, nil
-}
-
-func (m *SessionManager) sign(payload string) []byte {
+func (m *SessionManager) tokenHash(raw string) string {
 	hash := hmac.New(sha256.New, m.secret)
-	_, _ = hash.Write([]byte(payload))
-	return hash.Sum(nil)
+	_, _ = hash.Write([]byte(raw))
+	return base64.RawURLEncoding.EncodeToString(hash.Sum(nil))
+}
+
+func derivePreferredUsername(user User) string {
+	email := strings.TrimSpace(user.Email)
+	if email == "" {
+		return ""
+	}
+	if at := strings.Index(email, "@"); at > 0 {
+		return email[:at]
+	}
+	return email
 }

@@ -22,6 +22,11 @@ type Session struct {
 	RevokedAt *time.Time `json:"revokedAt,omitempty"`
 }
 
+type ResolvedSession struct {
+	Session Session `json:"session"`
+	User    User    `json:"user"`
+}
+
 type PasswordResetToken struct {
 	ID         string     `json:"id"`
 	UserID     string     `json:"userId"`

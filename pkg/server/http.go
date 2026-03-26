@@ -96,25 +96,38 @@ func NewHTTPServer(ctx context.Context, options Options) (*http.Server, error) {
 		authSettings = &draftauth.Settings{Mode: draftauth.AuthModeDev, DevUserID: "local-author"}
 	}
 
+	authService := options.AuthService
+	authRepo := (*draftauth.PostgresRepository)(nil)
+	if authService == nil && options.Database != nil && options.Database.Pool() != nil {
+		authRepo = draftauth.NewPostgresRepository(options.Database.Pool())
+		authService = draftauth.NewService(authRepo)
+	}
+
 	if authSettings.Mode == draftauth.AuthModeOIDC {
+		if authRepo == nil {
+			if options.Database == nil || options.Database.Pool() == nil {
+				return nil, errors.New("oidc auth requires a database-backed auth repository")
+			}
+			authRepo = draftauth.NewPostgresRepository(options.Database.Pool())
+		}
 		sessionManager, err = draftauth.NewSessionManager(
 			authSettings.SessionCookieName,
 			authSettings.SessionSecret,
 			authSettings.OIDCRedirectURL,
+			authSettings.SessionTTLValue,
+			authRepo,
 		)
 		if err != nil {
 			return nil, err
 		}
 
-		webAuth, err = draftauth.NewOIDCAuthenticator(ctx, authSettings, sessionManager)
+		if authService == nil {
+			authService = draftauth.NewService(authRepo)
+		}
+		webAuth, err = draftauth.NewOIDCAuthenticator(ctx, authSettings, authService, sessionManager)
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	authService := options.AuthService
-	if authService == nil && options.Database != nil && options.Database.Pool() != nil {
-		authService = draftauth.NewService(draftauth.NewPostgresRepository(options.Database.Pool()))
 	}
 
 	articleService := options.ArticleService
@@ -894,7 +907,7 @@ func (h *appHandler) currentClaims(r *http.Request) (*draftauth.SessionClaims, b
 		if h.sessionManager == nil {
 			return nil, false
 		}
-		claims, err := h.sessionManager.ReadSession(r)
+		claims, err := h.sessionManager.ReadSession(r.Context(), r)
 		if err != nil {
 			return nil, false
 		}

@@ -20,6 +20,40 @@ import (
 	"github.com/google/uuid"
 )
 
+type fakeSessionStore struct {
+	session *draftauth.ResolvedSession
+}
+
+func (f *fakeSessionStore) CreateAuthorSession(ctx context.Context, userID uuid.UUID, tokenHash string, expiresAt time.Time) (*draftauth.Session, error) {
+	if f.session == nil {
+		f.session = &draftauth.ResolvedSession{}
+	}
+	f.session.Session = draftauth.Session{
+		ID:        uuid.NewString(),
+		UserID:    userID.String(),
+		TokenHash: tokenHash,
+		ExpiresAt: expiresAt.UTC(),
+		CreatedAt: time.Now().UTC(),
+	}
+	return &f.session.Session, nil
+}
+
+func (f *fakeSessionStore) FindAuthorSessionByTokenHash(ctx context.Context, tokenHash string) (*draftauth.ResolvedSession, error) {
+	if f.session == nil || f.session.Session.TokenHash != tokenHash {
+		return nil, draftauth.ErrNotFound
+	}
+	return f.session, nil
+}
+
+func (f *fakeSessionStore) RevokeAuthorSessionByTokenHash(ctx context.Context, tokenHash string) error {
+	if f.session == nil || f.session.Session.TokenHash != tokenHash {
+		return draftauth.ErrNotFound
+	}
+	now := time.Now().UTC()
+	f.session.Session.RevokedAt = &now
+	return nil
+}
+
 func testPublicFS() fs.FS {
 	return fstest.MapFS{
 		"index.html": {Data: []byte("<!doctype html><html><body>draft-review-shell</body></html>")},
@@ -184,6 +218,64 @@ func TestHandleMeOIDCUnauthenticated(t *testing.T) {
 	}
 	if response.Data.AuthMode != draftauth.AuthModeOIDC {
 		t.Fatalf("expected auth mode oidc, got %q", response.Data.AuthMode)
+	}
+}
+
+func TestHandleMeOIDCAuthenticatedViaOpaqueSession(t *testing.T) {
+	t.Parallel()
+
+	store := &fakeSessionStore{}
+	manager, err := draftauth.NewSessionManager("test_session", "super-secret", "http://127.0.0.1:8080/auth/callback", 12*time.Hour, store)
+	if err != nil {
+		t.Fatalf("NewSessionManager returned error: %v", err)
+	}
+
+	user := &draftauth.User{
+		ID:          "11111111-1111-1111-1111-111111111111",
+		AuthIssuer:  "https://auth.example.com/realms/draft-review",
+		AuthSubject: "user-123",
+		Email:       "alice@example.com",
+		Name:        "Alice",
+	}
+
+	writeRequest := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:8080/", nil)
+	writeRecorder := httptest.NewRecorder()
+	if err := manager.WriteSession(context.Background(), writeRecorder, writeRequest, user); err != nil {
+		t.Fatalf("WriteSession returned error: %v", err)
+	}
+	store.session.User = *user
+
+	request := httptest.NewRequest(http.MethodGet, "/api/me", nil)
+	for _, cookie := range writeRecorder.Result().Cookies() {
+		request.AddCookie(cookie)
+	}
+	recorder := httptest.NewRecorder()
+
+	handler := NewHandler(HandlerOptions{
+		Version:        "test",
+		StartedAt:      time.Now().UTC(),
+		AuthSettings:   &draftauth.Settings{Mode: draftauth.AuthModeOIDC},
+		SessionManager: manager,
+	})
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", recorder.Code)
+	}
+
+	var response struct {
+		Data draftauth.UserInfo `json:"data"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if !response.Data.Authenticated {
+		t.Fatalf("expected authenticated oidc user")
+	}
+	if response.Data.Email != "alice@example.com" {
+		t.Fatalf("expected email alice@example.com, got %q", response.Data.Email)
 	}
 }
 

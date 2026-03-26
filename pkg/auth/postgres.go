@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -142,6 +143,117 @@ returning id, auth_subject, auth_issuer, email, name, email_verified_at, created
 
 	assignNullableUserFields(user, authSubject, authIssuer, emailVerifiedAt)
 	return user, nil
+}
+
+func (r *PostgresRepository) CreateAuthorSession(ctx context.Context, userID uuid.UUID, tokenHash string, expiresAt time.Time) (*Session, error) {
+	if r == nil || r.pool == nil {
+		return nil, errors.New("postgres pool is not configured")
+	}
+
+	session := &Session{}
+	var revokedAt sql.NullTime
+	row := r.pool.QueryRow(ctx, `
+insert into author_sessions(id, user_id, token_hash, expires_at)
+values($1, $2, $3, $4)
+returning id, user_id, token_hash, expires_at, created_at, revoked_at
+`, uuid.New(), userID, tokenHash, expiresAt)
+
+	if err := row.Scan(
+		&session.ID,
+		&session.UserID,
+		&session.TokenHash,
+		&session.ExpiresAt,
+		&session.CreatedAt,
+		&revokedAt,
+	); err != nil {
+		return nil, errors.Wrap(err, "failed to create author session")
+	}
+	if revokedAt.Valid {
+		value := revokedAt.Time.UTC()
+		session.RevokedAt = &value
+	}
+
+	return session, nil
+}
+
+func (r *PostgresRepository) FindAuthorSessionByTokenHash(ctx context.Context, tokenHash string) (*ResolvedSession, error) {
+	if r == nil || r.pool == nil {
+		return nil, errors.New("postgres pool is not configured")
+	}
+
+	row := r.pool.QueryRow(ctx, `
+select
+    s.id,
+    s.user_id,
+    s.token_hash,
+    s.expires_at,
+    s.created_at,
+    s.revoked_at,
+    u.id,
+    u.auth_subject,
+    u.auth_issuer,
+    u.email,
+    u.name,
+    u.email_verified_at,
+    u.created_at,
+    u.updated_at
+from author_sessions s
+join users u on u.id = s.user_id
+where s.token_hash = $1
+`, tokenHash)
+
+	resolved := &ResolvedSession{}
+	var sessionRevokedAt sql.NullTime
+	var authSubject sql.NullString
+	var authIssuer sql.NullString
+	var emailVerifiedAt sql.NullTime
+	if err := row.Scan(
+		&resolved.Session.ID,
+		&resolved.Session.UserID,
+		&resolved.Session.TokenHash,
+		&resolved.Session.ExpiresAt,
+		&resolved.Session.CreatedAt,
+		&sessionRevokedAt,
+		&resolved.User.ID,
+		&authSubject,
+		&authIssuer,
+		&resolved.User.Email,
+		&resolved.User.Name,
+		&emailVerifiedAt,
+		&resolved.User.CreatedAt,
+		&resolved.User.UpdatedAt,
+	); err != nil {
+		if strings.Contains(err.Error(), "no rows") {
+			return nil, ErrNotFound
+		}
+		return nil, errors.Wrap(err, "failed to load author session")
+	}
+	if sessionRevokedAt.Valid {
+		value := sessionRevokedAt.Time.UTC()
+		resolved.Session.RevokedAt = &value
+	}
+	assignNullableUserFields(&resolved.User, authSubject, authIssuer, emailVerifiedAt)
+	return resolved, nil
+}
+
+func (r *PostgresRepository) RevokeAuthorSessionByTokenHash(ctx context.Context, tokenHash string) error {
+	if r == nil || r.pool == nil {
+		return errors.New("postgres pool is not configured")
+	}
+
+	tag, err := r.pool.Exec(ctx, `
+update author_sessions
+set revoked_at = coalesce(revoked_at, now())
+where token_hash = $1
+`, tokenHash)
+	if err != nil {
+		return errors.Wrap(err, "failed to revoke author session")
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+
+	return nil
 }
 
 func assignNullableUserFields(user *User, authSubject, authIssuer sql.NullString, emailVerifiedAt sql.NullTime) {

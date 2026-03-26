@@ -75,6 +75,55 @@ Why this matters:
 - the long-term refresh-token design should stay in a separate ticket so DR-010 stays
   focused
 
+### 2026-03-26 16:05 EDT
+
+Implemented the first real code slice for opaque server-side author sessions.
+
+Files changed in this slice:
+
+- `pkg/auth/config.go`
+- `pkg/auth/types.go`
+- `pkg/auth/postgres.go`
+- `pkg/auth/session.go`
+- `pkg/auth/oidc.go`
+- `pkg/server/http.go`
+- `pkg/auth/session_test.go`
+- `pkg/server/http_test.go`
+
+What changed:
+
+- added `auth-session-ttl` parsing so the backend has an explicit app-managed session
+  duration
+- implemented repository methods for `author_sessions` using the already existing
+  table in Postgres
+- replaced the old signed-claims cookie model with an opaque token cookie whose hash
+  is looked up in the session table
+- changed OIDC callback handling so it now ensures the local user exists immediately,
+  then creates a server-side author session
+- changed request auth resolution in the HTTP handler so `/api/me` and author routes
+  read identity from the session store instead of from cookie payload claims
+- changed logout to revoke the server-side session and clear the browser cookie
+
+Important design note from this slice:
+
+- I kept `SessionClaims` as the request-time identity shape because it lets the rest of
+  the handler code stay mostly stable while the storage model underneath changes
+
+Validation run:
+
+```bash
+go test ./cmd/... ./pkg/...
+```
+
+Result:
+
+- all tests passed
+
+What was intentionally deferred:
+
+- long-term refresh-token storage and renewal remain in DR-011
+- richer session metadata like `last_used_at` is not part of this medium-term slice
+
 ### Next diary entries
 
 Add entries after each implementation slice, including:

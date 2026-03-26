@@ -57,6 +57,7 @@ type oauthStatePayload struct {
 
 type OIDCAuthenticator struct {
 	settings      *Settings
+	authService   *Service
 	sessions      *SessionManager
 	httpClient    *http.Client
 	discovery     oidcDiscoveryDocument
@@ -67,13 +68,14 @@ type OIDCAuthenticator struct {
 	postLoginPath string
 }
 
-func NewOIDCAuthenticator(ctx context.Context, settings *Settings, sessions *SessionManager) (*OIDCAuthenticator, error) {
-	return newOIDCAuthenticatorWithClient(ctx, settings, sessions, &http.Client{Timeout: defaultOIDCHTTPTimeout})
+func NewOIDCAuthenticator(ctx context.Context, settings *Settings, authService *Service, sessions *SessionManager) (*OIDCAuthenticator, error) {
+	return newOIDCAuthenticatorWithClient(ctx, settings, authService, sessions, &http.Client{Timeout: defaultOIDCHTTPTimeout})
 }
 
 func newOIDCAuthenticatorWithClient(
 	ctx context.Context,
 	settings *Settings,
+	authService *Service,
 	sessions *SessionManager,
 	httpClient *http.Client,
 ) (*OIDCAuthenticator, error) {
@@ -82,6 +84,9 @@ func newOIDCAuthenticatorWithClient(
 	}
 	if sessions == nil {
 		return nil, errors.New("session manager is required")
+	}
+	if authService == nil {
+		return nil, errors.New("auth service is required")
 	}
 	if strings.TrimSpace(settings.OIDCIssuerURL) == "" {
 		return nil, errors.New("oidc issuer url is required")
@@ -111,10 +116,11 @@ func newOIDCAuthenticatorWithClient(
 	}
 
 	return &OIDCAuthenticator{
-		settings:   settings,
-		sessions:   sessions,
-		httpClient: httpClient,
-		discovery:  discovery,
+		settings:    settings,
+		authService: authService,
+		sessions:    sessions,
+		httpClient:  httpClient,
+		discovery:   discovery,
 		oauthConfig: oauth2.Config{
 			ClientID:     settings.OIDCClientID,
 			ClientSecret: settings.OIDCClientSecret,
@@ -215,25 +221,19 @@ func (a *OIDCAuthenticator) HandleCallback(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	expiry := token.Expiry
-	if expiry.IsZero() {
-		expiry = a.now().Add(24 * time.Hour)
+	user, err := a.authService.EnsureAuthenticatedUser(r.Context(), AuthenticatedIdentity{
+		Issuer:        claims.Issuer,
+		Subject:       claims.Subject,
+		Email:         claims.Email,
+		DisplayName:   claims.Name,
+		EmailVerified: claims.EmailVerified,
+	})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to resolve authenticated user: %v", err), http.StatusInternalServerError)
+		return
 	}
 
-	sessionClaims := SessionClaims{
-		Issuer:            claims.Issuer,
-		Subject:           claims.Subject,
-		Email:             claims.Email,
-		EmailVerified:     claims.EmailVerified,
-		PreferredUsername: claims.PreferredUsername,
-		DisplayName:       claims.Name,
-		Picture:           claims.Picture,
-		Scopes:            append([]string(nil), a.oauthConfig.Scopes...),
-		IssuedAt:          a.now(),
-		ExpiresAt:         expiry.UTC(),
-	}
-
-	if err := a.sessions.WriteSession(w, r, sessionClaims); err != nil {
+	if err := a.sessions.WriteSession(r.Context(), w, r, user); err != nil {
 		http.Error(w, fmt.Sprintf("session creation failed: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -246,7 +246,7 @@ func (a *OIDCAuthenticator) HandleCallback(w http.ResponseWriter, r *http.Reques
 }
 
 func (a *OIDCAuthenticator) HandleLogout(w http.ResponseWriter, r *http.Request) {
-	a.sessions.ClearSession(w, r)
+	a.sessions.ClearSession(r.Context(), w, r)
 	returnTo, err := a.resolveRequestedRedirect(r, r.URL.Query().Get("return_to"))
 	if err != nil {
 		http.Error(w, "invalid return_to parameter", http.StatusBadRequest)

@@ -3,6 +3,7 @@ package auth
 import (
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-go-golems/glazed/pkg/cmds/fields"
 	"github.com/go-go-golems/glazed/pkg/cmds/schema"
@@ -22,11 +23,13 @@ type Settings struct {
 	DevUserID         string   `glazed:"auth-dev-user-id"`
 	SessionCookieName string   `glazed:"auth-session-cookie-name"`
 	SessionSecret     string   `glazed:"auth-session-secret"`
+	SessionTTL        string   `glazed:"auth-session-ttl"`
 	OIDCIssuerURL     string   `glazed:"oidc-issuer-url"`
 	OIDCClientID      string   `glazed:"oidc-client-id"`
 	OIDCClientSecret  string   `glazed:"oidc-client-secret"`
 	OIDCRedirectURL   string   `glazed:"oidc-redirect-url"`
 	OIDCScopes        []string `glazed:"oidc-scopes"`
+	SessionTTLValue   time.Duration
 }
 
 type UserInfo struct {
@@ -72,6 +75,12 @@ func NewSection() (schema.Section, error) {
 				fields.TypeString,
 				fields.WithHelp("HMAC secret used to sign browser session cookies"),
 				fields.WithDefault(strings.TrimSpace(os.Getenv("DRAFT_REVIEW_AUTH_SESSION_SECRET"))),
+			),
+			fields.New(
+				"auth-session-ttl",
+				fields.TypeString,
+				fields.WithHelp("Application-managed browser session TTL used for opaque author sessions"),
+				fields.WithDefault(envOr("DRAFT_REVIEW_AUTH_SESSION_TTL", "12h")),
 			),
 			fields.New(
 				"oidc-issuer-url",
@@ -127,6 +136,18 @@ func LoadSettingsFromParsedValues(parsedValues *values.Values) (*Settings, error
 		settings.SessionCookieName = DefaultSessionCookieName
 	}
 	settings.SessionSecret = strings.TrimSpace(settings.SessionSecret)
+	settings.SessionTTL = strings.TrimSpace(settings.SessionTTL)
+	if settings.SessionTTL == "" {
+		settings.SessionTTL = "12h"
+	}
+	sessionTTL, err := time.ParseDuration(settings.SessionTTL)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid auth-session-ttl")
+	}
+	if sessionTTL <= 0 {
+		return nil, errors.New("auth-session-ttl must be greater than zero")
+	}
+	settings.SessionTTLValue = sessionTTL
 	settings.OIDCIssuerURL = strings.TrimSpace(settings.OIDCIssuerURL)
 	settings.OIDCClientID = strings.TrimSpace(settings.OIDCClientID)
 	settings.OIDCClientSecret = strings.TrimSpace(settings.OIDCClientSecret)
