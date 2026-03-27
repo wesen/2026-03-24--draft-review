@@ -18,7 +18,7 @@ type UploadInput struct {
 	Content  []byte
 }
 
-type createAssetRecordInput struct {
+type AssetRecordInput struct {
 	ID               string
 	StorageKey       string
 	OriginalFilename string
@@ -26,7 +26,7 @@ type createAssetRecordInput struct {
 	ByteSize         int64
 }
 
-type storedAsset struct {
+type AssetRecord struct {
 	ID               string
 	ArticleID        string
 	StorageKey       string

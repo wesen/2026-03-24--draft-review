@@ -33,6 +33,7 @@ go run ./cmd/draft-review serve \
   --dsn 'postgres://draft_review:draft_review@127.0.0.1:5432/draft_review?sslmode=disable' \
   --auto-migrate \
   --auth-mode dev \
+  --media-root .draft-review/media \
   --frontend-dev-proxy-url http://127.0.0.1:5173
 ```
 
@@ -58,6 +59,11 @@ Canonical real-app dev loop:
 4. Open `http://127.0.0.1:8080/`.
 
 Use `http://127.0.0.1:8080/` for full end-to-end testing because that keeps the browser on the backend origin for `/api`, `/auth`, and the OIDC callback. The Vite origin at `http://127.0.0.1:5173/` is still useful for UI iteration and now proxies `/api`, but browser auth should be exercised through `8080`.
+
+Managed image uploads now write files under `--media-root` (default:
+`.draft-review/media`). For local development that default is fine. For hosted
+deployment, this path must be backed by a persistent mounted volume; do not rely on
+the container filesystem alone because uploads would disappear on redeploy.
 
 Start the backend against Keycloak / OIDC:
 
@@ -152,6 +158,7 @@ The current backend exposes these routes:
 - `GET /api/articles/{id}`
 - `PATCH /api/articles/{id}`
 - `POST /api/articles/{id}/versions`
+- `POST /api/articles/{id}/assets`
 - `POST /api/articles/{id}/share-token`
 - `POST /api/articles/{id}/invite`
 - `GET /api/articles/{id}/readers`
@@ -159,6 +166,7 @@ The current backend exposes these routes:
 - `GET /api/articles/{id}/analytics`
 - `GET /api/articles/{id}/feedback`
 - `POST /api/articles/{id}/export`
+- `GET /media/article-assets/{assetId}/{filename}`
 - `GET /api/readers`
 - `GET /api/r/{token}`
 - `POST /api/r/{token}/start`
@@ -232,6 +240,7 @@ The live OIDC smoke path validated during implementation was:
 - The frontend now targets the real Go backend by default; set `VITE_USE_MSW=1` only when you intentionally want the legacy mock layer.
 - The backend now really proxies browser routes to the frontend dev server when `--frontend-dev-proxy-url` is set, so `/` and `/r/:token` can be tested through the backend origin.
 - Vite now listens on `0.0.0.0` and proxies `/api`, `/auth`, and `/healthz` to `VITE_BACKEND_ORIGIN` or `http://127.0.0.1:8080` by default.
+- Managed image uploads persist to `--media-root`; keep that on a persistent volume in hosted environments.
 
 ## Known Gaps
 

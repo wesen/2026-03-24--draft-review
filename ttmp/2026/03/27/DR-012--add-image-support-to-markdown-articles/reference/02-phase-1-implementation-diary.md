@@ -451,6 +451,47 @@ were editing.
   persistence requirement.
 - The full ticket still needs its final phase-2 validation and doc cleanup pass.
 
+## Step 9: Phase-2 Documentation And Final Validation
+
+This last step turns the implementation into a maintainable feature. Managed uploads
+have an operational requirement that phase 1 did not have: uploaded files need a
+durable media root. If that requirement is not written down clearly, the feature will
+appear to work locally and then silently lose user content on redeploy.
+
+### What I changed
+- Updated [README.md](/home/manuel/code/wesen/2026-03-24--draft-review/README.md)
+  with:
+  - the new upload route in the API list
+  - the media-serving route in the API list
+  - local run examples using `--media-root`
+  - an explicit persistence warning for hosted deployments
+- Updated [02-local-development.md](/home/manuel/code/wesen/2026-03-24--draft-review/cmd/draft-review/doc/02-local-development.md)
+  so the local workflow and troubleshooting table mention `--media-root`.
+
+### Final validation
+- Ran `go test ./cmd/... ./pkg/...`
+- Ran `npm run build`
+- Ran `docmgr doctor --ticket DR-012 --stale-after 30`
+
+### Results
+- Go tests: passed
+- Frontend build: passed
+- Ticket validation: passed
+
+### What phase 2 now includes
+- persisted article asset metadata in PostgreSQL
+- local-disk-backed stored uploads with a configurable media root
+- authenticated author upload API
+- same-origin media-serving route
+- editor-side file upload and markdown insertion
+- runbook guidance for persistence
+
+### Residual limits after phase 2
+- No object-storage backend yet
+- No version-scoped asset snapshots yet
+- No image-specific reaction/anchor semantics yet
+- Hosted deployment still depends on the operator mounting persistent storage
+
 ## Related
 
 - [Markdown article image support analysis and implementation guide](../design-doc/01-markdown-article-image-support-analysis-and-implementation-guide.md)

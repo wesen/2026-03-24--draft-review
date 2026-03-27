@@ -99,3 +99,15 @@ Completed the main frontend/editor half of phase 2 by wiring the upload API into
 - /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/app/AuthorApp.tsx — Connects selected-article uploads to the editor
 - /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/ArticleEditor.tsx — File picker, upload workflow, and snippet insertion
 - /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/ArticleEditor.css — Inline upload feedback styling
+
+
+## 2026-03-27
+
+Finished phase 2 by updating the runbooks with media-root persistence guidance and rerunning the full validation pass across Go, frontend build, and ticket health checks.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/README.md — Updated local and hosted media persistence guidance
+- /home/manuel/code/wesen/2026-03-24--draft-review/cmd/draft-review/doc/02-local-development.md — Local workflow now documents `--media-root`
+- /home/manuel/code/wesen/2026-03-24--draft-review/ttmp/2026/03/27/DR-012--add-image-support-to-markdown-articles/tasks.md — Phase-2 tasks marked complete
+- /home/manuel/code/wesen/2026-03-24--draft-review/ttmp/2026/03/27/DR-012--add-image-support-to-markdown-articles/reference/02-phase-1-implementation-diary.md — Final validation and residual phase-2 limits

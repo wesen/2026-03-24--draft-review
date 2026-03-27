@@ -39,9 +39,9 @@
 - [x] Add frontend upload API wiring for article assets
 - [x] Refactor the author editor to upload a chosen local file and insert the returned markdown snippet at the cursor
 - [x] Add basic editor UI feedback for upload in-flight and upload errors
-- [ ] Update README / local-dev docs with media-root configuration and persistence notes
-- [ ] Run `go test ./cmd/... ./pkg/...`, `npm run build`, and `docmgr doctor --ticket DR-012 --stale-after 30`
-- [ ] Update DR-012 docs, changelog, and diary after each completed slice
+- [x] Update README / local-dev docs with media-root configuration and persistence notes
+- [x] Run `go test ./cmd/... ./pkg/...`, `npm run build`, and `docmgr doctor --ticket DR-012 --stale-after 30`
+- [x] Update DR-012 docs, changelog, and diary after each completed slice
 
 ## Later Phases
 
