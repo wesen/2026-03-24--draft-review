@@ -1,4 +1,5 @@
 import type { ReaderArticle } from "../types";
+import { estimateMarkdownWordCount } from "../lib/markdownBlocks";
 import { REACTION_TYPES } from "../theme/tokens";
 import { MacButton } from "../chrome/MacButton";
 import "./WelcomeSplash.css";
@@ -10,9 +11,9 @@ interface WelcomeSplashProps {
 
 export function WelcomeSplash({ article, onStart }: WelcomeSplashProps) {
   const wordCount = article.sections.reduce(
-    (a, s) => a + s.paragraphs.length,
+    (a, s) => a + estimateMarkdownWordCount(s.bodyMarkdown),
     0
-  ) * 40;
+  );
   const readTime = Math.ceil(wordCount / 200);
 
   return (

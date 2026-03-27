@@ -15,45 +15,32 @@ export const articles: Article[] = [
       {
         id: "s1",
         title: "Introduction",
-        paragraphs: [
-          "Design systems promise consistency and speed, but many teams abandon them within a year. This article explores why that happens and what you can do about it.",
-          "The problem isn't usually technical — it's organizational. A design system is a product, and like any product, it fails when nobody owns it, nobody documents it, and nobody listens to its users.",
-        ],
+        bodyMarkdown:
+          "Design systems promise consistency and speed, but many teams abandon them within a year. This article explores why that happens and what you can do about it.\n\nThe problem isn't usually technical — it's organizational. A design system is a product, and like any product, it fails when nobody owns it, nobody documents it, and nobody listens to its users.",
       },
       {
         id: "s2",
         title: "The Adoption Cliff",
-        paragraphs: [
-          "Most design systems see strong initial adoption. Engineers are excited, designers feel heard, and leadership is optimistic about the efficiency gains on the horizon.",
-          "But around month six, usage plateaus. Teams start creating workarounds, one-off components multiply, and the system starts to feel like a constraint rather than an enabler. The honeymoon is over.",
-          "This is the adoption cliff, and it kills more design systems than bad component APIs ever will. The root cause is almost always a gap between what the system offers and what teams actually need day-to-day.",
-        ],
+        bodyMarkdown:
+          "Most design systems see strong initial adoption. Engineers are excited, designers feel heard, and leadership is optimistic about the efficiency gains on the horizon.\n\nBut around month six, usage plateaus. Teams start creating workarounds, one-off components multiply, and the system starts to feel like a constraint rather than an enabler. The honeymoon is over.\n\nThis is the adoption cliff, and it kills more design systems than bad component APIs ever will. The root cause is almost always a gap between what the system offers and what teams actually need day-to-day.",
       },
       {
         id: "s3",
         title: "Governance Gaps",
-        paragraphs: [
-          "Without clear ownership, design systems drift. Who decides when to add a new component? Who approves breaking changes? Who triages the 47 open GitHub issues?",
-          "When these questions go unanswered, teams lose trust in the system and start going rogue. They fork components, inline styles, and build parallel mini-systems inside their own repos.",
-          "The fix isn't more rules — it's more clarity. A lightweight decision-making framework, published and linked from your docs, can prevent months of confusion.",
-        ],
+        bodyMarkdown:
+          "Without clear ownership, design systems drift. Who decides when to add a new component? Who approves breaking changes? Who triages the 47 open GitHub issues?\n\nWhen these questions go unanswered, teams lose trust in the system and start going rogue. They fork components, inline styles, and build parallel mini-systems inside their own repos.\n\nThe fix isn't more rules — it's more clarity. A lightweight decision-making framework, published and linked from your docs, can prevent months of confusion.",
       },
       {
         id: "s4",
         title: "The Documentation Problem",
-        paragraphs: [
-          "Even well-built systems fail without good docs. If a developer can't figure out how to use a component in under two minutes, they'll build their own. Documentation isn't a nice-to-have — it's the product.",
-          "The best design system docs don't just list props. They show real examples, explain when to use (and when not to use) each component, and link to the Figma source so designers and engineers are always looking at the same thing.",
-        ],
+        bodyMarkdown:
+          "Even well-built systems fail without good docs. If a developer can't figure out how to use a component in under two minutes, they'll build their own. Documentation isn't a nice-to-have — it's the product.\n\nThe best design system docs don't just list props. They show real examples, explain when to use (and when not to use) each component, and link to the Figma source so designers and engineers are always looking at the same thing.",
       },
       {
         id: "s5",
         title: "Making It Work",
-        paragraphs: [
-          "The teams that succeed treat their design system like a product, not a project. They have dedicated maintainers, regular release cycles, and feedback loops with the teams who consume the system.",
-          "Executive sponsorship matters too — not as a rubber stamp, but as air cover. When a product team wants to skip the system to hit a deadline, someone senior needs to weigh the long-term cost.",
-          "If you're starting a design system today, start small: one token file, one button, one clear owner. Grow it only when real demand pulls you forward. That patience is the hardest part — and the most important.",
-        ],
+        bodyMarkdown:
+          "The teams that succeed treat their design system like a product, not a project. They have dedicated maintainers, regular release cycles, and feedback loops with the teams who consume the system.\n\nExecutive sponsorship matters too — not as a rubber stamp, but as air cover. When a product team wants to skip the system to hit a deadline, someone senior needs to weigh the long-term cost.\n\nIf you're starting a design system today, start small: one token file, one button, one clear owner. Grow it only when real demand pulls you forward. That patience is the hardest part — and the most important.",
       },
     ],
     createdAt: "2026-03-01T00:00:00Z",
@@ -71,23 +58,20 @@ export const articles: Article[] = [
       {
         id: "s1",
         title: "The Broken Promise",
-        paragraphs: [
+        bodyMarkdown:
           "We were told remote work would free us. In many ways it has. But the cracks are showing: loneliness, miscommunication, and a creeping sense that we've traded one set of problems for another.",
-        ],
       },
       {
         id: "s2",
         title: "What We Lost",
-        paragraphs: [
+        bodyMarkdown:
           "Serendipity. The hallway conversation that sparks an idea. The lunch that becomes a brainstorm. These aren't just perks — they're how organizations actually think.",
-        ],
       },
       {
         id: "s3",
         title: "A Middle Path",
-        paragraphs: [
+        bodyMarkdown:
           "The answer isn't going back to the office five days a week. It's being intentional about when and why we gather. Async by default, sync with purpose.",
-        ],
       },
     ],
     createdAt: "2026-03-15T00:00:00Z",
@@ -104,9 +88,8 @@ export const articles: Article[] = [
       {
         id: "s1",
         title: "Why We Say Yes",
-        paragraphs: [
+        bodyMarkdown:
           "Saying yes feels safe. It keeps the peace, maintains relationships, and avoids the discomfort of disappointing someone. But every yes to something unimportant is a no to something that matters.",
-        ],
       },
     ],
     createdAt: "2026-03-20T00:00:00Z",
@@ -168,7 +151,7 @@ export function createArticle(data: { title: string; author: string; intro: stri
     version: "Draft 1",
     status: "draft",
     intro: data.intro,
-    sections: [{ id: `s${nextSectionId++}`, title: "Untitled Section", paragraphs: [""] }],
+    sections: [{ id: `s${nextSectionId++}`, title: "Untitled Section", bodyMarkdown: "" }],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };

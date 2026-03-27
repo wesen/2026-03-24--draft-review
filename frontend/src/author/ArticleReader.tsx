@@ -2,6 +2,10 @@ import { useState, useRef, useCallback } from "react";
 import type { Article, Reaction } from "../types";
 import { REACTION_TYPES } from "../theme/tokens";
 import { MacButton } from "../chrome/MacButton";
+import {
+  deriveSectionBlocks,
+  getBlockIndexFromParagraphId,
+} from "../lib/markdownBlocks";
 import { Prose } from "../primitives/Prose";
 import "./ArticleReader.css";
 
@@ -28,9 +32,8 @@ function timeAgo(dateStr: string): string {
   return `${months}mo ago`;
 }
 
-/** Truncate text for paragraph excerpts */
-function excerpt(text: string, maxLen = 80): string {
-  const plain = text.replace(/[#*_`>\[\]()]/g, "").trim();
+/** Truncate plain text for block excerpts */
+function excerpt(plain: string, maxLen = 80): string {
   if (plain.length <= maxLen) return plain;
   return plain.slice(0, maxLen).trimEnd() + "…";
 }
@@ -56,6 +59,7 @@ export function ArticleReader({
   const sectionReactions = reactions.filter(
     (r) => r.sectionId === selectedSection
   );
+  const blocks = section ? deriveSectionBlocks(section) : [];
 
   // Apply type filter
   let filtered = reactionFilter
@@ -77,11 +81,9 @@ export function ArticleReader({
 
   // Build paragraph text lookup for excerpts
   const paragraphText = new Map<string, string>();
-  if (section) {
-    section.paragraphs.forEach((text, i) => {
-      paragraphText.set(`${section.id}-p${i}`, text);
-    });
-  }
+  blocks.forEach((block) => {
+    paragraphText.set(block.id, block.plainText);
+  });
 
   // Scroll a paragraph into view when hovering a reaction card
   const scrollParagraphIntoView = useCallback(
@@ -165,8 +167,8 @@ export function ArticleReader({
             {article.sections.findIndex((s) => s.id === selectedSection) + 1} of{" "}
             {article.sections.length}
           </div>
-          {section?.paragraphs.map((p, i) => {
-            const pId = `${section.id}-p${i}`;
+          {blocks.map((block) => {
+            const pId = block.id;
             const pReactionCount = sectionReactions.filter(
               (r) => r.paragraphId === pId
             ).length;
@@ -174,7 +176,7 @@ export function ArticleReader({
             const isFiltered = filteredParagraph === pId;
             return (
               <div
-                key={i}
+                key={pId}
                 data-paragraph-id={pId}
                 className={`dr-review-para ${
                   isHovered ? "dr-review-para--active" : ""
@@ -185,7 +187,9 @@ export function ArticleReader({
                 onMouseLeave={() => setHoveredParagraph(null)}
                 onClick={() => handleParagraphClick(pId)}
               >
-                <Prose className="dr-article-reader__paragraph">{p}</Prose>
+                <Prose className="dr-article-reader__paragraph">
+                  {block.markdown}
+                </Prose>
                 {pReactionCount > 0 && (
                   <span className="dr-review-para__badge">
                     {pReactionCount}
@@ -273,6 +277,7 @@ export function ArticleReader({
                         (t) => t.type === r.type
                       );
                       const isCardHighlighted = hoveredParagraph === r.paragraphId;
+                      const reactionBlockIndex = getBlockIndexFromParagraphId(r.paragraphId);
                       return (
                         <div
                           key={i}
@@ -299,6 +304,11 @@ export function ArticleReader({
                                 {timeAgo(r.createdAt)}
                               </span>
                             </div>
+                            {reactionBlockIndex !== null && (
+                              <div className="dr-article-reader__reaction-meta">
+                                Block {reactionBlockIndex + 1}
+                              </div>
+                            )}
                             <div>{r.text}</div>
                           </div>
                         </div>

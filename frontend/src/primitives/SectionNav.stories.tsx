@@ -2,11 +2,11 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { SectionNav } from "./SectionNav";
 
 const sections = [
-  { id: "s1", title: "Introduction", paragraphs: [] },
-  { id: "s2", title: "The Adoption Cliff", paragraphs: [] },
-  { id: "s3", title: "Governance Gaps", paragraphs: [] },
-  { id: "s4", title: "Documentation", paragraphs: [] },
-  { id: "s5", title: "Making It Work", paragraphs: [] },
+  { id: "s1", title: "Introduction", bodyMarkdown: "" },
+  { id: "s2", title: "The Adoption Cliff", bodyMarkdown: "" },
+  { id: "s3", title: "Governance Gaps", bodyMarkdown: "" },
+  { id: "s4", title: "Documentation", bodyMarkdown: "" },
+  { id: "s5", title: "Making It Work", bodyMarkdown: "" },
 ];
 
 const meta: Meta<typeof SectionNav> = {

@@ -44,9 +44,8 @@ export const ShortArticle: Story = {
         {
           id: "s1",
           title: "Why We Say Yes",
-          paragraphs: [
+          bodyMarkdown:
             "Saying yes feels safe. It keeps the peace, maintains relationships, and avoids the discomfort of disappointing someone. But every yes to something unimportant is a no to something that matters.",
-          ],
         },
       ],
     },

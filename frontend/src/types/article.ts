@@ -1,7 +1,7 @@
 export interface Section {
   id: string;
   title: string;
-  paragraphs: string[];
+  bodyMarkdown: string;
 }
 
 export interface Article {

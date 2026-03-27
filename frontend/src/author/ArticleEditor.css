@@ -116,6 +116,12 @@
   font-size: var(--dr-font-size-lg);
 }
 
+.dr-editor__toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
 .dr-editor__content-input {
   font-family: var(--dr-font-body);
   font-size: 16px;

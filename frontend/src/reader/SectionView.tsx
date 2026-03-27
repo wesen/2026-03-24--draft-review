@@ -1,4 +1,5 @@
 import type { Section, Reaction, ReactionType } from "../types";
+import { deriveSectionBlocks } from "../lib/markdownBlocks";
 import { REACTION_TYPES } from "../theme/tokens";
 import { Paragraph } from "./Paragraph";
 import "./SectionView.css";
@@ -25,6 +26,7 @@ export function SectionView({
   const sectionReactions = reactions.filter(
     (r) => r.sectionId === section.id
   );
+  const blocks = deriveSectionBlocks(section);
 
   return (
     <div className="dr-section-view">
@@ -38,14 +40,14 @@ export function SectionView({
         <h2 className="dr-section-view__title">{section.title}</h2>
       </div>
 
-      {section.paragraphs.map((text, pi) => (
+      {blocks.map((block) => (
         <Paragraph
-          key={`${section.id}-${pi}`}
-          text={text}
-          paragraphId={`${section.id}-p${pi}`}
+          key={block.id}
+          text={block.markdown}
+          paragraphId={block.id}
           reactions={sectionReactions}
           onReact={(type, reactionText) =>
-            onReact(`${section.id}-p${pi}`, type, reactionText)
+            onReact(block.id, type, reactionText)
           }
           onRemoveReaction={onRemoveReaction}
           readOnly={readOnly}

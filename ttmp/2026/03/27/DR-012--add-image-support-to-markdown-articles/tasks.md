@@ -18,12 +18,12 @@
 - [x] Refactor backend article and reader section types to expose `bodyMarkdown` instead of `paragraphs[]`
 - [x] Refactor backend article persistence and reader link resolution to read and write only `body_markdown`
 - [x] Refactor backend validation logic so section bodies validate markdown text instead of normalized paragraph arrays
-- [ ] Refactor frontend article and reader types to use `bodyMarkdown`
-- [ ] Add frontend markdown block helpers that derive reader/review blocks from `bodyMarkdown`
-- [ ] Refactor the author editor to edit canonical markdown bodies and add minimal image-markdown insertion affordances
-- [ ] Refactor reader-facing components and author review components to render derived markdown blocks instead of `paragraphs[]`
-- [ ] Update dashboard, welcome, and other ancillary UI that currently assumes paragraph arrays
-- [ ] Update stories, mocks, and tests for the new canonical markdown section shape
+- [x] Refactor frontend article and reader types to use `bodyMarkdown`
+- [x] Add frontend markdown block helpers that derive reader/review blocks from `bodyMarkdown`
+- [x] Refactor the author editor to edit canonical markdown bodies and add minimal image-markdown insertion affordances
+- [x] Refactor reader-facing components and author review components to render derived markdown blocks instead of `paragraphs[]`
+- [x] Update dashboard, welcome, and other ancillary UI that currently assumes paragraph arrays
+- [x] Update stories, mocks, and tests for the new canonical markdown section shape
 - [ ] Run `go test ./cmd/... ./pkg/...`, `npm run build`, and `docmgr doctor --ticket DR-012 --stale-after 30`
 - [ ] Update DR-012 docs, changelog, and diary after each completed slice
 

@@ -9,11 +9,11 @@ const sampleArticle = {
   intro:
     "Thanks for reading an early draft! This is a work-in-progress that needs your honest reactions. As you read, highlight anything that feels useful, confusing, or slow — your feedback will directly shape the next revision.",
   sections: [
-    { id: "s1", title: "Introduction", paragraphs: ["p1", "p2"] },
-    { id: "s2", title: "The Adoption Cliff", paragraphs: ["p1", "p2", "p3"] },
-    { id: "s3", title: "Governance Gaps", paragraphs: ["p1", "p2", "p3"] },
-    { id: "s4", title: "Documentation", paragraphs: ["p1", "p2"] },
-    { id: "s5", title: "Making It Work", paragraphs: ["p1", "p2", "p3"] },
+    { id: "s1", title: "Introduction", bodyMarkdown: "p1\n\np2" },
+    { id: "s2", title: "The Adoption Cliff", bodyMarkdown: "p1\n\np2\n\np3" },
+    { id: "s3", title: "Governance Gaps", bodyMarkdown: "p1\n\np2\n\np3" },
+    { id: "s4", title: "Documentation", bodyMarkdown: "p1\n\np2" },
+    { id: "s5", title: "Making It Work", bodyMarkdown: "p1\n\np2\n\np3" },
   ],
 };
 
@@ -47,7 +47,7 @@ export const ShortArticle: Story = {
       author: "Alex Chen",
       version: "Draft 1",
       intro: "A very early draft. Be brutal.",
-      sections: [{ id: "s1", title: "Why We Say Yes", paragraphs: ["p1"] }],
+      sections: [{ id: "s1", title: "Why We Say Yes", bodyMarkdown: "p1" }],
     },
     onStart: () => {},
   },

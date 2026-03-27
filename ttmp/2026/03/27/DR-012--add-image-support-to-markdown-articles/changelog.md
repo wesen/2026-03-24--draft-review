@@ -39,3 +39,17 @@ Completed the backend half of phase 1 by making markdown canonical in the API an
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/articles/postgres.go — Article persistence now reads and writes only `body_markdown`
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/reviewlinks/postgres.go — Reader link resolution now loads markdown section bodies
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/articles/service.go — Section validation now normalizes markdown text
+
+
+## 2026-03-27
+
+Completed the main frontend half of phase 1 by making `bodyMarkdown` the canonical section shape in React, adding shared markdown-block derivation helpers, updating the editor to author markdown directly, and rewiring reader/review/dashboard surfaces to render and excerpt markdown-derived blocks.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/types/article.ts — Section type now uses `bodyMarkdown`
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/lib/markdownBlocks.ts — Shared block derivation, excerpts, and word-count helpers
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/ArticleEditor.tsx — Markdown-native section editing and image snippet insertion
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/reader/SectionView.tsx — Reader blocks now derive from markdown
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/ArticleReader.tsx — Author review view now resolves reactions against derived markdown blocks
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/Dashboard.tsx — Recent feedback excerpts now come from derived block text

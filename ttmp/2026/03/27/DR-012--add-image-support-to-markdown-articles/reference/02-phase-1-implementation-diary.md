@@ -173,6 +173,74 @@ the API.
 - Refactor the frontend to use `bodyMarkdown` end-to-end, then add a block-derivation
   layer for review anchors and introduce minimal markdown-image authoring affordances.
 
+## Step 3: Frontend Switches To Markdown Bodies And Derived Review Blocks
+
+This step makes the React app compatible with the new backend contract. The
+important architectural decision is that the frontend does not try to reconstruct
+the old `paragraphs[]` API model. Instead, it keeps markdown canonical in the
+section shape and derives reactable reader blocks locally from `bodyMarkdown`.
+
+That keeps the system honest. The API speaks markdown, the editor edits markdown,
+the reader renders markdown, and the review UI derives block anchors from markdown
+instead of pretending the backend still stores separate paragraph objects.
+
+### What I changed
+- Updated [article.ts](/home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/types/article.ts) so `Section` uses `bodyMarkdown`.
+- Added [markdownBlocks.ts](/home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/lib/markdownBlocks.ts) with shared helpers for:
+  - markdown normalization
+  - blank-line block derivation
+  - markdown-to-plain-text excerpts
+  - block-index lookup from `sectionId-pN` reaction IDs
+  - rough markdown word counting
+- Updated [ArticleEditor.tsx](/home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/ArticleEditor.tsx) so section editing is markdown-native instead of paragraph-native.
+- Added simple image-insertion affordances in [ArticleEditor.tsx](/home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/ArticleEditor.tsx) and corresponding layout styles in [ArticleEditor.css](/home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/ArticleEditor.css).
+- Updated [SectionView.tsx](/home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/reader/SectionView.tsx) so reader reactions attach to derived markdown blocks.
+- Updated [ArticleReader.tsx](/home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/ArticleReader.tsx) so author review mode renders and excerpts markdown-derived blocks.
+- Updated [Dashboard.tsx](/home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/Dashboard.tsx) so recent feedback excerpts resolve against derived block text instead of `section.paragraphs`.
+- Updated [WelcomeSplash.tsx](/home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/reader/WelcomeSplash.tsx) to estimate reading length from markdown text rather than paragraph count.
+- Updated fixtures and stories in:
+  - [db.ts](/home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/mocks/db.ts)
+  - [ReaderPage.stories.tsx](/home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/reader/ReaderPage.stories.tsx)
+  - [WelcomeSplash.stories.tsx](/home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/reader/WelcomeSplash.stories.tsx)
+  - [SectionNav.stories.tsx](/home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/primitives/SectionNav.stories.tsx)
+
+### Why this step matters
+- This is the step that actually makes image support real for phase 1. Once the
+  editor persists markdown directly and the reader renders markdown-derived blocks,
+  ordinary markdown image syntax can flow end-to-end without a second article-body
+  representation.
+- The shared helper file avoids a subtle class of bugs where the dashboard, reader,
+  and author review surfaces would disagree about what block `sectionId-p2` refers
+  to.
+
+### Validation
+- Ran `npm run build` inside `frontend/`
+- Result: TypeScript compilation and Vite production build both succeeded
+
+### What worked
+- The existing [Prose.tsx](/home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/primitives/Prose.tsx)
+  component meant the rendering side was already close; the real work was changing
+  the data model and block derivation.
+- The existing reaction ID format (`sectionId-pN`) survived the migration cleanly
+  because the frontend can continue generating those IDs from derived markdown
+  blocks.
+
+### What was tricky
+- The dashboard and author review surfaces were the easy places to miss. They do
+  not look like “editor” code, but they both depended on direct indexing into
+  `section.paragraphs`.
+- Block derivation has to be shared. If one screen split on different blank-line
+  rules than another, the reaction anchors would drift immediately.
+
+### Product note
+- The new editor affordance is intentionally minimal. It inserts markdown image
+  snippets; it does not yet handle local uploads, asset picking, captions as a
+  first-class content model, or image-specific reaction policy.
+
+### Next step
+- Run the full phase-1 validation pass (`go test`, `npm run build`, `docmgr doctor`)
+  and then update the ticket docs and commit the frontend slice.
+
 ## Related
 
 - [Markdown article image support analysis and implementation guide](../design-doc/01-markdown-article-image-support-analysis-and-implementation-guide.md)

@@ -3,6 +3,10 @@ import type { Article, Section, Reaction, Reader } from "../types";
 import { REACTION_TYPES } from "../theme/tokens";
 import { MacButton } from "../chrome/MacButton";
 import { ProgressBar } from "../primitives/ProgressBar";
+import {
+  deriveSectionBlocks,
+  getBlockIndexFromParagraphId,
+} from "../lib/markdownBlocks";
 import "./Dashboard.css";
 
 interface DashboardProps {
@@ -287,15 +291,13 @@ export function Dashboard({
                   );
                   let paraExcerpt = "";
                   if (section && r.paragraphId) {
-                    const match = r.paragraphId.match(/-p(\d+)$/);
-                    if (match) {
-                      const pIdx = parseInt(match[1], 10);
-                      const pText = section.paragraphs[pIdx];
-                      if (pText) {
-                        const plain = pText.replace(/[#*_`>\[\]()]/g, "").trim();
-                        paraExcerpt = plain.length > 60
-                          ? plain.slice(0, 60).trimEnd() + "\u2026"
-                          : plain;
+                    const blockIndex = getBlockIndexFromParagraphId(r.paragraphId);
+                    if (blockIndex !== null) {
+                      const block = deriveSectionBlocks(section)[blockIndex];
+                      if (block?.plainText) {
+                        paraExcerpt = block.plainText.length > 60
+                          ? block.plainText.slice(0, 60).trimEnd() + "\u2026"
+                          : block.plainText;
                       }
                     }
                   }

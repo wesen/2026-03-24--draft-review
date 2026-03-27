@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import type { Article, Section } from "../types";
+import { normalizeMarkdownBody } from "../lib/markdownBlocks";
 import { MacButton } from "../chrome/MacButton";
 import "./ArticleEditor.css";
 
@@ -32,22 +33,7 @@ export function ArticleEditor({
     [initialArticle]
   );
 
-  const parseParagraphs = useCallback((text: string) => {
-    const paragraphs = text
-      .split(/\n\n+/)
-      .map((paragraph) => paragraph.trim())
-      .filter((paragraph) => paragraph.length > 0);
-
-    if (paragraphs.length === 0) {
-      paragraphs.push("");
-    }
-
-    return paragraphs;
-  }, []);
-
-  const [contentDraft, setContentDraft] = useState(
-    activeSection?.paragraphs.join("\n\n") || ""
-  );
+  const [bodyDraft, setBodyDraft] = useState(activeSection?.bodyMarkdown || "");
 
   const updateSection = useCallback(
     (sectionId: string, updates: Partial<Section>) => {
@@ -62,7 +48,7 @@ export function ArticleEditor({
   );
 
   useEffect(() => {
-    setContentDraft(activeSection?.paragraphs.join("\n\n") || "");
+    setBodyDraft(activeSection?.bodyMarkdown || "");
   }, [activeSection]);
 
   // Auto-grow textarea
@@ -72,7 +58,7 @@ export function ArticleEditor({
       el.style.height = "auto";
       el.style.height = Math.max(el.scrollHeight, 200) + "px";
     }
-  }, [contentDraft]);
+  }, [bodyDraft]);
 
   const buildArticleWithCommittedDraft = useCallback(
     (source: Article) => {
@@ -84,12 +70,15 @@ export function ArticleEditor({
         ...source,
         sections: source.sections.map((section) =>
           section.id === activeSectionId
-            ? { ...section, paragraphs: parseParagraphs(contentDraft) }
+            ? {
+                ...section,
+                bodyMarkdown: normalizeMarkdownBody(bodyDraft),
+              }
             : section
         ),
       };
     },
-    [activeSectionId, contentDraft, parseParagraphs]
+    [activeSectionId, bodyDraft]
   );
 
   const commitContentDraft = useCallback(() => {
@@ -105,7 +94,7 @@ export function ArticleEditor({
     const newSection: Section = {
       id: `s-new-${Date.now()}`,
       title: "New Section",
-      paragraphs: [""],
+      bodyMarkdown: "",
     };
     setArticle((prev) => ({
       ...buildArticleWithCommittedDraft(prev),
@@ -139,6 +128,27 @@ export function ArticleEditor({
       return { ...committed, sections };
     });
   };
+
+  const insertSnippet = useCallback((snippet: string) => {
+    const textarea = textareaRef.current;
+    const selectionStart = textarea?.selectionStart ?? bodyDraft.length;
+    const selectionEnd = textarea?.selectionEnd ?? bodyDraft.length;
+    const nextValue =
+      bodyDraft.slice(0, selectionStart) +
+      snippet +
+      bodyDraft.slice(selectionEnd);
+
+    setBodyDraft(nextValue);
+
+    queueMicrotask(() => {
+      if (!textareaRef.current) {
+        return;
+      }
+      const cursor = selectionStart + snippet.length;
+      textareaRef.current.focus();
+      textareaRef.current.setSelectionRange(cursor, cursor);
+    });
+  }, [bodyDraft]);
 
   return (
     <div className="dr-editor">
@@ -230,16 +240,35 @@ export function ArticleEditor({
             />
 
             <label className="dr-editor__label">Content</label>
+            <div className="dr-editor__toolbar">
+              <MacButton
+                small
+                onClick={() =>
+                  insertSnippet("![Alt text](https://example.com/image.jpg)")
+                }
+              >
+                Insert Image
+              </MacButton>
+              <MacButton
+                small
+                onClick={() =>
+                  insertSnippet("\n\n![Alt text](https://example.com/image.jpg)\n*Optional caption*\n\n")
+                }
+              >
+                Image + Caption
+              </MacButton>
+            </div>
             <textarea
               ref={textareaRef}
               className="dr-textarea dr-editor__content-input"
-              value={contentDraft}
+              value={bodyDraft}
               onBlur={commitContentDraft}
-              onChange={(e) => setContentDraft(e.target.value)}
+              onChange={(e) => setBodyDraft(e.target.value)}
             />
             <div className="dr-editor__hint">
-              Paragraph breaks (blank lines) become separate reactable
-              paragraphs in the reader view.
+              Write section content as markdown. Blank lines still split the
+              reader view into separately reactable blocks, and markdown images
+              now render directly in preview and review surfaces.
             </div>
 
             <div className="dr-editor__actions">
