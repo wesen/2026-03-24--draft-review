@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/go-go-golems/draft-review/pkg/analytics"
+	"github.com/go-go-golems/draft-review/pkg/articleassets"
 	"github.com/go-go-golems/draft-review/pkg/articles"
 	draftauth "github.com/go-go-golems/draft-review/pkg/auth"
 	draftdb "github.com/go-go-golems/draft-review/pkg/db"
@@ -30,10 +31,13 @@ type Options struct {
 	AuthService         *draftauth.Service
 	Database            *draftdb.DB
 	ArticleService      *articles.Service
+	ArticleAssetService *articleassets.Service
 	ReviewLinkService   *reviewlinks.Service
 	ReviewService       *reviews.Service
 	AnalyticsService    *analytics.Service
 	FrontendDevProxyURL string
+	MediaRoot           string
+	MaxUploadBytes      int64
 }
 
 type HandlerOptions struct {
@@ -46,10 +50,12 @@ type HandlerOptions struct {
 	PublicFS            fs.FS
 	Database            *draftdb.DB
 	ArticleService      *articles.Service
+	ArticleAssetService *articleassets.Service
 	ReviewLinkService   *reviewlinks.Service
 	ReviewService       *reviews.Service
 	AnalyticsService    *analytics.Service
 	FrontendDevProxyURL string
+	MaxUploadBytes      int64
 }
 
 type infoResponse struct {
@@ -81,18 +87,20 @@ type debugSessionResponse struct {
 }
 
 type appHandler struct {
-	version           string
-	startedAt         time.Time
-	authSettings      *draftauth.Settings
-	authService       *draftauth.Service
-	sessionManager    *draftauth.SessionManager
-	publicFS          fs.FS
-	database          *draftdb.DB
-	articleService    *articles.Service
-	reviewLinkService *reviewlinks.Service
-	reviewService     *reviews.Service
-	analyticsService  *analytics.Service
-	frontendProxy     *httputil.ReverseProxy
+	version             string
+	startedAt           time.Time
+	authSettings        *draftauth.Settings
+	authService         *draftauth.Service
+	sessionManager      *draftauth.SessionManager
+	publicFS            fs.FS
+	database            *draftdb.DB
+	articleService      *articles.Service
+	articleAssetService *articleassets.Service
+	reviewLinkService   *reviewlinks.Service
+	reviewService       *reviews.Service
+	analyticsService    *analytics.Service
+	frontendProxy       *httputil.ReverseProxy
+	maxUploadBytes      int64
 }
 
 func NewHTTPServer(ctx context.Context, options Options) (*http.Server, error) {
@@ -148,6 +156,16 @@ func NewHTTPServer(ctx context.Context, options Options) (*http.Server, error) {
 		articleService = articles.NewService(articles.NewPostgresRepository(options.Database.Pool()))
 	}
 
+	articleAssetService := options.ArticleAssetService
+	if articleAssetService == nil && options.Database != nil && options.Database.Pool() != nil {
+		articleAssetService = articleassets.NewService(
+			articleassets.NewPostgresRepository(options.Database.Pool()),
+			articleassets.NewLocalDiskStorage(options.MediaRoot),
+			options.MaxUploadBytes,
+			"/media/article-assets",
+		)
+	}
+
 	reviewLinkService := options.ReviewLinkService
 	if reviewLinkService == nil && options.Database != nil && options.Database.Pool() != nil {
 		reviewLinkService = reviewlinks.NewService(reviewlinks.NewPostgresRepository(options.Database.Pool()))
@@ -175,10 +193,12 @@ func NewHTTPServer(ctx context.Context, options Options) (*http.Server, error) {
 			PublicFS:            draftweb.PublicFS,
 			Database:            options.Database,
 			ArticleService:      articleService,
+			ArticleAssetService: articleAssetService,
 			ReviewLinkService:   reviewLinkService,
 			ReviewService:       reviewService,
 			AnalyticsService:    analyticsService,
 			FrontendDevProxyURL: options.FrontendDevProxyURL,
+			MaxUploadBytes:      options.MaxUploadBytes,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}, nil
@@ -198,18 +218,20 @@ func NewHandler(options HandlerOptions) http.Handler {
 	frontendProxy := newFrontendDevProxy(options.FrontendDevProxyURL)
 
 	h := &appHandler{
-		version:           options.Version,
-		startedAt:         options.StartedAt,
-		authSettings:      authSettings,
-		authService:       options.AuthService,
-		sessionManager:    options.SessionManager,
-		publicFS:          publicFS,
-		database:          options.Database,
-		articleService:    options.ArticleService,
-		reviewLinkService: options.ReviewLinkService,
-		reviewService:     options.ReviewService,
-		analyticsService:  options.AnalyticsService,
-		frontendProxy:     frontendProxy,
+		version:             options.Version,
+		startedAt:           options.StartedAt,
+		authSettings:        authSettings,
+		authService:         options.AuthService,
+		sessionManager:      options.SessionManager,
+		publicFS:            publicFS,
+		database:            options.Database,
+		articleService:      options.ArticleService,
+		articleAssetService: options.ArticleAssetService,
+		reviewLinkService:   options.ReviewLinkService,
+		reviewService:       options.ReviewService,
+		analyticsService:    options.AnalyticsService,
+		frontendProxy:       frontendProxy,
+		maxUploadBytes:      options.MaxUploadBytes,
 	}
 
 	mux := http.NewServeMux()
@@ -224,6 +246,7 @@ func NewHandler(options HandlerOptions) http.Handler {
 	mux.HandleFunc("GET /api/articles/{id}", h.handleArticle)
 	mux.HandleFunc("PATCH /api/articles/{id}", h.handleUpdateArticle)
 	mux.HandleFunc("DELETE /api/articles/{id}", h.handleDeleteArticle)
+	mux.HandleFunc("POST /api/articles/{id}/assets", h.handleUploadArticleAsset)
 	mux.HandleFunc("POST /api/articles/{id}/versions", h.handleCreateArticleVersion)
 	mux.HandleFunc("POST /api/articles/{id}/share-token", h.handleResetShareToken)
 	mux.HandleFunc("POST /api/articles/{id}/invite", h.handleInviteReader)
@@ -232,6 +255,7 @@ func NewHandler(options HandlerOptions) http.Handler {
 	mux.HandleFunc("GET /api/articles/{id}/analytics", h.handleArticleAnalytics)
 	mux.HandleFunc("GET /api/articles/{id}/feedback", h.handleArticleFeedback)
 	mux.HandleFunc("POST /api/articles/{id}/export", h.handleArticleExport)
+	mux.HandleFunc("GET /media/article-assets/{assetId}/{filename}", h.handleArticleAssetMedia)
 	mux.HandleFunc("GET /api/readers", h.handleReadersDirectory)
 	mux.HandleFunc("GET /api/r/{token}", h.handleResolveReviewLink)
 	mux.HandleFunc("POST /api/r/{token}/start", h.handleStartReview)
@@ -492,6 +516,55 @@ func (h *appHandler) handleDeleteArticle(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *appHandler) handleUploadArticleAsset(w http.ResponseWriter, r *http.Request) {
+	if h.articleAssetService == nil {
+		writeError(w, http.StatusServiceUnavailable, "article asset service is not configured")
+		return
+	}
+
+	author, ok := h.requireCurrentAuthor(w, r)
+	if !ok {
+		return
+	}
+
+	if h.maxUploadBytes > 0 {
+		r.Body = http.MaxBytesReader(w, r.Body, h.maxUploadBytes+1024)
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "multipart field 'file' is required")
+		return
+	}
+	defer file.Close()
+
+	content, err := io.ReadAll(file)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "failed to read uploaded file")
+		return
+	}
+
+	result, err := h.articleAssetService.UploadImage(r.Context(), author, r.PathValue("id"), articleassets.UploadInput{
+		Filename: header.Filename,
+		Content:  content,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, articleassets.ErrNotFound):
+			http.NotFound(w, r)
+		case articleassets.IsValidationError(err):
+			writeError(w, http.StatusBadRequest, err.Error())
+		case errors.Is(err, articleassets.ErrStorageNotReady):
+			writeError(w, http.StatusServiceUnavailable, err.Error())
+		default:
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, result)
+}
+
 func (h *appHandler) handleResetShareToken(w http.ResponseWriter, r *http.Request) {
 	if h.reviewLinkService == nil {
 		writeError(w, http.StatusServiceUnavailable, "review link service is not configured")
@@ -651,6 +724,32 @@ func (h *appHandler) handleArticleExport(w http.ResponseWriter, r *http.Request)
 		"articleId": article.ID,
 		"message":   "export generation is not implemented yet",
 	})
+}
+
+func (h *appHandler) handleArticleAssetMedia(w http.ResponseWriter, r *http.Request) {
+	if h.articleAssetService == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	asset, reader, err := h.articleAssetService.OpenAsset(r.Context(), r.PathValue("assetId"))
+	if err != nil {
+		switch {
+		case errors.Is(err, articleassets.ErrNotFound):
+			http.NotFound(w, r)
+		default:
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+	defer reader.Close()
+
+	w.Header().Set("Content-Type", asset.ContentType)
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", asset.ByteSize))
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%q", asset.OriginalFilename))
+	w.WriteHeader(http.StatusOK)
+	_, _ = io.Copy(w, reader)
 }
 
 func (h *appHandler) handleReadersDirectory(w http.ResponseWriter, r *http.Request) {

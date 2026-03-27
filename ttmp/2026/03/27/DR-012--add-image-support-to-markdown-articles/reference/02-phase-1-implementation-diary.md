@@ -366,6 +366,51 @@ validated service calls.
 - Wire the new asset service into the Go server, add upload and serving handlers,
   then cover those paths with focused backend tests.
 
+## Step 7: Backend Upload And Media Routes
+
+This step turns the asset foundation into real app behavior. Authors can now send
+multipart image uploads to the backend, receive a markdown snippet in response, and
+the backend can serve the stored media back on a stable same-origin URL.
+
+### What I changed
+- Wired the asset service through [serve.go](/home/manuel/code/wesen/2026-03-24--draft-review/cmd/draft-review/cmds/serve.go)
+  and [http.go](/home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http.go).
+- Added `POST /api/articles/{id}/assets` in [http.go](/home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http.go).
+- Added `GET /media/article-assets/{assetId}/{filename}` in [http.go](/home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http.go).
+- Added backend tests in:
+  - [service_test.go](/home/manuel/code/wesen/2026-03-24--draft-review/pkg/articleassets/service_test.go)
+  - [http_test.go](/home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http_test.go)
+
+### Behavior
+- Uploads require an authenticated author session and a multipart field named
+  `file`.
+- The upload response returns asset metadata plus a ready-to-insert markdown image
+  snippet.
+- Media is served back with immutable cache headers because the URL is asset-ID based
+  and effectively content-addressed for app purposes.
+
+### Why this step matters
+- It completes the backend half of phase 2. The editor no longer has to invent asset
+  URLs or write files directly; it only needs to call the API and insert the
+  returned markdown.
+- The media route being same-origin keeps reader rendering simple. There is no
+  second auth dance or cross-origin policy problem for uploaded article images.
+
+### Validation
+- Ran `gofmt -w pkg/articleassets/service.go pkg/articleassets/postgres.go pkg/articleassets/service_test.go pkg/server/http.go pkg/server/http_test.go cmd/draft-review/cmds/serve.go`
+- Ran `go test ./cmd/... ./pkg/...`
+- Result: passed
+
+### What warrants review
+- The upload handler in [http.go](/home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http.go),
+  especially the body-size handling and multipart expectations.
+- The asset-serving route in [http.go](/home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http.go),
+  because this is where cache behavior and public readability are enforced.
+
+### Next step
+- Add the frontend upload mutation and editor file-picker flow so authors can use the
+  new API without writing markdown URLs by hand.
+
 ## Related
 
 - [Markdown article image support analysis and implementation guide](../design-doc/01-markdown-article-image-support-analysis-and-implementation-guide.md)

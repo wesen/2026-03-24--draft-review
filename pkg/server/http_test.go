@@ -3,9 +3,11 @@ package server
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"io/fs"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,6 +15,7 @@ import (
 	"time"
 
 	"github.com/go-go-golems/draft-review/pkg/analytics"
+	"github.com/go-go-golems/draft-review/pkg/articleassets"
 	"github.com/go-go-golems/draft-review/pkg/articles"
 	draftauth "github.com/go-go-golems/draft-review/pkg/auth"
 	"github.com/go-go-golems/draft-review/pkg/reviewlinks"
@@ -476,6 +479,30 @@ func (f *fakeArticleRepo) DeleteArticle(ctx context.Context, ownerUserID, id str
 	return f.deleteErr
 }
 
+type fakeArticleAssetRepo struct {
+	record *articleassets.AssetRecord
+}
+
+func (f *fakeArticleAssetRepo) CreateAssetRecord(ctx context.Context, ownerUserID, articleID string, input articleassets.AssetRecordInput) (*articleassets.AssetRecord, error) {
+	f.record = &articleassets.AssetRecord{
+		ID:               input.ID,
+		ArticleID:        articleID,
+		StorageKey:       input.StorageKey,
+		OriginalFilename: input.OriginalFilename,
+		ContentType:      input.ContentType,
+		ByteSize:         input.ByteSize,
+		CreatedAt:        time.Now().UTC(),
+	}
+	return f.record, nil
+}
+
+func (f *fakeArticleAssetRepo) GetAssetByID(ctx context.Context, assetID string) (*articleassets.AssetRecord, error) {
+	if f.record == nil || f.record.ID != assetID {
+		return nil, articleassets.ErrNotFound
+	}
+	return f.record, nil
+}
+
 type fakeReviewLinkRepo struct {
 	link *reviewlinks.ResolvedLink
 }
@@ -648,6 +675,113 @@ func TestHandleDeleteArticleUsesAuthenticatedAuthor(t *testing.T) {
 	if articleRepo.deleteArticleID != "article-123" {
 		t.Fatalf("expected delete to target article-123, got %q", articleRepo.deleteArticleID)
 	}
+}
+
+func TestHandleUploadArticleAsset(t *testing.T) {
+	t.Parallel()
+
+	authRepo := &fakeAuthRepo{
+		findErr: draftauth.ErrNotFound,
+		createUser: &draftauth.User{
+			ID:    "11111111-1111-1111-1111-111111111111",
+			Email: "local-author@draft-review.local",
+			Name:  "Development Author",
+		},
+	}
+	assetRepo := &fakeArticleAssetRepo{}
+	storage := articleassets.NewMemoryStorage()
+	service := articleassets.NewService(assetRepo, storage, 1024*1024, "/media/article-assets")
+
+	handler := NewHandler(HandlerOptions{
+		Version:   "test",
+		StartedAt: time.Now().UTC(),
+		AuthSettings: &draftauth.Settings{
+			Mode:      draftauth.AuthModeDev,
+			DevUserID: "local-author",
+		},
+		AuthService:         draftauth.NewService(authRepo),
+		ArticleAssetService: service,
+		MaxUploadBytes:      1024 * 1024,
+	})
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "diagram.png")
+	if err != nil {
+		t.Fatalf("CreateFormFile returned error: %v", err)
+	}
+	if _, err := part.Write(mustDecodeBase64(t, "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a4i8AAAAASUVORK5CYII=")); err != nil {
+		t.Fatalf("part.Write returned error: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("writer.Close returned error: %v", err)
+	}
+
+	request := httptest.NewRequest(http.MethodPost, "/api/articles/article-123/assets", body)
+	request.Header.Set("Content-Type", writer.FormDataContentType())
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", recorder.Code, recorder.Body.String())
+	}
+
+	var response articleassets.Asset
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if response.URL == "" || response.Markdown == "" {
+		t.Fatalf("expected response to include upload URL and markdown snippet: %+v", response)
+	}
+}
+
+func TestHandleArticleAssetMedia(t *testing.T) {
+	t.Parallel()
+
+	assetRepo := &fakeArticleAssetRepo{}
+	storage := articleassets.NewMemoryStorage()
+	service := articleassets.NewService(assetRepo, storage, 1024*1024, "/media/article-assets")
+
+	asset, err := service.UploadImage(context.Background(), &draftauth.User{ID: "user-1"}, "article-123", articleassets.UploadInput{
+		Filename: "diagram.png",
+		Content:  mustDecodeBase64(t, "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a4i8AAAAASUVORK5CYII="),
+	})
+	if err != nil {
+		t.Fatalf("UploadImage returned error: %v", err)
+	}
+
+	handler := NewHandler(HandlerOptions{
+		Version:             "test",
+		StartedAt:           time.Now().UTC(),
+		AuthSettings:        &draftauth.Settings{Mode: draftauth.AuthModeDev, DevUserID: "local-author"},
+		ArticleAssetService: service,
+	})
+
+	request := httptest.NewRequest(http.MethodGet, asset.URL, nil)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", recorder.Code)
+	}
+	if got := recorder.Header().Get("Content-Type"); got != "image/png" {
+		t.Fatalf("expected image/png content type, got %q", got)
+	}
+	if recorder.Body.Len() == 0 {
+		t.Fatalf("expected non-empty image body")
+	}
+}
+
+func mustDecodeBase64(t *testing.T, value string) []byte {
+	t.Helper()
+
+	data, err := base64.StdEncoding.DecodeString(value)
+	if err != nil {
+		t.Fatalf("failed to decode base64 fixture: %v", err)
+	}
+	return data
 }
 
 func TestHandleResolveReviewLinkHidesInternalFields(t *testing.T) {

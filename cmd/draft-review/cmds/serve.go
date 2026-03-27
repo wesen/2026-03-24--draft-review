@@ -153,6 +153,8 @@ func (c *ServeCommand) Run(ctx context.Context, parsedValues *values.Values) err
 		AuthSettings:        authSettings,
 		Database:            db,
 		FrontendDevProxyURL: backendSettings.FrontendDevProxyURL,
+		MediaRoot:           backendSettings.MediaRoot,
+		MaxUploadBytes:      backendSettings.MaxUploadBytes,
 	})
 	if err != nil {
 		return pkgerrors.Wrap(err, "failed to create http server")
@@ -175,6 +177,8 @@ func (c *ServeCommand) Run(ctx context.Context, parsedValues *values.Values) err
 		Bool("database_configured", db != nil).
 		Bool("auto_migrate", backendSettings.AutoMigrate).
 		Str("frontend_dev_proxy_url", backendSettings.FrontendDevProxyURL).
+		Str("media_root", backendSettings.MediaRoot).
+		Int64("max_upload_bytes", backendSettings.MaxUploadBytes).
 		Msg("Starting Draft Review backend")
 
 	if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

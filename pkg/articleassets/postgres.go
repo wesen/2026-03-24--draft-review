@@ -17,7 +17,7 @@ func NewPostgresRepository(pool *pgxpool.Pool) *PostgresRepository {
 	return &PostgresRepository{pool: pool}
 }
 
-func (r *PostgresRepository) CreateAssetRecord(ctx context.Context, ownerUserID, articleID string, input createAssetRecordInput) (*storedAsset, error) {
+func (r *PostgresRepository) CreateAssetRecord(ctx context.Context, ownerUserID, articleID string, input AssetRecordInput) (*AssetRecord, error) {
 	if r == nil || r.pool == nil {
 		return nil, ErrNotFound
 	}
@@ -27,7 +27,7 @@ func (r *PostgresRepository) CreateAssetRecord(ctx context.Context, ownerUserID,
 		return nil, errors.Wrap(err, "invalid asset id")
 	}
 
-	var asset storedAsset
+	var asset AssetRecord
 	err = r.pool.QueryRow(ctx, `
 insert into article_assets (
     id,
@@ -74,12 +74,12 @@ returning
 	return &asset, nil
 }
 
-func (r *PostgresRepository) GetAssetByID(ctx context.Context, assetID string) (*storedAsset, error) {
+func (r *PostgresRepository) GetAssetByID(ctx context.Context, assetID string) (*AssetRecord, error) {
 	if r == nil || r.pool == nil {
 		return nil, ErrNotFound
 	}
 
-	var asset storedAsset
+	var asset AssetRecord
 	err := r.pool.QueryRow(ctx, `
 select
     id,

@@ -46,8 +46,8 @@ func IsValidationError(err error) bool {
 }
 
 type Repository interface {
-	CreateAssetRecord(ctx context.Context, ownerUserID, articleID string, input createAssetRecordInput) (*storedAsset, error)
-	GetAssetByID(ctx context.Context, assetID string) (*storedAsset, error)
+	CreateAssetRecord(ctx context.Context, ownerUserID, articleID string, input AssetRecordInput) (*AssetRecord, error)
+	GetAssetByID(ctx context.Context, assetID string) (*AssetRecord, error)
 }
 
 type Service struct {
@@ -107,7 +107,7 @@ func (s *Service) UploadImage(ctx context.Context, owner *draftauth.User, articl
 		return nil, errors.Wrap(err, "failed to persist article asset content")
 	}
 
-	record, err := s.repo.CreateAssetRecord(ctx, owner.ID, articleID, createAssetRecordInput{
+	record, err := s.repo.CreateAssetRecord(ctx, owner.ID, articleID, AssetRecordInput{
 		ID:               assetID,
 		StorageKey:       storageKey,
 		OriginalFilename: filename,
@@ -134,36 +134,28 @@ func (s *Service) ResolveAsset(ctx context.Context, assetID string) (*Asset, err
 	return s.assetResponse(record), nil
 }
 
-func (s *Service) OpenAsset(ctx context.Context, assetID string) (*Asset, ioReadCloserWithType, error) {
+func (s *Service) OpenAsset(ctx context.Context, assetID string) (*Asset, io.ReadCloser, error) {
 	if s == nil || s.repo == nil {
-		return nil, ioReadCloserWithType{}, ErrNotFound
+		return nil, nil, ErrNotFound
 	}
 	if s.storage == nil {
-		return nil, ioReadCloserWithType{}, ErrStorageNotReady
+		return nil, nil, ErrStorageNotReady
 	}
 
 	record, err := s.repo.GetAssetByID(ctx, strings.TrimSpace(assetID))
 	if err != nil {
-		return nil, ioReadCloserWithType{}, err
+		return nil, nil, err
 	}
 
 	reader, err := s.storage.Open(ctx, record.StorageKey)
 	if err != nil {
-		return nil, ioReadCloserWithType{}, errors.Wrap(err, "failed to open article asset content")
+		return nil, nil, errors.Wrap(err, "failed to open article asset content")
 	}
 
-	return s.assetResponse(record), ioReadCloserWithType{
-		ReadCloser:  reader,
-		ContentType: record.ContentType,
-	}, nil
+	return s.assetResponse(record), reader, nil
 }
 
-type ioReadCloserWithType struct {
-	ReadCloser  io.ReadCloser
-	ContentType string
-}
-
-func (s *Service) assetResponse(record *storedAsset) *Asset {
+func (s *Service) assetResponse(record *AssetRecord) *Asset {
 	urlPath := fmt.Sprintf("%s/%s/%s", s.publicBasePath, record.ID, url.PathEscape(record.OriginalFilename))
 	return &Asset{
 		ID:               record.ID,

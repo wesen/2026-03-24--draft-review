@@ -75,3 +75,15 @@ Opened phase 2 for managed uploads and completed the backend foundation: asset p
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/articleassets/service.go — Upload validation, storage-key generation, and markdown snippet output
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/articleassets/storage.go — Local-disk and memory storage adapters
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/config/backend.go — Media root and upload-size configuration
+
+
+## 2026-03-27
+
+Completed the backend API half of phase 2 by adding authenticated image uploads, same-origin media serving, and focused tests for both service-level validation and HTTP route behavior.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http.go — Upload and media-serving handlers
+- /home/manuel/code/wesen/2026-03-24--draft-review/cmd/draft-review/cmds/serve.go — Wires media configuration into the server
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/articleassets/service_test.go — Upload validation coverage
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http_test.go — Upload/media route coverage

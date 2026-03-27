@@ -33,9 +33,9 @@
 - [x] Add a database migration for `article_assets`
 - [x] Add a backend asset package with asset types, repository methods, a local-disk storage adapter, and service-level validation for file type, size, filenames, and markdown snippet generation
 - [x] Extend backend configuration with media storage settings suitable for local dev and hosted persistent volumes
-- [ ] Add `POST /api/articles/{id}/assets` for authenticated author uploads
-- [ ] Add `GET /media/article-assets/{assetId}/{filename}` for serving persisted uploaded assets
-- [ ] Add backend tests for upload validation and media serving
+- [x] Add `POST /api/articles/{id}/assets` for authenticated author uploads
+- [x] Add `GET /media/article-assets/{assetId}/{filename}` for serving persisted uploaded assets
+- [x] Add backend tests for upload validation and media serving
 - [ ] Add frontend upload API wiring for article assets
 - [ ] Refactor the author editor to upload a chosen local file and insert the returned markdown snippet at the cursor
 - [ ] Add basic editor UI feedback for upload in-flight and upload errors
