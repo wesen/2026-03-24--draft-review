@@ -27,7 +27,24 @@
 - [x] Run `go test ./cmd/... ./pkg/...`, `npm run build`, and `docmgr doctor --ticket DR-012 --stale-after 30`
 - [x] Update DR-012 docs, changelog, and diary after each completed slice
 
+## Phase 2 Execution
+
+- [x] Extend the DR-012 implementation diary with explicit phase-2 upload work entries
+- [x] Add a database migration for `article_assets`
+- [x] Add a backend asset package with asset types, repository methods, a local-disk storage adapter, and service-level validation for file type, size, filenames, and markdown snippet generation
+- [x] Extend backend configuration with media storage settings suitable for local dev and hosted persistent volumes
+- [ ] Add `POST /api/articles/{id}/assets` for authenticated author uploads
+- [ ] Add `GET /media/article-assets/{assetId}/{filename}` for serving persisted uploaded assets
+- [ ] Add backend tests for upload validation and media serving
+- [ ] Add frontend upload API wiring for article assets
+- [ ] Refactor the author editor to upload a chosen local file and insert the returned markdown snippet at the cursor
+- [ ] Add basic editor UI feedback for upload in-flight and upload errors
+- [ ] Update README / local-dev docs with media-root configuration and persistence notes
+- [ ] Run `go test ./cmd/... ./pkg/...`, `npm run build`, and `docmgr doctor --ticket DR-012 --stale-after 30`
+- [ ] Update DR-012 docs, changelog, and diary after each completed slice
+
 ## Later Phases
 
 - [ ] Decide whether image blocks should be reactable, non-reactable, or caption-reactable and align analytics with that choice
-- [ ] Add managed image uploads via an asset API and persistent storage if product requirements include local file uploads
+- [ ] Add version-scoped assets and richer asset metadata if article versioning needs hard media snapshots
+- [ ] Add cloud/object-storage backends if hosted deployment outgrows mounted-volume storage

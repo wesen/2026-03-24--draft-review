@@ -63,3 +63,15 @@ Completed the phase-1 validation pass for DR-012 and updated the ticket docs to 
 
 - /home/manuel/code/wesen/2026-03-24--draft-review/ttmp/2026/03/27/DR-012--add-image-support-to-markdown-articles/tasks.md — All phase-1 implementation tasks are now marked complete
 - /home/manuel/code/wesen/2026-03-24--draft-review/ttmp/2026/03/27/DR-012--add-image-support-to-markdown-articles/reference/02-phase-1-implementation-diary.md — Records the final validation pass and residual limitations
+
+
+## 2026-03-27
+
+Opened phase 2 for managed uploads and completed the backend foundation: asset persistence, local-disk storage abstraction, upload validation rules, and backend media configuration.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/db/migrations/0008_article_assets.sql — New asset metadata table
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/articleassets/service.go — Upload validation, storage-key generation, and markdown snippet output
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/articleassets/storage.go — Local-disk and memory storage adapters
+- /home/manuel/code/wesen/2026-03-24--draft-review/pkg/config/backend.go — Media root and upload-size configuration

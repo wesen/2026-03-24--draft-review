@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -11,15 +12,19 @@ import (
 )
 
 const (
-	BackendSectionSlug = "backend"
-	DefaultAutoMigrate = true
-	DefaultAppBaseURL  = "http://127.0.0.1:8080"
+	BackendSectionSlug    = "backend"
+	DefaultAutoMigrate    = true
+	DefaultAppBaseURL     = "http://127.0.0.1:8080"
+	DefaultMediaRoot      = ".draft-review/media"
+	DefaultMaxUploadBytes = 10 * 1024 * 1024
 )
 
 type BackendSettings struct {
 	AutoMigrate         bool   `glazed:"auto-migrate"`
 	AppBaseURL          string `glazed:"app-base-url"`
 	FrontendDevProxyURL string `glazed:"frontend-dev-proxy-url"`
+	MediaRoot           string `glazed:"media-root"`
+	MaxUploadBytes      int64  `glazed:"max-upload-bytes"`
 }
 
 func NewBackendSection() (schema.Section, error) {
@@ -44,6 +49,18 @@ func NewBackendSection() (schema.Section, error) {
 				fields.TypeString,
 				fields.WithHelp("Optional frontend dev-server origin to proxy non-API browser routes to during local development"),
 				fields.WithDefault(strings.TrimSpace(os.Getenv("DRAFT_REVIEW_FRONTEND_DEV_PROXY_URL"))),
+			),
+			fields.New(
+				"media-root",
+				fields.TypeString,
+				fields.WithHelp("Filesystem root for persisted uploaded article media; use a persistent mounted volume in hosted environments"),
+				fields.WithDefault(envOr("DRAFT_REVIEW_MEDIA_ROOT", DefaultMediaRoot)),
+			),
+			fields.New(
+				"max-upload-bytes",
+				fields.TypeInteger,
+				fields.WithHelp("Maximum allowed size in bytes for uploaded article images"),
+				fields.WithDefault(envInt64Or("DRAFT_REVIEW_MAX_UPLOAD_BYTES", DefaultMaxUploadBytes)),
 			),
 		),
 	)
@@ -71,6 +88,13 @@ func NormalizeBackendSettings(settings *BackendSettings) *BackendSettings {
 		settings.AppBaseURL = DefaultAppBaseURL
 	}
 	settings.FrontendDevProxyURL = strings.TrimSpace(settings.FrontendDevProxyURL)
+	settings.MediaRoot = strings.TrimSpace(settings.MediaRoot)
+	if settings.MediaRoot == "" {
+		settings.MediaRoot = DefaultMediaRoot
+	}
+	if settings.MaxUploadBytes <= 0 {
+		settings.MaxUploadBytes = DefaultMaxUploadBytes
+	}
 	return settings
 }
 
@@ -92,4 +116,19 @@ func envBoolOr(key string, fallback bool) bool {
 	default:
 		return fallback
 	}
+}
+
+func envInt64Or(key string, fallback int64) int64 {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+
+	var parsed int64
+	_, err := fmt.Sscan(value, &parsed)
+	if err != nil || parsed <= 0 {
+		return fallback
+	}
+
+	return parsed
 }

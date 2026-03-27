@@ -280,6 +280,92 @@ This final step is the integration checkpoint. The implementation is only credib
 - Treat phase 1 as “markdown URL images are now structurally possible,” not as a
   complete digital asset system.
 
+## Step 5: Phase-2 Scope Lock For Managed Uploads
+
+Phase 2 moves from “markdown can reference remote images” to “authors can choose a
+local file, upload it through Draft Review, and insert a stable markdown image URL
+without leaving the editor.”
+
+The chosen scope for implementation is intentionally conservative:
+
+- local-disk-backed storage only for now,
+- persistent path configured through backend settings,
+- raster image uploads only (`png`, `jpeg`, `gif`, `webp`),
+- same-origin media serving through the Go backend,
+- relative markdown URLs returned by the upload API,
+- no version-scoped asset snapshots yet.
+
+### Why this is the right phase-2 cut
+- It productizes the missing author workflow without dragging object storage or CDN
+  work into the first upload slice.
+- It matches the deployment reality described in the design guide: a mounted
+  persistent volume is enough for hosted phase 2, while direct writes to the
+  ephemeral container filesystem are not.
+- It keeps the article markdown model unchanged. Uploads produce markdown snippets;
+  they do not introduce a second content representation.
+
+### Planned execution order
+1. Add `article_assets` persistence and storage abstractions.
+2. Add upload and media-serving routes in the backend.
+3. Add the editor upload affordance that consumes the new API.
+4. Validate locally and update docs for persistence requirements.
+
+### Review note
+- The major design choice to re-check during implementation is whether asset URLs
+  should stay publicly readable. For this phase, the practical answer is yes: they
+  are unguessable same-origin paths and need to render for readers without an
+  additional token exchange.
+
+## Step 6: Backend Upload Foundation
+
+This step lays the non-HTTP foundation for managed uploads. The point is to settle
+storage and persistence first so the later API handler is only a thin shell around
+validated service calls.
+
+### What I changed
+- Added [0008_article_assets.sql](/home/manuel/code/wesen/2026-03-24--draft-review/pkg/db/migrations/0008_article_assets.sql)
+  with a new `article_assets` table.
+- Extended [backend.go](/home/manuel/code/wesen/2026-03-24--draft-review/pkg/config/backend.go)
+  with:
+  - `media-root`
+  - `max-upload-bytes`
+- Added a new backend package under [pkg/articleassets](/home/manuel/code/wesen/2026-03-24--draft-review/pkg/articleassets):
+  - [types.go](/home/manuel/code/wesen/2026-03-24--draft-review/pkg/articleassets/types.go)
+  - [postgres.go](/home/manuel/code/wesen/2026-03-24--draft-review/pkg/articleassets/postgres.go)
+  - [storage.go](/home/manuel/code/wesen/2026-03-24--draft-review/pkg/articleassets/storage.go)
+  - [service.go](/home/manuel/code/wesen/2026-03-24--draft-review/pkg/articleassets/service.go)
+
+### Key implementation choices
+- Only raster image uploads are accepted in this slice: PNG, JPEG, GIF, and WebP.
+- The service sniffs content type from bytes instead of trusting the browser-provided
+  MIME type.
+- The upload API contract will use relative same-origin URLs such as
+  `/media/article-assets/<assetId>/<filename>`.
+- Storage uses a key format under `article-assets/<article-id>/...` so local disk
+  layout stays inspectable and future object-storage backends can preserve the same
+  logical key shape.
+
+### Why
+- The migration and repository establish durable metadata.
+- The storage abstraction keeps the handler free of filesystem code.
+- The config change makes the hosted persistence requirement explicit instead of
+  hiding it in an implementation default.
+
+### Validation
+- Ran `gofmt -w pkg/config/backend.go pkg/articleassets/types.go pkg/articleassets/storage.go pkg/articleassets/postgres.go pkg/articleassets/service.go`
+- Ran `go test ./cmd/... ./pkg/...`
+- Result: passed
+
+### What is intentionally not done yet
+- No HTTP upload endpoint yet
+- No media-serving route yet
+- No editor integration yet
+- No explicit tests for the new service package yet
+
+### Next step
+- Wire the new asset service into the Go server, add upload and serving handlers,
+  then cover those paths with focused backend tests.
+
 ## Related
 
 - [Markdown article image support analysis and implementation guide](../design-doc/01-markdown-article-image-support-analysis-and-implementation-guide.md)
