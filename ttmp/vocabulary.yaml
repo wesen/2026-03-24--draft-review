@@ -25,6 +25,12 @@ topics:
       description: OpenID Connect authentication and browser login flows
     - slug: keycloak
       description: Keycloak identity provider configuration and integration
+    - slug: editor
+      description: Editor architecture and authoring workflows
+    - slug: markdown
+      description: Markdown parsing, rendering, and authoring
+    - slug: images
+      description: Image rendering, uploads, and asset handling
 docTypes:
     - slug: index
       description: Ticket index document

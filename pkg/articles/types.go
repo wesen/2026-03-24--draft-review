@@ -3,15 +3,15 @@ package articles
 import "time"
 
 type Section struct {
-	ID         string   `json:"id"`
-	Title      string   `json:"title"`
-	Paragraphs []string `json:"paragraphs"`
+	ID           string `json:"id"`
+	Title        string `json:"title"`
+	BodyMarkdown string `json:"bodyMarkdown"`
 }
 
 type SectionInput struct {
-	ID         string   `json:"id,omitempty"`
-	Title      string   `json:"title"`
-	Paragraphs []string `json:"paragraphs"`
+	ID           string `json:"id,omitempty"`
+	Title        string `json:"title"`
+	BodyMarkdown string `json:"bodyMarkdown"`
 }
 
 type CreateArticleInput struct {

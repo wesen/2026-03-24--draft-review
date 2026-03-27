@@ -322,7 +322,7 @@ where a.share_token = $1
 
 func (r *PostgresRepository) listSectionsForVersion(ctx context.Context, versionID uuid.UUID) ([]Section, error) {
 	rows, err := r.pool.Query(ctx, `
-select id, title, body_plaintext
+select id, title, body_markdown
 from article_sections
 where article_version_id = $1
 order by position asc
@@ -343,9 +343,9 @@ order by position asc
 			return nil, errors.Wrap(err, "failed to scan reader section")
 		}
 		ret = append(ret, Section{
-			ID:         sectionID.String(),
-			Title:      title,
-			Paragraphs: splitParagraphs(body),
+			ID:           sectionID.String(),
+			Title:        title,
+			BodyMarkdown: body,
 		})
 	}
 	if err := rows.Err(); err != nil {
@@ -353,20 +353,4 @@ order by position asc
 	}
 
 	return ret, nil
-}
-
-func splitParagraphs(body string) []string {
-	parts := strings.Split(body, "\n\n")
-	ret := make([]string, 0, len(parts))
-	for _, part := range parts {
-		trimmed := strings.TrimSpace(part)
-		if trimmed == "" {
-			continue
-		}
-		ret = append(ret, trimmed)
-	}
-	if len(ret) == 0 {
-		return []string{""}
-	}
-	return ret
 }

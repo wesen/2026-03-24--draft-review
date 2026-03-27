@@ -111,7 +111,6 @@ insert into article_sections (
 	position,
 	title,
 	body_markdown,
-	body_plaintext,
 	estimated_read_seconds
 )
 values (
@@ -120,7 +119,6 @@ values (
 	'introduction',
 	1,
 	'Introduction',
-	'Design systems promise consistency and speed, but many teams abandon them within a year.',
 	'Design systems promise consistency and speed, but many teams abandon them within a year.',
 	45
 )

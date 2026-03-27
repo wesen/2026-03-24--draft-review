@@ -510,7 +510,7 @@ func (f *fakeReviewLinkRepo) ResolveToken(ctx context.Context, token string) (*r
 			Version: "Draft 1",
 			Intro:   "Intro",
 			Sections: []reviewlinks.Section{
-				{ID: "section-1", Title: "Section 1", Paragraphs: []string{"Paragraph 1"}},
+				{ID: "section-1", Title: "Section 1", BodyMarkdown: "Paragraph 1"},
 			},
 		},
 	}, nil

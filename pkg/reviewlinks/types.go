@@ -65,9 +65,9 @@ type ReaderIdentity struct {
 }
 
 type Section struct {
-	ID         string   `json:"id"`
-	Title      string   `json:"title"`
-	Paragraphs []string `json:"paragraphs"`
+	ID           string `json:"id"`
+	Title        string `json:"title"`
+	BodyMarkdown string `json:"bodyMarkdown"`
 }
 
 type ReaderArticle struct {

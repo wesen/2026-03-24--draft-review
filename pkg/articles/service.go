@@ -109,15 +109,10 @@ func (s *Service) UpdateArticle(ctx context.Context, owner *draftauth.User, id s
 				return nil, NewValidationError("section title cannot be empty")
 			}
 
-			paragraphs := normalizeParagraphs(section.Paragraphs)
-			if len(paragraphs) == 0 {
-				return nil, NewValidationError("section paragraphs must contain at least one paragraph")
-			}
-
 			normalized = append(normalized, SectionInput{
-				ID:         strings.TrimSpace(section.ID),
-				Title:      title,
-				Paragraphs: paragraphs,
+				ID:           strings.TrimSpace(section.ID),
+				Title:        title,
+				BodyMarkdown: normalizeMarkdownBody(section.BodyMarkdown),
 			})
 		}
 
@@ -174,19 +169,10 @@ func defaultIfBlank(value, fallback string) string {
 	return trimmed
 }
 
-func normalizeParagraphs(paragraphs []string) []string {
-	ret := make([]string, 0, len(paragraphs))
-	for _, paragraph := range paragraphs {
-		trimmed := strings.TrimSpace(paragraph)
-		if trimmed == "" {
-			continue
-		}
-		ret = append(ret, trimmed)
-	}
-	if len(ret) == 0 {
-		ret = append(ret, "")
-	}
-	return ret
+func normalizeMarkdownBody(body string) string {
+	body = strings.ReplaceAll(body, "\r\n", "\n")
+	body = strings.ReplaceAll(body, "\r", "\n")
+	return body
 }
 
 func isValidStatus(status string) bool {

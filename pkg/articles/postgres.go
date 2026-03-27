@@ -242,10 +242,9 @@ insert into article_sections (
     position,
     title,
     body_markdown,
-    body_plaintext,
     estimated_read_seconds
 )
-values ($1, $2, 'section-1', 1, 'Untitled Section', $3, $3, 0)
+values ($1, $2, 'section-1', 1, 'Untitled Section', $3, 0)
 `, sectionID, versionID, body)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to insert default article section")
@@ -429,7 +428,6 @@ insert into article_sections (
     position,
     title,
     body_markdown,
-    body_plaintext,
     estimated_read_seconds
 )
 select
@@ -439,7 +437,6 @@ select
     position,
     title,
     body_markdown,
-    body_plaintext,
     estimated_read_seconds
 from article_sections
 where article_version_id = $2
@@ -488,7 +485,7 @@ where id = $1
 
 func (r *PostgresRepository) listSectionsForVersion(ctx context.Context, versionID uuid.UUID) ([]Section, error) {
 	rows, err := r.pool.Query(ctx, `
-select id, title, body_plaintext
+select id, title, body_markdown
 from article_sections
 where article_version_id = $1
 order by position asc
@@ -502,14 +499,14 @@ order by position asc
 	for rows.Next() {
 		var id uuid.UUID
 		var title string
-		var body string
-		if err := rows.Scan(&id, &title, &body); err != nil {
+		var bodyMarkdown string
+		if err := rows.Scan(&id, &title, &bodyMarkdown); err != nil {
 			return nil, errors.Wrap(err, "failed to scan section row")
 		}
 		ret = append(ret, Section{
-			ID:         id.String(),
-			Title:      title,
-			Paragraphs: splitParagraphs(body),
+			ID:           id.String(),
+			Title:        title,
+			BodyMarkdown: bodyMarkdown,
 		})
 	}
 	if err := rows.Err(); err != nil {
@@ -533,7 +530,6 @@ where article_version_id = $1
 			return err
 		}
 
-		body := strings.Join(section.Paragraphs, "\n\n")
 		_, err = tx.Exec(ctx, `
 insert into article_sections (
     id,
@@ -542,11 +538,10 @@ insert into article_sections (
     position,
     title,
     body_markdown,
-    body_plaintext,
     estimated_read_seconds
 )
-values ($1, $2, $3, $4, $5, $6, $6, $7)
-`, sectionID, versionID, fmt.Sprintf("section-%d", i+1), i+1, section.Title, body, estimateReadSeconds(body))
+values ($1, $2, $3, $4, $5, $6, $7)
+`, sectionID, versionID, fmt.Sprintf("section-%d", i+1), i+1, section.Title, section.BodyMarkdown, estimateReadSeconds(section.BodyMarkdown))
 		if err != nil {
 			return errors.Wrapf(err, "failed to insert section %d", i+1)
 		}
@@ -598,20 +593,4 @@ func derefString(value *string) any {
 		return nil
 	}
 	return *value
-}
-
-func splitParagraphs(body string) []string {
-	parts := strings.Split(body, "\n\n")
-	ret := make([]string, 0, len(parts))
-	for _, part := range parts {
-		trimmed := strings.TrimSpace(part)
-		if trimmed == "" {
-			continue
-		}
-		ret = append(ret, trimmed)
-	}
-	if len(ret) == 0 {
-		return []string{""}
-	}
-	return ret
 }
