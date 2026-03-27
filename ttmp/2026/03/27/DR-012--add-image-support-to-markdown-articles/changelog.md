@@ -53,3 +53,13 @@ Completed the main frontend half of phase 1 by making `bodyMarkdown` the canonic
 - /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/reader/SectionView.tsx — Reader blocks now derive from markdown
 - /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/ArticleReader.tsx — Author review view now resolves reactions against derived markdown blocks
 - /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/Dashboard.tsx — Recent feedback excerpts now come from derived block text
+
+
+## 2026-03-27
+
+Completed the phase-1 validation pass for DR-012 and updated the ticket docs to reflect the finished markdown-canonical migration.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/ttmp/2026/03/27/DR-012--add-image-support-to-markdown-articles/tasks.md — All phase-1 implementation tasks are now marked complete
+- /home/manuel/code/wesen/2026-03-24--draft-review/ttmp/2026/03/27/DR-012--add-image-support-to-markdown-articles/reference/02-phase-1-implementation-diary.md — Records the final validation pass and residual limitations

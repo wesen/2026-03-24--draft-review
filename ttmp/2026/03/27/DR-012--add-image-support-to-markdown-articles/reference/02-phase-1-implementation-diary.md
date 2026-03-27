@@ -241,6 +241,45 @@ instead of pretending the backend still stores separate paragraph objects.
 - Run the full phase-1 validation pass (`go test`, `npm run build`, `docmgr doctor`)
   and then update the ticket docs and commit the frontend slice.
 
+## Step 4: Full Validation And Ticket Closure For Phase 1
+
+This final step is the integration checkpoint. The implementation is only credible
+ if the backend tests still pass after the API break, the frontend production build
+ succeeds against the new section shape, and the ticket itself validates cleanly
+ under `docmgr doctor`.
+
+### Validation run
+- Ran `go test ./cmd/... ./pkg/...`
+- Ran `npm run build` in [frontend/](/home/manuel/code/wesen/2026-03-24--draft-review/frontend)
+- Ran `docmgr doctor --ticket DR-012 --stale-after 30`
+
+### Results
+- Go tests: passed
+- Frontend TypeScript + Vite build: passed
+- `docmgr doctor`: passed
+
+### What I verified conceptually
+- The backend API and the frontend now agree that a section body is `bodyMarkdown`.
+- The editor, reader, and author review mode all derive block anchors from the same
+  helper layer.
+- The phase-1 ticket tasks now describe a completed migration rather than a plan.
+
+### Remaining limits after phase 1
+- Images are currently markdown URLs, not uploaded assets.
+- Image blocks inherit the generic reader-block reaction behavior; the product still
+  needs a later decision on whether image-only blocks should remain reactable,
+  become non-reactable, or use caption-specific reactions.
+- The editor affordance inserts markdown snippets, but there is not yet an upload
+  picker, media library, or drag-and-drop image workflow.
+
+### Review notes for the next engineer
+- Start with [markdownBlocks.ts](/home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/lib/markdownBlocks.ts)
+  if you need to understand reaction anchors.
+- Review [0007_drop_article_section_plaintext.sql](/home/manuel/code/wesen/2026-03-24--draft-review/pkg/db/migrations/0007_drop_article_section_plaintext.sql)
+  before deploying this slice to a real database.
+- Treat phase 1 as “markdown URL images are now structurally possible,” not as a
+  complete digital asset system.
+
 ## Related
 
 - [Markdown article image support analysis and implementation guide](../design-doc/01-markdown-article-image-support-analysis-and-implementation-guide.md)

@@ -24,8 +24,8 @@
 - [x] Refactor reader-facing components and author review components to render derived markdown blocks instead of `paragraphs[]`
 - [x] Update dashboard, welcome, and other ancillary UI that currently assumes paragraph arrays
 - [x] Update stories, mocks, and tests for the new canonical markdown section shape
-- [ ] Run `go test ./cmd/... ./pkg/...`, `npm run build`, and `docmgr doctor --ticket DR-012 --stale-after 30`
-- [ ] Update DR-012 docs, changelog, and diary after each completed slice
+- [x] Run `go test ./cmd/... ./pkg/...`, `npm run build`, and `docmgr doctor --ticket DR-012 --stale-after 30`
+- [x] Update DR-012 docs, changelog, and diary after each completed slice
 
 ## Later Phases
 
