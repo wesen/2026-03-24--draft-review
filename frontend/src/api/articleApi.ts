@@ -1,5 +1,5 @@
 import { baseApi } from "./baseApi";
-import type { Article, Reaction, Reader, InviteReaderDto } from "../types";
+import type { Article, ArticleAsset, Reaction, Reader, InviteReaderDto } from "../types";
 
 export const articleApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
@@ -82,6 +82,21 @@ export const articleApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Article"],
     }),
+    uploadArticleAsset: build.mutation<
+      ArticleAsset,
+      { articleId: string; file: File }
+    >({
+      query: ({ articleId, file }) => {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        return {
+          url: `/articles/${articleId}/assets`,
+          method: "POST",
+          body: formData,
+        };
+      },
+    }),
     addReaction: build.mutation<
       Reaction,
       {
@@ -114,5 +129,6 @@ export const {
   useGetReactionsQuery,
   useInviteReaderMutation,
   useDeleteArticleMutation,
+  useUploadArticleAssetMutation,
   useAddReactionMutation,
 } = articleApi;

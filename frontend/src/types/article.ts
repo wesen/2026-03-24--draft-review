@@ -25,3 +25,14 @@ export interface ReaderArticle {
   intro: string;
   sections: Section[];
 }
+
+export interface ArticleAsset {
+  id: string;
+  articleId: string;
+  url: string;
+  markdown: string;
+  originalFilename: string;
+  contentType: string;
+  byteSize: number;
+  createdAt: string;
+}

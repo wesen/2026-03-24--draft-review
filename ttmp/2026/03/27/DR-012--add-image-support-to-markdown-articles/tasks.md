@@ -36,9 +36,9 @@
 - [x] Add `POST /api/articles/{id}/assets` for authenticated author uploads
 - [x] Add `GET /media/article-assets/{assetId}/{filename}` for serving persisted uploaded assets
 - [x] Add backend tests for upload validation and media serving
-- [ ] Add frontend upload API wiring for article assets
-- [ ] Refactor the author editor to upload a chosen local file and insert the returned markdown snippet at the cursor
-- [ ] Add basic editor UI feedback for upload in-flight and upload errors
+- [x] Add frontend upload API wiring for article assets
+- [x] Refactor the author editor to upload a chosen local file and insert the returned markdown snippet at the cursor
+- [x] Add basic editor UI feedback for upload in-flight and upload errors
 - [ ] Update README / local-dev docs with media-root configuration and persistence notes
 - [ ] Run `go test ./cmd/... ./pkg/...`, `npm run build`, and `docmgr doctor --ticket DR-012 --stale-after 30`
 - [ ] Update DR-012 docs, changelog, and diary after each completed slice

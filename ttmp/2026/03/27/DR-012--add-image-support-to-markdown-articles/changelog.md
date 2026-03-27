@@ -87,3 +87,15 @@ Completed the backend API half of phase 2 by adding authenticated image uploads,
 - /home/manuel/code/wesen/2026-03-24--draft-review/cmd/draft-review/cmds/serve.go — Wires media configuration into the server
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/articleassets/service_test.go — Upload validation coverage
 - /home/manuel/code/wesen/2026-03-24--draft-review/pkg/server/http_test.go — Upload/media route coverage
+
+
+## 2026-03-27
+
+Completed the main frontend/editor half of phase 2 by wiring the upload API into the author editor so local image files upload and insert markdown snippets directly at the cursor with inline status/error feedback.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/api/articleApi.ts — RTK Query upload mutation
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/app/AuthorApp.tsx — Connects selected-article uploads to the editor
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/ArticleEditor.tsx — File picker, upload workflow, and snippet insertion
+- /home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/ArticleEditor.css — Inline upload feedback styling

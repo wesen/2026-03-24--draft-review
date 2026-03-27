@@ -1,4 +1,4 @@
-export type { Article, Section, ReaderArticle } from "./article";
+export type { Article, ArticleAsset, Section, ReaderArticle } from "./article";
 export type {
   Reaction,
   ReactionType,

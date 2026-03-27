@@ -24,6 +24,7 @@ import {
   useDeleteArticleMutation,
   useGenerateShareTokenMutation,
   useInviteReaderMutation,
+  useUploadArticleAssetMutation,
 } from "../api/articleApi";
 import { useGetMeQuery } from "../api/authApi";
 import { getBackendOrigin } from "../lib/backendOrigin";
@@ -89,6 +90,7 @@ export function AuthorApp() {
   const [deleteArticle] = useDeleteArticleMutation();
   const [generateShareToken] = useGenerateShareTokenMutation();
   const [inviteReader] = useInviteReaderMutation();
+  const [uploadArticleAsset] = useUploadArticleAssetMutation();
 
   const selectedArticle = articles.find((a) => a.id === routeArticleId) || null;
   const previewSourceArticle =
@@ -376,6 +378,12 @@ export function AuthorApp() {
               navigate(`/articles/${updated.id}`);
             }}
             onBack={() => navigate(`/articles/${selectedArticle.id}`)}
+            onUploadAsset={(file) =>
+              uploadArticleAsset({
+                articleId: selectedArticle.id,
+                file,
+              }).unwrap()
+            }
             onPreview={(a) => {
               dispatch(setPreviewArticle(a));
               navigate(`/articles/${a.id}/preview`);

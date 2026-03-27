@@ -1,5 +1,12 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import type { Article, Section } from "../types";
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  type ChangeEvent,
+} from "react";
+import type { Article, ArticleAsset, Section } from "../types";
 import { normalizeMarkdownBody } from "../lib/markdownBlocks";
 import { MacButton } from "../chrome/MacButton";
 import "./ArticleEditor.css";
@@ -9,6 +16,7 @@ interface ArticleEditorProps {
   onSave: (article: Article) => void;
   onBack: () => void;
   onPreview?: (article: Article) => void;
+  onUploadAsset?: (file: File) => Promise<ArticleAsset>;
 }
 
 export function ArticleEditor({
@@ -16,6 +24,7 @@ export function ArticleEditor({
   onSave,
   onBack,
   onPreview,
+  onUploadAsset,
 }: ArticleEditorProps) {
   const [article, setArticle] = useState<Article>(initialArticle);
   const [activeSectionId, setActiveSectionId] = useState(
@@ -24,6 +33,10 @@ export function ArticleEditor({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingAsset, setIsUploadingAsset] = useState(false);
+  const [assetStatus, setAssetStatus] = useState<string | null>(null);
+  const [assetError, setAssetError] = useState<string | null>(null);
 
   const activeSection = article.sections.find((s) => s.id === activeSectionId);
 
@@ -150,6 +163,35 @@ export function ArticleEditor({
     });
   }, [bodyDraft]);
 
+  const handleChooseUpload = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleAssetSelection = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !onUploadAsset) {
+      return;
+    }
+
+    setIsUploadingAsset(true);
+    setAssetError(null);
+    setAssetStatus(`Uploading ${file.name}...`);
+
+    try {
+      const asset = await onUploadAsset(file);
+      insertSnippet(asset.markdown);
+      setAssetStatus(`Inserted ${asset.originalFilename}`);
+    } catch (error) {
+      setAssetError(
+        error instanceof Error ? error.message : "Failed to upload image"
+      );
+      setAssetStatus(null);
+    } finally {
+      setIsUploadingAsset(false);
+    }
+  }, [insertSnippet, onUploadAsset]);
+
   return (
     <div className="dr-editor">
       {/* Sidebar */}
@@ -241,6 +283,20 @@ export function ArticleEditor({
 
             <label className="dr-editor__label">Content</label>
             <div className="dr-editor__toolbar">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                className="dr-editor__file-input"
+                onChange={handleAssetSelection}
+              />
+              <MacButton
+                small
+                onClick={handleChooseUpload}
+                disabled={!onUploadAsset || isUploadingAsset}
+              >
+                {isUploadingAsset ? "Uploading..." : "Upload Image"}
+              </MacButton>
               <MacButton
                 small
                 onClick={() =>
@@ -258,6 +314,15 @@ export function ArticleEditor({
                 Image + Caption
               </MacButton>
             </div>
+            {(assetStatus || assetError) && (
+              <div
+                className={`dr-editor__upload-status ${
+                  assetError ? "dr-editor__upload-status--error" : ""
+                }`}
+              >
+                {assetError || assetStatus}
+              </div>
+            )}
             <textarea
               ref={textareaRef}
               className="dr-textarea dr-editor__content-input"

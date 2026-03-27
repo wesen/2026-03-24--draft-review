@@ -411,6 +411,46 @@ the backend can serve the stored media back on a stable same-origin URL.
 - Add the frontend upload mutation and editor file-picker flow so authors can use the
   new API without writing markdown URLs by hand.
 
+## Step 8: Editor Upload Workflow
+
+This step closes the main product loop for phase 2. The backend upload API existed,
+but authors still needed a first-class editor action that could choose a local file,
+send it to the backend, and insert the returned markdown snippet exactly where they
+were editing.
+
+### What I changed
+- Added an `uploadArticleAsset` RTK Query mutation in [articleApi.ts](/home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/api/articleApi.ts).
+- Added the `ArticleAsset` frontend type in [article.ts](/home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/types/article.ts).
+- Wired the mutation into [AuthorApp.tsx](/home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/app/AuthorApp.tsx).
+- Updated [ArticleEditor.tsx](/home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/ArticleEditor.tsx) to:
+  - open a hidden image file picker,
+  - upload the selected file,
+  - insert the returned markdown snippet at the current cursor position,
+  - surface upload status and upload errors inline.
+- Added supporting editor styles in [ArticleEditor.css](/home/manuel/code/wesen/2026-03-24--draft-review/frontend/src/author/ArticleEditor.css).
+
+### Why this matters
+- This is the first point where managed uploads become a real feature rather than a
+  backend-only capability.
+- It keeps the editor markdown-native. The editor still owns markdown text, while the
+  backend only provides stable image URLs plus a safe insertion snippet.
+
+### Validation
+- Ran `go test ./cmd/... ./pkg/...`
+- Ran `npm run build`
+- Result: passed
+
+### What worked
+- The mutation is small because the backend already returns a ready-to-insert markdown
+  snippet.
+- The existing cursor-based snippet insertion helper in the editor made uploads fit
+  naturally into the same authoring model as manual markdown insertion.
+
+### Remaining work after this step
+- Local-dev and hosted documentation still need to explain the new `media-root`
+  persistence requirement.
+- The full ticket still needs its final phase-2 validation and doc cleanup pass.
+
 ## Related
 
 - [Markdown article image support analysis and implementation guide](../design-doc/01-markdown-article-image-support-analysis-and-implementation-guide.md)
