@@ -15,6 +15,24 @@ Hosted deployment guidance now lives in:
 - [docs/deployments/draft-review-coolify.md](/home/manuel/code/wesen/2026-03-24--draft-review/docs/deployments/draft-review-coolify.md)
 - [docs/deployments/draft-review-coolify-playbook.md](/home/manuel/code/wesen/2026-03-24--draft-review/docs/deployments/draft-review-coolify-playbook.md)
 
+K3s migration guidance now lives in:
+
+- [HK3S-0015 migration ticket](/home/manuel/code/wesen/2026-03-27--hetzner-k3s/ttmp/2026/03/29/HK3S-0015--migrate-draft-review-from-coolify-to-k3s-via-gitops/index.md)
+
+## Deployment Packaging
+
+This repository now follows the standard source-repo packaging model used by the K3s platform:
+
+- GitHub Actions builds and publishes `ghcr.io/wesen/2026-03-24--draft-review`
+- `deploy/gitops-targets.json` declares the GitOps manifest target
+- `scripts/open_gitops_pr.py` can open a manifest-bump pull request into the K3s repo
+
+Important note:
+
+- this repository is private
+- the GHCR package will therefore also be private unless visibility is changed explicitly
+- the K3s deployment must therefore use the Vault-backed GHCR image pull secret pattern instead of assuming anonymous pulls will work
+
 ## Current Commands
 
 Start the full local stack with Docker Compose:
